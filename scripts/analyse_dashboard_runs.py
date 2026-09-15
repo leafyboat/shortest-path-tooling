@@ -11,10 +11,15 @@ worst-case pain point because the search runs until the cutoff).
 Usage:
     analyse_dashboard_runs.py BASELINE_DIR CANDIDATE_DIR [--label-baseline X] [--label-candidate Y]
 
-Each DIR is expected to contain one or more <bundle>/report.json files, e.g.:
+Each DIR may be either a dashboard output root — whose bundles live under
+bundles/<name>/report.json with a bundles/index.json registry — or a bare
+directory of <bundle>/report.json files, e.g.:
     /tmp/dashboard-runs/master/routes/report.json
     /tmp/dashboard-runs/master/unit-tests/report.json
     ...
+
+When the output root's bundles/index.json is present, its entry titles are
+used as the bundle labels in the comparison output.
 """
 from __future__ import annotations
 
@@ -29,14 +34,45 @@ from typing import Dict, List, Tuple
 def load_runs(report_path: Path) -> List[Dict]:
     if not report_path.is_file():
         return []
-    data = json.loads(report_path.read_text())
+    try:
+        data = json.loads(report_path.read_text())
+    except json.JSONDecodeError:
+        # A corrupt report degrades like a missing one — the comparison
+        # treats the bundle as empty rather than crashing the whole run.
+        return []
     return data.get("runs", []) or []
 
 
 def find_bundles(root: Path) -> Dict[str, Path]:
+    # A dashboard output root nests its bundles under bundles/; prefer that
+    # real layout when it exists, else accept a bare <bundle>/report.json dir.
+    search = root / "bundles"
+    if not search.is_dir():
+        search = root
     out = {}
-    for p in sorted(root.glob("*/report.json")):
+    for p in sorted(search.glob("*/report.json")):
         out[p.parent.name] = p
+    return out
+
+
+def index_titles(root: Path) -> Dict[str, str]:
+    """Bundle name -> title map from ``root/bundles/index.json``.
+
+    Returns an empty map when the index is absent or unreadable, so callers
+    fall back to directory names.
+    """
+    index_path = root / "bundles" / "index.json"
+    if not index_path.is_file():
+        return {}
+    try:
+        data = json.loads(index_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+    out = {}
+    for entry in data.get("bundles", []) or []:
+        name = entry.get("name")
+        if name:
+            out[name] = entry.get("title") or name
     return out
 
 
@@ -204,6 +240,8 @@ def main() -> int:
 
     b_bundles = find_bundles(args.baseline_dir)
     c_bundles = find_bundles(args.candidate_dir)
+    b_titles = index_titles(args.baseline_dir)
+    c_titles = index_titles(args.candidate_dir)
     common = sorted(set(b_bundles) & set(c_bundles))
     if not common:
         print(f"No shared bundles between {args.baseline_dir} and {args.candidate_dir}", file=sys.stderr)
@@ -212,12 +250,15 @@ def main() -> int:
     all_rows = []
     print(f"# Per-route UX comparison: {args.label_baseline} vs {args.label_candidate}\n")
     for name in common:
+        # Prefer the candidate's index title so the freshest registry labels
+        # the section; directory name is the fallback for index-less roots.
+        label = c_titles.get(name) or b_titles.get(name) or name
         b_runs = load_runs(b_bundles[name])
         c_runs = load_runs(c_bundles[name])
         rows, warnings = per_route_deltas(b_runs, c_runs)
         for w in warnings:
-            print(f"<!-- WARN [{name}]: {w} -->")
-        print(emit_dataset(name, rows, args.label_baseline, args.label_candidate))
+            print(f"<!-- WARN [{label}]: {w} -->")
+        print(emit_dataset(label, rows, args.label_baseline, args.label_candidate))
         all_rows.extend(rows)
 
     print("### Combined across all bundles")
