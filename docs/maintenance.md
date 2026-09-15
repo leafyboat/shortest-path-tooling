@@ -223,6 +223,25 @@ prints `SKIP season` with the enablement hint.
 `src/test/resources/destination_walkability_exceptions.tsv` — add
 `X Y Z<tab>reason` rows for by-design blocked tiles.
 
+#### CI gate
+
+Every push and pull request runs the deterministic half of this gate
+in the `validate` job of `.github/workflows/ci.yml`:
+`python3 -m pytest tests/ -x` then
+`python3 scripts/maintenance.py validate --skip-freshness`, on
+Python 3.14 (`actions/setup-python`) with the suite's only
+third-party deps installed via `pip install pytest pyyaml`. The job checks out `submodules: recursive` — the leaf checks
+enumerate `git -C shortest-path ls-files`, so an empty submodule dir
+would break them.
+
+The environment-dependent pieces stay local-only, by design: the
+`freshness` check needs the `upstream` remote plus openrs2 network
+access, `drift` needs a prepared `cache/` + `keys.json`, and `verify`
+runs the Gradle dashboard sweep — none of which exist in CI.
+`tests/test_ci_workflow.py` asserts the job keeps this shape, so a
+workflow edit that removes or weakens the gate fails the suite it
+gates.
+
 ## Suggested workflows
 
 ### Weekly refresh
