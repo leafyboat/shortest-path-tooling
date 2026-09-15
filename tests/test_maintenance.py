@@ -1400,13 +1400,20 @@ DASHBOARD_CSVS = [
 
 
 def make_run_record(name="alpha scenario", reached=True,
-                    assertion_passed=True, assertion_message=None):
+                    assertion_passed=True, assertion_message=None,
+                    expected_reachable=None):
     """A report.json run record in the DashboardBundlePublisher
     shape."""
-    return {"name": name, "reached": reached, "pathLength": 12,
-            "assertionPassed": assertion_passed,
-            "assertionMessage": assertion_message,
-            "stats": {"elapsedNanos": 123456}}
+    rec = {"name": name, "reached": reached, "pathLength": 12,
+           "assertionPassed": assertion_passed,
+           "assertionMessage": assertion_message,
+           "stats": {"elapsedNanos": 123456}}
+    # The field is emitted only when the caller sets it — matching
+    # Gson's absent-field semantics for reports written before
+    # expectedReachable existed (absent means "expected reachable").
+    if expected_reachable is not None:
+        rec["expectedReachable"] = expected_reachable
+    return rec
 
 
 def write_report(path, runs):
@@ -1448,6 +1455,47 @@ def test_scan_report_wrong_shape_fails_closed(tmp_path):
         bad.write_text(payload)
         failures = mm.scan_report(bad)
         assert failures and str(bad) in failures[0], payload
+
+
+def test_scan_report_exempts_expected_unreachable(tmp_path):
+    # An explicit expectedReachable=false exempts an unreached run —
+    # intentional-failure dataset rows must not read as failures.
+    report = write_report(tmp_path / "report.json", [
+        make_run_record("neg", reached=False, expected_reachable=False),
+        make_run_record("bad", reached=False),
+    ])
+    assert mm.scan_report(report) == ["bad: unreachable"]
+
+
+def test_scan_report_unreached_without_field_still_fails(tmp_path):
+    # Reports written before the field existed carry no expectation —
+    # an unreached run there is a real failure, not an exemption.
+    report = write_report(tmp_path / "report.json", [
+        make_run_record("old", reached=False),
+    ])
+    assert mm.scan_report(report) == ["old: unreachable"]
+
+
+def test_scan_report_unreached_null_field_still_fails(tmp_path):
+    # A JSON null is not an expectation — only a literal false exempts.
+    rec = make_run_record("null", reached=False)
+    rec["expectedReachable"] = None
+    report = write_report(tmp_path / "report.json", [rec])
+    assert mm.scan_report(report) == ["null: unreachable"]
+
+
+def test_scan_report_reached_expected_unreachable_is_a_failure(tmp_path):
+    # reached=true on an expected-unreachable row never enters the
+    # unreached branch — the harness's assertion failure surfaces
+    # verbatim instead.
+    report = write_report(tmp_path / "report.json", [
+        make_run_record("reach", reached=True, expected_reachable=False,
+                        assertion_passed=False,
+                        assertion_message="Expected unreachable but "
+                                          "path found"),
+    ])
+    assert mm.scan_report(report) == [
+        "reach: Expected unreachable but path found"]
 
 
 def make_verify_run(repo, calls, *, datasets=None, compile_rc=0,
