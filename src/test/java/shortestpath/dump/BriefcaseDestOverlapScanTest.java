@@ -1,7 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -41,10 +39,7 @@ public class BriefcaseDestOverlapScanTest {
         String namesFile = CacheUtils.requiredProperty("briefcase.dest.namesFile");
         String outPath = System.getProperty("briefcase.dest.outPath", "build/briefcase-dest-overlap.txt");
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
         Set<String> canonical = new HashSet<>();
         for (String line : Files.readAllLines(Paths.get(namesFile))) {
@@ -53,9 +48,8 @@ public class BriefcaseDestOverlapScanTest {
         }
         System.out.println("Canonical dest set size: " + canonical.size());
 
-        try (Store store = new Store(new File(cacheDir));
+        try (Store store = CacheUtils.openStore(cacheDir);
              PrintWriter out = new PrintWriter(outPath)) {
-            store.load();
             Storage storage = store.getStorage();
             Index configs = store.getIndex(IndexType.CONFIGS);
             Archive enumArchive = configs.getArchive(ConfigType.ENUM.getId());

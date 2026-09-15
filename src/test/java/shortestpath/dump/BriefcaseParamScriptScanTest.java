@@ -1,7 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -37,17 +35,13 @@ public class BriefcaseParamScriptScanTest {
         String xteaPath = CacheUtils.requiredProperty("briefcase.param.xteaPath");
         String outPath = System.getProperty("briefcase.param.outPath", "build/briefcase-param-scripts.txt");
 
-        XteaKeyManager xtea = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xtea.loadKeys(fin);
-        }
+        XteaKeyManager xtea = CacheUtils.loadXteaKeys(xteaPath);
 
         Set<Integer> targets = new HashSet<>();
         for (int p : PARAM_IDS) targets.add(p);
 
-        try (Store store = new Store(new File(cacheDir));
+        try (Store store = CacheUtils.openStore(cacheDir);
              PrintWriter out = new PrintWriter(outPath)) {
-            store.load();
             Storage storage = store.getStorage();
             Index scriptIndex = store.getIndex(IndexType.CLIENTSCRIPT);
             ScriptLoader loader = new ScriptLoader();
