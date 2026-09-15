@@ -734,3 +734,97 @@ def test_tsv_structure_committed_transports_pass():
     # anchor cells are covered by the curated exceptions file.
     vd = load_vd()
     assert vd.CHECKS["tsv-structure"]() == []
+
+
+# ---------- curated walkability / bbox exceptions ----------
+
+
+def test_walkability_exceptions_suppress(tmp_path, monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    rel = _write_tsv(
+        plugin, "src/main/resources/transports/transports.tsv",
+        ["Origin", "Destination", "menuOption menuTarget objectID"],
+        ["1921 2561 0\t1950 2570 0\tOpen Door 1",
+         "1921 2561 0\t1949 2570 0\tOpen Door 2"])
+    # Only (1,1) of region 30_40 is walkable; both destinations are
+    # flagless with no walkable neighbour and are no row's origin.
+    zp = _mini_zip(tmp_path / "collision-map.zip",
+                   {"30_40": [(1, 1, 0, 0)]})
+    exc = tmp_path / "walk_ex.tsv"
+    _exceptions_file(exc, [
+        "1950 2570 0\ttransport arrival tile — unreachable on foot "
+        "by design"])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel], zip_path=zp)
+    monkeypatch.setattr(vd, "WALKABILITY_EXCEPTIONS", exc)
+    findings = vd.CHECKS["walkability"]()
+    # The curated tile is suppressed; the unlisted unreachable
+    # destination still produces a finding.
+    assert not any("1950 2570 0" in f for f in findings)
+    assert any("1949 2570 0" in f for f in findings)
+
+
+def test_bbox_exceptions_suppress(tmp_path, monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    bboxes = tmp_path / "leagues_regions.tsv"
+    _bbox_file(bboxes, [("KANDARIN", 0, 63, 0, 63)])
+    rel = _seasonal_fixture(plugin, [
+        "100 100 0\t\t\t\t\t4\tEvil Eye: curated\tF\t60\t\t\t",
+        "101 100 0\t\t\t\t\t4\tEvil Eye: still flagged\tF\t60\t\t\t",
+    ])
+    exc = tmp_path / "bbox_ex.tsv"
+    _exceptions_file(exc, [
+        "100 100 0\tchunk region absent from generated regions.tsv"])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel])
+    monkeypatch.setattr(vd, "BBOX_TSV", bboxes)
+    monkeypatch.setattr(vd, "BBOX_EXCEPTIONS", exc)
+    findings = vd.CHECKS["bbox"]()
+    assert not any(f.startswith(f"{rel}:2") for f in findings)
+    assert any(f.startswith(f"{rel}:3") and "101 100 0" in f
+               for f in findings)
+
+
+def test_new_exceptions_fail_closed(tmp_path, monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    rel = _write_tsv(
+        plugin, "src/main/resources/transports/transports.tsv",
+        ["Origin", "Destination", "menuOption menuTarget objectID"],
+        ["1921 2561 0\t1950 2570 0\tOpen Door 1"])
+    zp = _mini_zip(tmp_path / "collision-map.zip",
+                   {"30_40": [(1, 1, 0, 0)]})
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel], zip_path=zp)
+    for bad in ("1950 2570\tsome reason",   # two-part coordinate
+                "1950 2570 0",              # no reason cell
+                "x y z\treason",            # non-numeric
+                "1950 2570 0\t"):           # empty reason
+        exc = tmp_path / "walk_ex.tsv"
+        _exceptions_file(exc, [bad])
+        monkeypatch.setattr(vd, "WALKABILITY_EXCEPTIONS", exc)
+        with pytest.raises(SystemExit):
+            vd.CHECKS["walkability"]()
+    # The same fail-closed loader backs the bbox check.
+    bboxes = tmp_path / "leagues_regions.tsv"
+    _bbox_file(bboxes, [("KANDARIN", 0, 63, 0, 63)])
+    rel2 = _seasonal_fixture(plugin, [
+        "100 100 0\t\t\t\t\t4\tEvil Eye\tF\t60\t\t\t"])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel2])
+    monkeypatch.setattr(vd, "BBOX_TSV", bboxes)
+    exc = tmp_path / "bbox_ex.tsv"
+    _exceptions_file(exc, ["100 100 0"])   # no reason cell
+    monkeypatch.setattr(vd, "BBOX_EXCEPTIONS", exc)
+    with pytest.raises(SystemExit):
+        vd.CHECKS["bbox"]()
+
+
+def test_walkability_committed_transports_clean():
+    # Real-data green: every baseline finding is covered by a
+    # curated exception row, so the pinned transports pass.
+    vd = load_vd()
+    assert vd.CHECKS["walkability"]() == []
+
+
+def test_bbox_committed_transports_clean():
+    vd = load_vd()
+    assert vd.CHECKS["bbox"]() == []
