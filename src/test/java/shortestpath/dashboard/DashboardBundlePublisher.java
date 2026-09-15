@@ -111,6 +111,11 @@ public final class DashboardBundlePublisher {
         entry.title = report.title != null ? report.title : bundleName;
         entry.generatedAt = report.generatedAt;
         entry.reportPath = bundleName + "/report.json";
+        // Mirror the report's run tallies so the selector can show counts
+        // without fetching each report; null when the report has no summary.
+        entry.totalRuns = report.summary != null ? report.summary.totalRuns : null;
+        entry.successfulRuns = report.summary != null ? report.summary.successfulRuns : null;
+        entry.failedRuns = report.summary != null ? report.summary.failedRuns : null;
         index.bundles.add(0, entry);
 
         writeJson(indexPath, index);

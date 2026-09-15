@@ -1385,6 +1385,9 @@ async function initDashboard() {
     const opt = document.createElement("option");
     opt.value = bundle.reportPath;
     opt.textContent = bundle.title || bundle.name;
+    if (bundle.totalRuns != null) {
+      opt.textContent += ` (${bundle.successfulRuns}/${bundle.totalRuns})`;
+    }
     bundleSelectEl.appendChild(opt);
   }
   if (index.bundles.length > 1) {

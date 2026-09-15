@@ -239,5 +239,9 @@ public final class PathfinderDashboardModels {
         public String title;
         public String generatedAt;
         public String reportPath;
+        /** Run tallies mirrored from {@code report.summary} at publish time; absent on old index entries. */
+        public Integer totalRuns;
+        public Integer successfulRuns;
+        public Integer failedRuns;
     }
 }
