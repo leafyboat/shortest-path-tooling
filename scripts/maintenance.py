@@ -810,7 +810,11 @@ def scan_report(path: Path) -> List[str]:
         if not isinstance(r, dict):
             failures.append(f"malformed run record in {path}")
             continue
-        if not r.get("reached"):
+        # A literal expectedReachable=false marks an intentional-
+        # failure row; absent, null, or truthy values still fail
+        # closed so a missing field can never mask a regression.
+        if (not r.get("reached")
+                and r.get("expectedReachable") is not False):
             failures.append(f"{r.get('name')}: unreachable")
         elif r.get("assertionPassed") is False:
             failures.append(
