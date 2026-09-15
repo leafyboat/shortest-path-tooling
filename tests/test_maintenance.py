@@ -1484,7 +1484,8 @@ def make_verify_run(repo, calls, *, datasets=None, compile_rc=0,
             if csv not in missing_reports:
                 write_report(
                     repo / "build" / "reports" /
-                    "pathfinder-dashboard" / slug / "report.json", runs)
+                    "pathfinder-dashboard" / "bundles" / slug /
+                    "report.json", runs)
             return cp(cmd, f"dashboard {csv}\n")
         if cmd[:2] == ["./gradlew", "compileTestJava"]:
             return cp(cmd, rc=compile_rc)
@@ -1601,6 +1602,62 @@ def test_verify_missing_report_fails_tier(tmp_path, monkeypatch,
     rc = mm.main(["verify"])
     assert rc == 1
     assert "FAIL dashboard" in capsys.readouterr().out
+
+
+def test_verify_dashboard_tier_reads_bundles(tmp_path, monkeypatch,
+                                             capsys):
+    # The publisher has always written
+    # build/reports/pathfinder-dashboard/bundles/{slug}/report.json —
+    # a clean report at the real location must pass the tier.
+    repo, _, calls = prepare_verify(
+        tmp_path, monkeypatch, datasets=["routes.csv"])
+    rc = mm.main(["verify"])
+    assert rc == 0
+    assert "PASS dashboard" in capsys.readouterr().out
+
+
+def test_verify_dashboard_tier_still_fails_closed(tmp_path, monkeypatch,
+                                                  capsys):
+    # A reachable-looking path fix must not soften the tier: an
+    # unreached run still names itself, and an absent report still
+    # fails closed on the path.
+    def runs_for(csv):
+        return [make_run_record("no path", reached=False)]
+
+    repo, _, calls = prepare_verify(
+        tmp_path, monkeypatch, datasets=["routes.csv"],
+        runs_for=runs_for)
+    rc = mm.main(["verify"])
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "FAIL dashboard" in out
+    assert "no path: unreachable" in out
+
+    repo, _, calls = prepare_verify(
+        tmp_path / "missing", monkeypatch, datasets=["routes.csv"],
+        missing_reports=["routes.csv"])
+    rc = mm.main(["verify"])
+    assert rc == 1
+    assert "missing or unreadable report" in capsys.readouterr().out
+
+
+def test_verify_scan_path_contains_bundles(tmp_path, monkeypatch):
+    # Regression: the path do_verify hands scan_report must keep the
+    # bundles/ segment the publisher always writes — a future layout
+    # edit cannot silently re-break the tier.
+    repo, _, calls = prepare_verify(
+        tmp_path, monkeypatch, datasets=["routes.csv"])
+    seen = []
+    real = mm.scan_report
+
+    def spy(path):
+        seen.append(Path(path))
+        return real(path)
+
+    monkeypatch.setattr(mm, "scan_report", spy)
+    mm.main(["verify"])
+    assert len(seen) == 1
+    assert "bundles" in seen[0].parts
 
 
 def test_verify_edge_diff_identity_passes(tmp_path, monkeypatch,
