@@ -37,6 +37,8 @@ RESOURCES = "src/main/resources"
 BBOX_TSV = REPO / "src" / "test" / "resources" / "leagues_regions.tsv"
 DESTINATION_EXCEPTIONS = (REPO / "src" / "test" / "resources"
                           / "destination_walkability_exceptions.tsv")
+ANCHOR_EXCEPTIONS = (REPO / "src" / "test" / "resources"
+                     / "transport_anchor_exceptions.tsv")
 COLLISION_ZIP = PLUGIN / RESOURCES / "collision-map.zip"
 
 GIT_TIMEOUT_SECONDS = 120
@@ -75,6 +77,18 @@ DESTINATION_FIELDS = frozenset({
 SCENARIO_PRESETS = frozenset({
     "NONE", "ALL", "BANK", "BANK_PERM", "INVENTORY",
     "INVENTORY_NON_CONSUMABLE", "SEASONAL", "UNIT_TEST",
+})
+
+# League region enum names — mirrors the LeagueRegion enum in
+# shortest-path/src/main/java/shortestpath/leagues/LeagueRegion.java.
+# The plugin resolves `Region override` cells via
+# LeagueRegion.valueOf and swallows IllegalArgumentException, so a
+# typo'd cell silently becomes NEUTRAL (always-unlocked) — exact
+# case-sensitive matching is the point of the check.
+LEAGUE_REGIONS = frozenset({
+    "VARLAMORE", "KARAMJA", "ASGARNIA", "KANDARIN", "FREMENNIK",
+    "KOUREND", "WILDERNESS", "MORYTANIA", "DESERT", "TIRANNWN",
+    "MISTHALIN", "NEUTRAL",
 })
 
 # config_overrides keys — mirrors every case label of the switch in
@@ -197,9 +211,16 @@ def check_tsv_structure():
     file's coordinate columns; every non-empty Origin/Destination
     cell in ``x y z`` form; and permutation rows present on both
     sides or neither — a one-sided set is dead data the loader never
-    turns into an edge.
+    turns into an edge.  Transport files carrying a
+    ``menuOption menuTarget objectID`` column additionally get the
+    anchor-cell shape lint: every non-empty cell must parse as
+    ``<menuOption> <menuTarget...> <objectID>`` — the same grammar
+    the transportAnchorDrift detector's parseAnchor applies — with
+    the committed no-id menu-text cells carried in the curated
+    exceptions file.
     """
     findings = []
+    anchor_exceptions = _load_anchor_exceptions(ANCHOR_EXCEPTIONS)
     rels = _git_ls_files(
         f"{RESOURCES}/transports", f"{RESOURCES}/destinations")
     for rel in sorted(r for r in rels if r.endswith(".tsv")):
@@ -259,6 +280,25 @@ def check_tsv_structure():
                 f"{rel}:{hln}: one-sided permutation set "
                 f"({perm_origins} origin rows, "
                 f"{perm_destinations} destination rows)")
+        # Anchor-cell shape — mirrors parseAnchor in the drift
+        # detector: a non-empty cell must split into >=2 whitespace
+        # tokens with an all-digit trailing token (the object id).
+        # Empty cells are legitimate no-anchor rows; the committed
+        # no-id menu-text cells are curated in the exceptions file.
+        ai = (headers.index("menuOption menuTarget objectID")
+              if "menuOption menuTarget objectID" in headers else -1)
+        if ai >= 0:
+            for lineno, fields in rows:
+                if ai >= len(fields):
+                    continue
+                cell = fields[ai].strip()
+                if not cell or (rel, cell) in anchor_exceptions:
+                    continue
+                tokens = cell.split()
+                if len(tokens) < 2 or not tokens[-1].isdigit():
+                    findings.append(
+                        f"{rel}:{lineno}: anchor cell {cell!r} has "
+                        f"no trailing object id")
     return findings
 
 
@@ -522,6 +562,60 @@ def _load_exceptions(path):
     return tiles
 
 
+def _load_anchor_exceptions(path):
+    """Curated (rel, cell) suppression set for the anchor-cell lint.
+
+    Rows are ``<tsv relpath><TAB><cell text><TAB>reason``; ``#`` and
+    blank lines are comments.  The key is the file plus the exact
+    cell text — tighter than a coordinate key, so a *different*
+    malformed cell on the same row still flags.  A malformed row
+    fails closed — a suppression that might be a typo must never
+    silently apply.
+    """
+    cells = set()
+    try:
+        lines = path.read_text().splitlines()
+    except OSError as exc:
+        sys.exit(f"cannot read {path}: {exc.strerror or exc}")
+    for lineno, line in enumerate(lines, 1):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split("\t")
+        if len(parts) != 3 or not all(p.strip() for p in parts):
+            sys.exit(f"{path}:{lineno}: malformed anchor exception "
+                     f"row {s!r}")
+        cells.add((parts[0].strip(), parts[1].strip()))
+    return cells
+
+
+def check_region_override():
+    """Every `Region override` cell must be a LeagueRegion enum name.
+
+    TransportBuilder resolves the cell via ``LeagueRegion.valueOf``
+    and swallows ``IllegalArgumentException`` — a typo'd override
+    silently drops to NEUTRAL, which is always-unlocked in league
+    mode.  Files without the column are skipped; empty cells mean
+    "classify by bbox" and are legitimate.
+    """
+    findings = []
+    rels = _git_ls_files(f"{RESOURCES}/transports")
+    for rel in sorted(r for r in rels if r.endswith(".tsv")):
+        headers, _, rows = _parse_tsv(PLUGIN / rel)
+        if headers is None or "Region override" not in headers:
+            continue
+        ri = headers.index("Region override")
+        for lineno, fields in rows:
+            if ri >= len(fields):
+                continue
+            cell = fields[ri].strip()
+            if cell and cell not in LEAGUE_REGIONS:
+                findings.append(
+                    f"{rel}:{lineno}: Region override {cell!r} is "
+                    f"not a LeagueRegion enum name")
+    return findings
+
+
 def check_destinations():
     """Advisory: destination TSV targets blocked on the committed zip.
 
@@ -686,6 +780,7 @@ CHECKS = {
     "regions": check_regions,
     "destinations": check_destinations,
     "scenario-csv": check_scenario_csv,
+    "region-override": check_region_override,
 }
 
 # Checks whose findings are reported but never move the exit code.

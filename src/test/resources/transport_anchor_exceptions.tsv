@@ -1,0 +1,19 @@
+# transport_anchor_exceptions.tsv — curated suppressions for the
+# anchor-cell shape lint in scripts/validate_data.py (tsv-structure).
+#
+# Grammar: <tsv relpath><TAB><cell text><TAB>reason
+#
+# The relpath is submodule-relative (src/main/resources/...) and the
+# cell text must match the flagged `menuOption menuTarget objectID`
+# cell exactly. Upstream authors some interaction-only transports
+# with menu option + target but no object id; the plugin tolerates
+# them (the column is ignored by the pathfinding parser and only
+# substring-matched for display), and the transportAnchorDrift
+# detector reports them in its advisory unparseable bucket. These
+# rows are the committed baseline debt — new no-id cells still flag.
+#
+src/main/resources/transports/transports.tsv	Climb-up Staircase	Marim (Ape Atoll) dungeon staircases carry menu text only — upstream rows name no object id; in transportAnchorDrift's unparseable bucket
+src/main/resources/transports/transports.tsv	Climb-down Staircase	same Marim (Ape Atoll) staircase pairs — upstream rows name no object id
+src/main/resources/transports/transports.tsv	Open Odd-looking wall	varbit-gated wall interaction (Fishing Colony access) — upstream row names no object id
+src/main/resources/transports/transports.tsv	Open Colony gate	Piscatoris Fishing Colony gate (Swan Song) — upstream rows name no object id
+src/main/resources/transports/transports.tsv	Pass-through Entryway	Death on the Isle villa entryway — upstream row names no object id

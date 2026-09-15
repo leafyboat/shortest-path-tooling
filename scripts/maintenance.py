@@ -979,7 +979,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
 VALIDATE_HARD_CHECKS: Tuple[Tuple[str, str], ...] = (
     ("tsv-structure", "leaf"), ("collision-zip", "leaf"),
     ("walkability", "leaf"), ("bbox", "leaf"), ("regions", "leaf"),
-    ("scenario-csv", "leaf"), ("freshness", "internal"))
+    ("scenario-csv", "leaf"), ("region-override", "leaf"),
+    ("freshness", "internal"))
 VALIDATE_ADVISORY_CHECKS: Tuple[Tuple[str, str], ...] = (
     ("destinations", "leaf"), ("drift", "drift"), ("season", "season"))
 
@@ -1397,6 +1398,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     vd.add_argument(
         "--skip-scenario-csv", action="store_true",
         help="Omit the dashboard scenario CSV lint check")
+    vd.add_argument(
+        "--skip-region-override", action="store_true",
+        help="Omit the transport Region override enum check")
     vd.add_argument(
         "--skip-freshness", action="store_true",
         help="Omit the collision-map freshness check (caches.json "
