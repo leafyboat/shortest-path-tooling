@@ -1987,6 +1987,22 @@ def test_validate_scenario_csv_skip_flag(tmp_path, monkeypatch,
     assert f"validate: {n}/{n} checks passed" in out
 
 
+def test_validate_region_override_skip_flag(tmp_path, monkeypatch,
+                                            capsys):
+    _, _, calls = prepare_validate(tmp_path, monkeypatch)
+    rc = mm.main(["validate", "--skip-region-override"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "SKIP region-override" in out
+    names = leaf_names(calls)
+    assert "region-override" not in names
+    assert sorted(names) == sorted(
+        n for n in (hard_leaf_names() + advisory_leaf_names())
+        if n != "region-override")
+    n = len(mm.VALIDATE_HARD_CHECKS) - 1
+    assert f"validate: {n}/{n} checks passed" in out
+
+
 def _write_tsv(root, rel, header_cells, rows):
     """Write a fixture TSV: ``#``-prefixed header + verbatim rows."""
     path = root / rel

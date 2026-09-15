@@ -581,3 +581,156 @@ def test_scenario_csv_committed_datasets_clean():
     # The real committed dashboard CSVs are the healthy-data case.
     vd = load_vd()
     assert vd.CHECKS["scenario-csv"]() == []
+
+
+# ---------- region-override check ----------
+
+
+def _region_override_fixture(plugin, rows):
+    return _write_tsv(
+        plugin,
+        "src/main/resources/transports/seasonal_transports.tsv",
+        ["Destination", "Region override"], rows)
+
+
+def test_region_override_flags_typo(tmp_path, monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    rel = _region_override_fixture(plugin, [
+        "100 100 0\tKARAMAJ",   # typo — finding
+        "100 100 0\tKARAMJA",   # exact enum name — pass
+        "100 100 0\tNEUTRAL",   # NEUTRAL is a real enum member
+        "100 100 0\t",          # empty cell — pass
+    ])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel])
+    findings = vd.CHECKS["region-override"]()
+    assert any(f.startswith(f"{rel}:2") and "KARAMAJ" in f
+               for f in findings)
+    assert not any(f.startswith(f"{rel}:3") for f in findings)
+    assert not any(f.startswith(f"{rel}:4") for f in findings)
+    assert not any(f.startswith(f"{rel}:5") for f in findings)
+
+
+def test_region_override_case_exact(tmp_path, monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    # The plugin resolves overrides via LeagueRegion.valueOf — exact
+    # case only; a lowercase value silently drops to NEUTRAL.
+    rel = _region_override_fixture(plugin, ["100 100 0\tkaramja"])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel])
+    findings = vd.CHECKS["region-override"]()
+    assert any("karamja" in f for f in findings)
+
+
+def test_region_override_skips_files_without_column(tmp_path,
+                                                    monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    rel = _write_tsv(
+        plugin, "src/main/resources/transports/transports.tsv",
+        ["Origin", "Destination", "menuOption menuTarget objectID"],
+        ["1 2 0\t3 4 0\tOpen Door 9398"])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel])
+    assert vd.CHECKS["region-override"]() == []
+
+
+def test_region_override_committed_transports_clean():
+    # The real committed transports pass — every Region override
+    # cell today is an exact LeagueRegion name.
+    vd = load_vd()
+    assert vd.CHECKS["region-override"]() == []
+
+
+def test_region_override_registered():
+    vd = load_vd()
+    assert "region-override" in vd.CHECKS
+
+
+# ---------- anchor-cell shape (tsv-structure extension) ----------
+
+
+def _anchor_fixture(plugin, cells):
+    rows = ["1 2 0\t3 4 0\t" + c for c in cells]
+    return _write_tsv(
+        plugin, "src/main/resources/transports/transports.tsv",
+        ["Origin", "Destination", "menuOption menuTarget objectID"],
+        rows)
+
+
+def _anchor_exceptions(path, rows):
+    path.write_text("# anchor exceptions\n"
+                    + "\n".join(rows) + ("\n" if rows else ""))
+
+
+def test_tsv_structure_anchor_shape(tmp_path, monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    rel = _anchor_fixture(plugin, [
+        "Climb-over Rocks 4038",   # canonical anchored cell — pass
+        "Climb-over",              # single token — finding
+        "Open Door abc",           # non-numeric trailing — finding
+        " Open Door 9398 ",        # whitespace-tolerant — pass
+        "",                        # empty cell — no anchor, pass
+    ])
+    exc = tmp_path / "anchor_ex.tsv"
+    _anchor_exceptions(exc, [])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel])
+    monkeypatch.setattr(vd, "ANCHOR_EXCEPTIONS", exc)
+    findings = vd.CHECKS["tsv-structure"]()
+    assert any(f.startswith(f"{rel}:3") and "Climb-over" in f
+               for f in findings)
+    assert any(f.startswith(f"{rel}:4") and "Open Door abc" in f
+               for f in findings)
+    assert not any(f.startswith(f"{rel}:2") for f in findings)
+    assert not any(f.startswith(f"{rel}:5") for f in findings)
+    assert not any(f.startswith(f"{rel}:6") for f in findings)
+
+
+def test_tsv_structure_anchor_exceptions_suppress(tmp_path,
+                                                  monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    rel = _anchor_fixture(plugin, [
+        "Climb-up Staircase",   # curated no-id cell — suppressed
+        "Open Door abc",        # not curated — still a finding
+    ])
+    exc = tmp_path / "anchor_ex.tsv"
+    _anchor_exceptions(exc, [
+        "src/main/resources/transports/transports.tsv\t"
+        "Climb-up Staircase\tMarim staircase menu text has no "
+        "object id upstream"])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel])
+    monkeypatch.setattr(vd, "ANCHOR_EXCEPTIONS", exc)
+    findings = vd.CHECKS["tsv-structure"]()
+    assert not any(f.startswith(f"{rel}:2") for f in findings)
+    assert any(f.startswith(f"{rel}:3") and "Open Door abc" in f
+               for f in findings)
+
+
+def test_anchor_exceptions_malformed_fails_closed(tmp_path,
+                                                  monkeypatch):
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    rel = _anchor_fixture(plugin, ["Open Door abc"])
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[rel])
+    for bad in ("src/main/resources/transports/transports.tsv\t"
+                "Climb-up Staircase",                    # no reason
+                "transports.tsv\t\treason",              # empty cell
+                "\tClimb-up Staircase\treason"):         # empty rel
+        exc = tmp_path / "anchor_ex.tsv"
+        _anchor_exceptions(exc, [bad])
+        monkeypatch.setattr(vd, "ANCHOR_EXCEPTIONS", exc)
+        with pytest.raises(SystemExit):
+            vd.CHECKS["tsv-structure"]()
+    # An unreadable file fails closed too.
+    monkeypatch.setattr(vd, "ANCHOR_EXCEPTIONS",
+                        tmp_path / "missing.tsv")
+    with pytest.raises(SystemExit):
+        vd.CHECKS["tsv-structure"]()
+
+
+def test_tsv_structure_committed_transports_pass():
+    # The real committed TSVs stay green — the 15 upstream no-id
+    # anchor cells are covered by the curated exceptions file.
+    vd = load_vd()
+    assert vd.CHECKS["tsv-structure"]() == []
