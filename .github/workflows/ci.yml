@@ -29,3 +29,31 @@ jobs:
       - name: Compile test sources
         run: ./gradlew compileTestJava --stacktrace
         shell: bash
+
+  validate:
+    name: Validate data + Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          # The validate leaf checks enumerate committed plugin data via
+          # git -C shortest-path ls-files — an empty submodule dir breaks them.
+          submodules: recursive
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install test dependencies
+        run: python3 -m pip install pytest pyyaml
+
+      - name: Run Python test suite
+        run: python3 -m pytest tests/ -x
+
+      - name: Validate committed data
+        # Deterministic checks only — freshness needs the upstream
+        # remote plus network, drift needs a local cache/, and verify
+        # runs the Gradle dashboard sweep; all stay local-only.
+        run: python3 scripts/maintenance.py validate --skip-freshness
