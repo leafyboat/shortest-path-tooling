@@ -886,8 +886,8 @@ def do_verify(args: argparse.Namespace) -> int:
             # profile=false makes the bundle name equal the slug —
             # the same derivation dashboards.gradle applies.
             slug = Path(csv).stem.lower().replace("_", "-")
-            report = (REPO / "build" / "reports" /
-                      "pathfinder-dashboard" / slug / "report.json")
+            report = (REPO / "build" / "reports" / "pathfinder-dashboard" /
+                      "bundles" / slug / "report.json")
             failures.extend(scan_report(report))
         tiers["dashboard"] = failures
 
