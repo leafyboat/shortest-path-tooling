@@ -44,6 +44,12 @@ public final class DashboardScenario {
     private final OptionalInt expectedLength;
     /** Minimum expected path length (absent → no assertion). */
     private final OptionalInt minimumLength;
+    /**
+     * Whether the route is expected to be reachable. An {@code expect_reachable=false}
+     * row asserts the route is <em>unreachable</em> — an intentional-failure scenario
+     * (e.g. a restriction-gated route that must not path).
+     */
+    private final boolean expectedReachable;
 
     private DashboardScenario(Builder b) {
         this.name = b.name;
@@ -60,6 +66,7 @@ public final class DashboardScenario {
         this.configOverrides = Collections.unmodifiableMap(b.configOverrides);
         this.expectedLength = b.expectedLength;
         this.minimumLength = b.minimumLength;
+        this.expectedReachable = b.expectedReachable;
     }
 
     // -------------------------------------------------------------------------
@@ -80,6 +87,7 @@ public final class DashboardScenario {
     public Map<String, String> getConfigOverrides() { return configOverrides; }
     public OptionalInt getExpectedLength() { return expectedLength; }
     public OptionalInt getMinimumLength() { return minimumLength; }
+    public boolean isExpectedReachable() { return expectedReachable; }
 
     // -------------------------------------------------------------------------
     // Builder
@@ -104,6 +112,7 @@ public final class DashboardScenario {
         private Map<String, String> configOverrides = new java.util.LinkedHashMap<>();
         private OptionalInt expectedLength = OptionalInt.empty();
         private OptionalInt minimumLength = OptionalInt.empty();
+        private boolean expectedReachable = true;
 
         private Builder() {}
 
@@ -121,6 +130,7 @@ public final class DashboardScenario {
         public Builder configOverrides(Map<String, String> configOverrides) { this.configOverrides = configOverrides; return this; }
         public Builder expectedLength(int len) { this.expectedLength = OptionalInt.of(len); return this; }
         public Builder minimumLength(int len) { this.minimumLength = OptionalInt.of(len); return this; }
+        public Builder expectedReachable(boolean expectedReachable) { this.expectedReachable = expectedReachable; return this; }
 
         public DashboardScenario build() {
             return new DashboardScenario(this);

@@ -179,12 +179,24 @@ public class DashboardTest {
                 capturedLengths.put(scenario.getName(), pathLength);
             }
 
-            // Evaluate assertions
+            // Evaluate assertions — the reachability expectation takes
+            // precedence over length assertions: an expect_reachable=true row
+            // that fails to reach fails here, and an expect_reachable=false row
+            // passes only when no path is found.
             Boolean assertionPassed = null;
             String assertionMessage = null;
+            boolean expectedReachable = scenario.isExpectedReachable();
             OptionalInt expectedLength = scenario.getExpectedLength();
             OptionalInt minimumLength = scenario.getMinimumLength();
-            if (expectedLength.isPresent()) {
+            if (reached != expectedReachable) {
+                assertionPassed = false;
+                assertionMessage = expectedReachable
+                    ? "Expected reachable but no path found"
+                    : "Expected unreachable but path found (" + pathLength + " steps)";
+            } else if (!expectedReachable) {
+                assertionPassed = true;
+                assertionMessage = "Expected unreachable";
+            } else if (expectedLength.isPresent()) {
                 int expected = expectedLength.getAsInt();
                 if (pathLength == expected) {
                     assertionPassed = true;
@@ -206,7 +218,7 @@ public class DashboardTest {
                 "Dataset: " + datasetLabel(dataset),
                 "Scenario: " + scenario.getName(),
                 "Preset: " + scenario.getPreset(),
-                "Expected reachable: true");
+                "Expected reachable: " + expectedReachable);
 
             PathfinderDashboardModels.RunRecord run = reportWriter.createRunRecord(
                 scenario.getName(),
@@ -217,6 +229,7 @@ public class DashboardTest {
                 reached,
                 assertionPassed,
                 assertionMessage);
+            run.expectedReachable = expectedReachable;
 
             DashboardRunMetadata.apply(run, scenario.getPreset(), applied.dashboardConfig,
                 applied.lumbridgeDiaryEliteStub);

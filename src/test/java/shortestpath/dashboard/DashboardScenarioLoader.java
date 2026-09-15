@@ -22,7 +22,7 @@ import shortestpath.WorldPointUtil;
  *       {@code teleports} column alias). Supports the full set of optional columns:
  *       {@code inventory}, {@code equipment}, {@code bank}, {@code varbits}, {@code varplayers},
  *       {@code skill_levels}, {@code config_overrides}, {@code expected_length},
- *       {@code minimum_length}.</li>
+ *       {@code minimum_length}, {@code expect_reachable}.</li>
  *   <li><b>Clue-step CSV</b> — has {@code clue_type}, {@code x}, {@code y}, {@code plane}.</li>
  *   <li><b>TSV</b> — tab-separated with {@code Description}, {@code X}, {@code Y}, {@code Plane}.</li>
  * </ol>
@@ -35,6 +35,8 @@ import shortestpath.WorldPointUtil;
  * config_overrides             : settingName=value;…
  * expected_length              : integer
  * minimum_length               : integer
+ * expect_reachable             : true|false (default true — intentional-failure
+ *                                rows assert the route is unreachable)
  * </pre>
  */
 public final class DashboardScenarioLoader {
@@ -106,6 +108,7 @@ public final class DashboardScenarioLoader {
         int configOverridesIdx  = indexOf(headers, "config_overrides");
         int expectedLengthIdx   = indexOf(headers, "expected_length");
         int minimumLengthIdx    = indexOf(headers, "minimum_length");
+        int expectReachableIdx  = indexOf(headers, "expect_reachable");
 
         if (xIdx < 0 || yIdx < 0 || planeIdx < 0) {
             throw new IOException("Routes CSV missing x/y/plane columns in " + source);
@@ -150,6 +153,10 @@ public final class DashboardScenarioLoader {
             String minLen = get(f, minimumLengthIdx, "");
             if (!minLen.isEmpty()) {
                 b.minimumLength(Integer.parseInt(minLen.trim()));
+            }
+            String expectReachable = get(f, expectReachableIdx, "");
+            if (!expectReachable.isEmpty()) {
+                b.expectedReachable(Boolean.parseBoolean(expectReachable.trim()));
             }
 
             result.add(b.build());

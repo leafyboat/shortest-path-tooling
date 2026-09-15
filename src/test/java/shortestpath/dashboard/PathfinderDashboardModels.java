@@ -48,6 +48,8 @@ public final class PathfinderDashboardModels {
         public Boolean assertionPassed;
         public String assertionMessage;
         public boolean reached;
+        /** Whether the scenario expected the route to be reachable; {@code null}/absent on old reports means expected reachable. */
+        public Boolean expectedReachable;
         public String terminationReason;
         public WorldPointJson start;
         public WorldPointJson target;
