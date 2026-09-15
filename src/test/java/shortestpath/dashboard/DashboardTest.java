@@ -41,8 +41,18 @@ import shortestpath.pathfinder.Pathfinder;
 /**
  * Generic dashboard test harness.
  *
- * <p>Run with {@code -DrunDashboardVerification=true} to enable assertions.
- * Without the flag all tests are skipped; the task still produces the report.</p>
+ * <p>This class runs its scenario suite whenever a task executes it — under the
+ * dedicated {@code dashboard}/{@code captureExpectedLengths} Gradle tasks and under
+ * plain {@code ./gradlew test}; no system property gates anything and
+ * {@code dashboard.profile} controls profiling only. The Gradle tasks exist to run
+ * this class with the right heap and dataset sysprops, and they set
+ * {@code ignoreFailures = true}, so the Gradle exit code carries no pass/fail
+ * signal — the published bundle's {@code report.json} is the only pass/fail
+ * surface.</p>
+ *
+ * <p>Routes CSV rows may set {@code expect_reachable=false} to assert the route
+ * is <em>unreachable</em> (an intentional-failure scenario); absent or any other
+ * value means expected reachable.</p>
  *
  * <h3>Gradle invocation</h3>
  * <pre>

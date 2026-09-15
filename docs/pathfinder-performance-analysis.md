@@ -317,6 +317,8 @@ python3 scripts/analyse_dashboard_runs.py \
 - Approach: hybrid forward (reimplementation of production search) + deferred reverse (walking-only, targets seed) for dead-end detection.
 - Reverse starts after 2048 forward iterations without target found — eliminates overhead on routes with early transport shortcuts.
 - A/B harness: `./gradlew bidirAB -PdashboardDataset=/dashboard/routes.csv`
+  (the harness now lives on branch `perf/bidir-tests`, commit `27cdf13`;
+  the `bidirAB` Gradle task was removed from `gradle/dashboards.gradle`)
 - Latest results on `routes.csv` (29 scenarios):
   - Total time: 1133ms → 948ms (**-16.3%**)
   - Total nodes: 6.76M → 5.39M (**-20.3%**)
@@ -365,7 +367,9 @@ conflicts). Branch HEAD `2bc79795`. Backup at `backup/bidir-jps-before-rebase`.
 
 ### Per-route UX on rebased branch — `bidirAB` harness
 
-The bidir A/B harness (`./gradlew bidirAB -PdashboardDataset=…`) now
+The bidir A/B harness (`./gradlew bidirAB -PdashboardDataset=…`; the
+harness lives on branch `perf/bidir-tests` and the Gradle task was
+removed) now
 writes one JSON record per scenario to
 `build/reports/bidir-ab/<dataset>.jsonl` with `pfElapsedNanos`,
 `bpfElapsedNanos`, and reachability for both. Analysed with
@@ -391,7 +395,8 @@ shaves a further ~38 ms.
 
 ### Cross-comparison caveat
 
-The bidir A/B test harness (`BidirectionalPathfinderABTest`) uses a
+The bidir A/B test harness (`BidirectionalPathfinderABTest`, which now
+lives on branch `perf/bidir-tests`, commit `27cdf13`) uses a
 minimal Mockito `Client` (elite diary varbit + queencure quest + level 99
 skills + 25 000 bank items). The dashboard tests do considerably more
 config setup: per-scenario region unlocks, varbit state from CSV, locked-
@@ -440,6 +445,10 @@ bidir wrapper can ship. Two options:
 Option (1) is the recommended next step — see *Remaining Work*.
 
 ### Reproducing
+
+(The `bidirAB` task was removed from `gradle/dashboards.gradle`; the
+harness survives on branch `perf/bidir-tests`, commit `27cdf13` —
+check that branch out to reproduce.)
 
 ```bash
 # from shortest-path-tooling/

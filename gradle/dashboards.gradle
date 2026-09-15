@@ -52,7 +52,6 @@ tasks.register('dashboard', Test) {
     }
     jvmArgs = ['-Xms1g', '-Xmx8g']
     testLogging.showStandardStreams = true
-    systemProperty 'runDashboardVerification', 'true'
     systemProperty 'dashboard.outputRoot', dashboardOutputRoot.get().asFile.absolutePath
     systemProperty 'dashboard.bundleName', dashboardBundle.get()
     systemProperty 'dashboard.dataset', dashboardDataset.get()
@@ -84,7 +83,6 @@ tasks.register('captureExpectedLengths', Test) {
     }
     jvmArgs = ['-Xms1g', '-Xmx8g']
     testLogging.showStandardStreams = true
-    systemProperty 'runDashboardVerification', 'true'
     systemProperty 'dashboard.outputRoot', dashboardOutputRoot.get().asFile.absolutePath
     systemProperty 'dashboard.bundleName', dashboardBundle.get()
     systemProperty 'dashboard.dataset', dashboardDataset.get()
@@ -99,29 +97,3 @@ tasks.register('captureExpectedLengths', Test) {
     }
 }
 
-tasks.register('bidirAB', Test) {
-    doNotTrackState('Bidir A/B test always re-runs to pick up the latest dataset and config.')
-    group = 'verification'
-    description = 'Runs A/B comparison between Pathfinder and BidirectionalPathfinder. ' +
-            'Options (all via -P): dashboardDataset (default: /dashboard/routes.csv), ' +
-            'bidir.maxScenarios (default: all), bidir.outputDir (default: build/reports/bidir-ab). ' +
-            'Writes per-scenario JSONL to <outputDir>/<datasetName>.jsonl.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    include 'shortestpath/dashboard/BidirectionalPathfinderABTest.class'
-    ignoreFailures = true
-    reports {
-        junitXml.required = false
-        html.required = false
-    }
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging.showStandardStreams = true
-    systemProperty 'dashboard.dataset', dashboardDataset.get()
-    if (providers.gradleProperty('bidir.maxScenarios').isPresent()) {
-        systemProperty 'bidir.maxScenarios', providers.gradleProperty('bidir.maxScenarios').get()
-    }
-    if (providers.gradleProperty('bidir.outputDir').isPresent()) {
-        systemProperty 'bidir.outputDir', providers.gradleProperty('bidir.outputDir').get()
-    }
-}
