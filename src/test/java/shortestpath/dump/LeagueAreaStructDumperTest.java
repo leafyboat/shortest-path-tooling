@@ -1,7 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,14 +50,9 @@ public class LeagueAreaStructDumperTest {
         String cacheDir = CacheUtils.requiredProperty("league.area.struct.cacheDir");
         String xteaPath = CacheUtils.requiredProperty("league.area.struct.xteaPath");
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
-        try (Store store = new Store(new File(cacheDir))) {
-            store.load();
-
+        try (Store store = CacheUtils.openStore(cacheDir)) {
             StructManager structManager = new StructManager(store);
             structManager.load();
 

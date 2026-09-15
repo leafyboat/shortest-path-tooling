@@ -1,7 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -63,13 +61,9 @@ public class LeagueTeleportItemDumperTest {
         String cacheDir = CacheUtils.requiredProperty("league.teleport.item.cacheDir");
         String xteaPath = CacheUtils.requiredProperty("league.teleport.item.xteaPath");
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
-        try (Store store = new Store(new File(cacheDir))) {
-            store.load();
+        try (Store store = CacheUtils.openStore(cacheDir)) {
             ItemManager itemManager = new ItemManager(store);
             itemManager.load();
 

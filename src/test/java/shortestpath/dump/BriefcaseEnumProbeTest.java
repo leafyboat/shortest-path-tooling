@@ -1,7 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -78,13 +76,9 @@ public class BriefcaseEnumProbeTest {
         String cacheDir = CacheUtils.requiredProperty("briefcase.enum.cacheDir");
         String xteaPath = CacheUtils.requiredProperty("briefcase.enum.xteaPath");
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
-        try (Store store = new Store(new File(cacheDir))) {
-            store.load();
+        try (Store store = CacheUtils.openStore(cacheDir)) {
             Storage storage = store.getStorage();
             Index index = store.getIndex(IndexType.CONFIGS);
             Archive archive = index.getArchive(ConfigType.ENUM.getId());

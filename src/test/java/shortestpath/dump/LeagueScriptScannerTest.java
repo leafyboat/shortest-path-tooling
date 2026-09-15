@@ -1,7 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -74,18 +72,13 @@ public class LeagueScriptScannerTest {
         String xteaPath = CacheUtils.requiredProperty("league.script.xteaPath");
         String outPath  = System.getProperty("league.script.outPath", "build/league-scripts.txt");
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
         Set<Integer> relicIds = new HashSet<>();
         for (int id : RELIC_ITEM_IDS) relicIds.add(id);
 
-        try (Store store = new Store(new File(cacheDir));
+        try (Store store = CacheUtils.openStore(cacheDir);
              PrintWriter out = new PrintWriter(outPath)) {
-            store.load();
-
             Storage storage = store.getStorage();
             Index scriptIndex = store.getIndex(IndexType.CLIENTSCRIPT);
 
