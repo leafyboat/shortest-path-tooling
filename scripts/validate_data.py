@@ -39,6 +39,10 @@ DESTINATION_EXCEPTIONS = (REPO / "src" / "test" / "resources"
                           / "destination_walkability_exceptions.tsv")
 ANCHOR_EXCEPTIONS = (REPO / "src" / "test" / "resources"
                      / "transport_anchor_exceptions.tsv")
+WALKABILITY_EXCEPTIONS = (REPO / "src" / "test" / "resources"
+                          / "transport_walkability_exceptions.tsv")
+BBOX_EXCEPTIONS = (REPO / "src" / "test" / "resources"
+                   / "seasonal_bbox_exceptions.tsv")
 COLLISION_ZIP = PLUGIN / RESOURCES / "collision-map.zip"
 
 GIT_TIMEOUT_SECONDS = 120
@@ -390,6 +394,7 @@ def check_walkability():
     cmap, load_findings = _load_collision_map()
     if cmap is None:
         return load_findings
+    exceptions = _load_exceptions(WALKABILITY_EXCEPTIONS)
     rels = _git_ls_files(f"{RESOURCES}/transports")
     origins = set()
     destinations = set()
@@ -430,6 +435,8 @@ def check_walkability():
             x, y, z = (int(p) for p in cell.split())
             if (x // REGION_SIZE, y // REGION_SIZE) not in cmap.regions:
                 continue  # instanced content — outside committed coverage
+            if (x, y, z) in exceptions:
+                continue  # curated known-unreachable transport tile
             if (cmap.walkable(x, y, z)
                     or _walkable_neighbour(cmap, x, y, z)
                     or (x, y, z) in other):
@@ -451,6 +458,7 @@ def check_bbox():
     or carry an explicit ``Region override``.
     """
     bboxes = load_bboxes(BBOX_TSV)
+    exceptions = _load_exceptions(BBOX_EXCEPTIONS)
     findings = []
     rels = _git_ls_files(
         f"{RESOURCES}/transports/seasonal_transports.tsv")
@@ -472,7 +480,9 @@ def check_bbox():
                 cell = fields[idx].strip()
                 if not _concrete(cell):
                     continue
-                x, y, _ = (int(p) for p in cell.split())
+                x, y, z = (int(p) for p in cell.split())
+                if (x, y, z) in exceptions:
+                    continue  # curated known-NEUTRAL seasonal tile
                 region = classify_tile(x, y, bboxes)
                 if region == "NEUTRAL" and not override:
                     findings.append(

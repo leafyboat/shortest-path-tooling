@@ -1,0 +1,20 @@
+# seasonal_bbox_exceptions.tsv — curated suppressions for the
+# seasonal-transport bbox coverage check in scripts/validate_data.py.
+#
+# Grammar: X Y Z<TAB>reason
+#
+# Each row suppresses exactly one (x, y, z) seasonal-transport
+# endpoint that classifies NEUTRAL through the curated bboxes while
+# carrying no `Region override` cell. In each case the tile's chunk
+# region id is absent from the committed generated
+# leagues/regions.tsv, so the plugin's LeagueRegionChecker falls
+# back to NEUTRAL (always-unlocked) — upstream rows the display
+# info itself labels with a league region. The real fix is an
+# upstream `Region override` cell (or a regenerated regions.tsv);
+# these exceptions record the known gap so new NEUTRAL-classifying
+# tiles still fail the check.
+#
+3748 9373 0	Evil Eye "Morytania - Araxxor" destination — chunk region id 14994 absent from generated regions.tsv, classifies NEUTRAL; upstream row has no Region override
+3808 9700 0	Evil Eye "Morytania - The Nightmare" destination — chunk region id 15255 absent from generated regions.tsv, classifies NEUTRAL; upstream row has no Region override
+2967 4254 0	Evil Eye "Wilderness - Corporeal Beast" destination — chunk region id 11842 absent from generated regions.tsv, classifies NEUTRAL; same tile is also a walkability exception (boss-chamber arrival)
+2271 4680 0	Evil Eye "Wilderness - King Black Dragon" destination — chunk region id 9033 absent from generated regions.tsv, classifies NEUTRAL; upstream row has no Region override

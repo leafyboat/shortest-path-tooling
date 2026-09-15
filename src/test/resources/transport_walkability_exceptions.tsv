@@ -1,0 +1,24 @@
+# transport_walkability_exceptions.tsv — curated suppressions for
+# the transport-endpoint walkability check in
+# scripts/validate_data.py.
+#
+# Grammar: X Y Z<TAB>reason
+#
+# Each row suppresses exactly one (x, y, z) tile — an endpoint that
+# is flagless, has no walkable cardinal neighbour, and is no other
+# row's endpoint. These are known-good upstream data conditions:
+# transport/object tiles the player never walks onto (arrival is by
+# the transport itself, or the object is used at interaction range).
+# New unreachable endpoints at other tiles still fail the check.
+#
+2483 3188 0	Tree Gnome Village canoe-station disembark tile — the player arrives via the canoe transport onto a tile that is unwalkable in the committed map (4 canoe rows share this destination)
+2967 4254 0	Basic Jewellery Box "Corporeal Beast" teleport destination — boss-chamber tile is unwalkable in the committed map; arrival is by teleport only
+3245 9500 0	Basic Jewellery Box "Chasm of Tears" teleport destination — arrival tile is unwalkable in the committed map; arrival is by teleport only
+2506 3584 1	Climb-down Staircase destination (z1) — the staircase arrival tile itself is unwalkable in the committed map; the game relocates the player off the object tile on arrival
+2932 2939 0	Chop-down Jungle tree (Kharazi jungle) destination — the player is placed on the tree tile when the transport fires; unwalkable in the committed map by design
+2936 2941 0	Chop-down Jungle tree (Kharazi jungle) destination — same mechanic as 2932 2939 0, second jungle-tree shortcut
+1768 5366 0	Jump-into Whirlpool destination into the Ancient Cavern — known-issue tile, already exercised by the committed dashboard scenario "Ancient Cavern (#374)" (upstream Skretzo/shortest-path#374)
+1533 9447 0	Hunter Guild cave "Exit Cave" origin — the exit-object tile is unwalkable; the plugin interacts with the object at range rather than standing on it
+1533 9445 0	Hunter Guild cave "Exit Cave" origin — same exit-object tile mechanic as 1533 9447 0
+1860 4639 0	"Enter Portal" destination — portal arrival tile is unwalkable in the committed map; the transport places the player directly
+3240 4832 0	"Use Portal" origin — the portal object tile is unwalkable in the committed map; the player interacts at object range (walkable diagonal neighbours exist)
