@@ -57,3 +57,9 @@ def test_ci_checks_out_submodules():
                  if str(s.get("uses", "")).startswith("actions/checkout")]
     assert checkouts, "validate job has no actions/checkout step"
     assert checkouts[0].get("with", {}).get("submodules") == "recursive"
+
+
+def test_runbook_documents_ci_gate():
+    text = (ROOT / "docs" / "maintenance.md").read_text()
+    assert "validate --skip-freshness" in text
+    assert "pytest" in text.lower()
