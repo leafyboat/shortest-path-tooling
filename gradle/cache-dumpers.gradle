@@ -7,10 +7,10 @@
 // after a cache refresh would silently serve stale output.
 
 // Task registration is spec-driven: each map below describes one
-// dumper/probe, and `registerCacheDumper` turns it into a
-// `tasks.register(name, Test)` with the shared wiring (classpath,
-// up-to-date override, -P providers, existence-checking doFirst
-// guard) that used to be copy-pasted per task.
+// dumper/probe, and `registerCacheDumper` registers it as a Test task
+// with the shared wiring (classpath, up-to-date override, -P
+// providers, existence-checking doFirst guard) that used to be
+// copy-pasted per task.
 //
 // Spec fields:
 //   name          - gradle task name
@@ -33,7 +33,185 @@
 // maintenance.py PROBE_TASKS/NAMES_FILE_TASKS construct the -P names
 // and the Java requiredProperty/getProperty call sites read the keys.
 def cacheDumperSpecs = [
-    // Scans all CLIENTSCRIPT archives for league relic teleport dispatch scripts.
+    // Dumps bank-related object placements (Bank booth / Bank chest /
+    // Bank table / deposit box / GE booth) from an OSRS cache to a TSV.
+    // Pair with scripts/rebuild_bank_tsv.py to add stand-tile rows to
+    // bank.tsv.
+    //
+    // Usage:
+    //   python3 scripts/maintenance.py cache   # produces ./cache and a patched ./keys.json
+    //   ./gradlew bankTileDump -PbankTileCacheDir=$PWD/cache -PbankTileXteaPath=$PWD/keys.json
+    [
+        name: 'bankTileDump',
+        description: 'Dumps bank-related object placements from an OSRS cache to a TSV. ' +
+                'Required: -PbankTileCacheDir=<cache dir>, -PbankTileXteaPath=<keys.json>. ' +
+                'Optional: -PbankTileOutput=<tsv path>.',
+        testClass: 'shortestpath/dump/BankTileDumperTest.class',
+        cachePrefix: 'bankTile',
+        xteaPrefix: 'bankTile',
+        outputProp: 'bankTileOutput',
+        outputDefault: 'bank-tiles/bank_tile_placements.tsv',
+        sysProps: ['bankTiles.dump': 'true'],
+        sysPropKeys: [cacheDir: 'bankTiles.cacheDir',
+                      xtea: 'bankTiles.xteaPath',
+                      output: 'bankTiles.output'],
+        hint: { String out, String dflt ->
+            logger.lifecycle("")
+            logger.lifecycle("Bank tile placements written to ${out}")
+            logger.lifecycle("Merge into bank.tsv with:")
+            // rebuild_bank_tsv.py reads the default build/bank-tiles path —
+            // only a custom -PbankTileOutput needs copying there first.
+            if (out != dflt) {
+                logger.lifecycle("  cp ${out} build/bank-tiles/bank_tile_placements.tsv")
+            }
+            logger.lifecycle("  python3 scripts/rebuild_bank_tsv.py")
+        },
+    ],
+    // Dumps Sailing-island amenity object definitions (varbit/varp
+    // transforms) plus every placement from an OSRS cache. Used to
+    // identify the construction-gated bank-chest varbits for bank.tsv.
+    // No output file — prints to the task log.
+    [
+        name: 'sailingAmenityVarbitDump',
+        description: 'Dumps Sailing island amenity object defs + placements from an OSRS cache. ' +
+                'Required: -PsailingAmenityCacheDir=<cache dir>, -PsailingAmenityXteaPath=<keys.json>.',
+        testClass: 'shortestpath/dump/SailingAmenityVarbitDumperTest.class',
+        cachePrefix: 'sailingAmenity',
+        xteaPrefix: 'sailingAmenity',
+        sysProps: ['sailing.amenity.dump': 'true'],
+        sysPropKeys: [cacheDir: 'sailing.amenity.cacheDir',
+                      xtea: 'sailing.amenity.xteaPath'],
+    ],
+    // Generates the regionId -> LeagueRegion mapping consumed by the
+    // runtime LeagueRegionChecker. Reads the curated bounding-box
+    // source-of-truth at src/test/resources/leagues_regions.tsv, walks
+    // every loaded map region in the cache, and emits the result as a
+    // TSV. Copy the output over
+    // shortest-path/src/main/resources/leagues/regions.tsv after a
+    // successful run.
+    //
+    // Usage:
+    //   python3 scripts/maintenance.py cache   # produces ./cache and a patched ./keys.json
+    //   ./gradlew leagueRegionDump \
+    //     -PleagueRegionsCacheDir=$PWD/cache \
+    //     -PleagueRegionsXteaPath=$PWD/keys.json
+    //   cp build/league-regions/regions.tsv \
+    //     shortest-path/src/main/resources/leagues/regions.tsv
+    [
+        name: 'leagueRegionDump',
+        description: 'Generates regions.tsv (regionId -> LeagueRegion) for the Demonic Pacts League. ' +
+                'Required: -PleagueRegionsCacheDir=<cache dir>, -PleagueRegionsXteaPath=<keys.json>. ' +
+                'Optional: -PleagueRegionsOutput=<tsv path>.',
+        testClass: 'shortestpath/dump/LeagueRegionDumperTest.class',
+        cachePrefix: 'leagueRegions',
+        xteaPrefix: 'leagueRegions',
+        outputProp: 'leagueRegionsOutput',
+        outputDefault: 'league-regions/regions.tsv',
+        sysProps: ['league.regions.dump': 'true'],
+        sysPropKeys: [cacheDir: 'league.regions.cacheDir',
+                      xtea: 'league.regions.xteaPath',
+                      output: 'league.regions.output'],
+        hint: { String out, String dflt ->
+            logger.lifecycle("")
+            logger.lifecycle("League region mapping written to ${out}")
+            logger.lifecycle("Copy into the plugin with:")
+            logger.lifecycle("  cp ${out} shortest-path/src/main/resources/leagues/regions.tsv")
+        },
+    ],
+    // Generates the regionId -> F2P/MEMBERS mapping consumed by
+    // F2pRegionChecker. Reads the curated bounding-box source-of-truth
+    // at src/test/resources/f2p_regions.tsv, walks every surface-level
+    // map region (chunkY < 100) in the cache, and emits the result as a
+    // TSV. Underground chunks are omitted (they default to UNKNOWN =
+    // permissive at runtime).
+    //
+    // Usage:
+    //   python3 scripts/maintenance.py cache   # produces ./cache and a patched ./keys.json
+    //   ./gradlew f2pRegionDump \
+    //     -Pf2pRegionsCacheDir=$PWD/cache \
+    //     -Pf2pRegionsXteaPath=$PWD/keys.json
+    //   cp build/f2p-regions/regions.tsv \
+    //     shortest-path/src/main/resources/f2p/regions.tsv
+    [
+        name: 'f2pRegionDump',
+        description: 'Generates regions.tsv (regionId -> F2P|MEMBERS) for the F2P mode filter. ' +
+                'Required: -Pf2pRegionsCacheDir=<cache dir>, -Pf2pRegionsXteaPath=<keys.json>. ' +
+                'Optional: -Pf2pRegionsOutput=<tsv path>.',
+        testClass: 'shortestpath/dump/F2pRegionDumperTest.class',
+        cachePrefix: 'f2pRegions',
+        xteaPrefix: 'f2pRegions',
+        outputProp: 'f2pRegionsOutput',
+        outputDefault: 'f2p-regions/regions.tsv',
+        sysProps: ['f2p.regions.dump': 'true'],
+        sysPropKeys: [cacheDir: 'f2p.regions.cacheDir',
+                      xtea: 'f2p.regions.xteaPath',
+                      output: 'f2p.regions.output'],
+        hint: { String out, String dflt ->
+            logger.lifecycle("")
+            logger.lifecycle("F2P region mapping written to ${out}")
+            if (file('shortest-path/src/main/resources/f2p').exists()) {
+                logger.lifecycle("Copy into the plugin with:")
+                logger.lifecycle("  cp ${out} shortest-path/src/main/resources/f2p/regions.tsv")
+            } else {
+                logger.lifecycle("F2P consumer not merged in the plugin yet — leaving staged output in build/; maintenance.py regions decides whether to copy")
+            }
+        },
+    ],
+    // One-off probe that prints league-related item IDs (Banker's
+    // Briefcase, etc.) from the cache to stdout. Useful when refreshing
+    // the hard-coded numeric IDs in
+    // shortest-path/src/main/resources/transports/seasonal_transports.tsv.
+    [
+        name: 'leagueIdProbe',
+        description: 'Prints Banker\'s Briefcase and other league item IDs from an OSRS cache. ' +
+                'Required: -PleagueIdCacheDir=<cache dir>, -PleagueIdXteaPath=<keys.json>.',
+        testClass: 'shortestpath/dump/LeagueIdProbeTest.class',
+        cachePrefix: 'leagueId',
+        xteaPrefix: 'leagueId',
+        sysProps: ['league.id.probe': 'true'],
+        sysPropKeys: [cacheDir: 'league.id.cacheDir',
+                      xtea: 'league.id.xteaPath'],
+    ],
+    // Scans every cache enum for known Banker's Briefcase destination
+    // strings to surface the authoritative cache-side destination list.
+    [
+        name: 'briefcaseEnumProbe',
+        description: "Scans cache enums for Banker's Briefcase destinations. " +
+                'Required: -PbriefcaseEnumCacheDir=<cache dir>, -PbriefcaseEnumXteaPath=<keys.json>.',
+        testClass: 'shortestpath/dump/BriefcaseEnumProbeTest.class',
+        cachePrefix: 'briefcaseEnum',
+        xteaPrefix: 'briefcaseEnum',
+        sysProps: ['briefcase.enum.probe': 'true'],
+        sysPropKeys: [cacheDir: 'briefcase.enum.cacheDir',
+                      xtea: 'briefcase.enum.xteaPath'],
+    ],
+    // Dumps every league/relic teleport-bearing item's params, subops,
+    // and interface options (sailing-dumper-style) to map menu indices
+    // to destinations.
+    [
+        name: 'leagueTeleportItemDump',
+        description: 'Dumps params/subops for all league teleport items (briefcase, relics, etc).',
+        testClass: 'shortestpath/dump/LeagueTeleportItemDumperTest.class',
+        cachePrefix: 'leagueTeleportItem',
+        xteaPrefix: 'leagueTeleportItem',
+        sysProps: ['league.teleport.item.dump': 'true'],
+        sysPropKeys: [cacheDir: 'league.teleport.item.cacheDir',
+                      xtea: 'league.teleport.item.xteaPath'],
+    ],
+    // Scans every struct for league/region descriptor strings (e.g.
+    // "area covers...").
+    [
+        name: 'leagueAreaStructDump',
+        description: 'Dumps all structs whose param strings reference league areas / region definitions.',
+        testClass: 'shortestpath/dump/LeagueAreaStructDumperTest.class',
+        cachePrefix: 'leagueAreaStruct',
+        xteaPrefix: 'leagueAreaStruct',
+        sysProps: ['league.area.struct.dump': 'true'],
+        sysPropKeys: [cacheDir: 'league.area.struct.cacheDir',
+                      xtea: 'league.area.struct.xteaPath'],
+    ],
+    // Scans all CLIENTSCRIPT archives for league relic teleport
+    // dispatch scripts.
     [
         name: 'leagueScriptScan',
         description: 'Scans all cs2 client scripts for league teleport destinations.',
@@ -48,7 +226,91 @@ def cacheDumperSpecs = [
         sysPropKeys: [cacheDir: 'league.script.cacheDir',
                       xtea: 'league.script.xteaPath'],
     ],
-    // Enumerates DBTables with COORDGRID+STRING (candidate briefcase tables).
+    // Scans committed transport anchors against the live cache for
+    // object/menu drift. Advisory: findings go to
+    // build/transport-drift.txt, never a hard gate.
+    [
+        name: 'transportAnchorDrift',
+        description: 'Scans committed transport anchors against the live cache for object/menu drift (advisory). ' +
+                'Required: -PtransportDriftCacheDir=<cache dir>, -PtransportDriftXteaPath=<keys.json>.',
+        testClass: 'shortestpath/dump/TransportAnchorDriftTest.class',
+        cachePrefix: 'transportDrift',
+        xteaPrefix: 'transportDrift',
+        sysProps: [
+            'transport.drift.scan': 'true',
+            'transport.drift.tsvDir': "${rootDir}/shortest-path/src/main/resources".toString(),
+            'transport.drift.outPath': layout.buildDirectory
+                    .file('transport-drift.txt').get().asFile.absolutePath,
+        ],
+        sysPropKeys: [cacheDir: 'transport.drift.cacheDir',
+                      xtea: 'transport.drift.xteaPath'],
+    ],
+    // Scans all enums for overlap with a canonical destination-name
+    // list (one per line).
+    [
+        name: 'briefcaseDestOverlapScan',
+        description: 'Finds enums whose string values overlap with the canonical briefcase destination list.',
+        testClass: 'shortestpath/dump/BriefcaseDestOverlapScanTest.class',
+        cachePrefix: 'briefcaseDest',
+        xteaPrefix: 'briefcaseDest',
+        namesProp: 'briefcaseDestNamesFile',
+        sysProps: [
+            'briefcase.dest.scan': 'true',
+            'briefcase.dest.outPath': layout.buildDirectory
+                    .file('briefcase-dest-overlap.txt').get().asFile.absolutePath,
+        ],
+        sysPropKeys: [cacheDir: 'briefcase.dest.cacheDir',
+                      xtea: 'briefcase.dest.xteaPath',
+                      names: 'briefcase.dest.namesFile'],
+    ],
+    // Finds structs containing both a canonical destination name and a
+    // WorldPoint-shaped int.
+    [
+        name: 'briefcaseStructHunt',
+        description: 'Finds structs containing both a canonical destination name and a WorldPoint-shaped int.',
+        testClass: 'shortestpath/dump/BriefcaseStructHuntTest.class',
+        cachePrefix: 'briefcaseStruct',
+        namesProp: 'briefcaseStructNamesFile',
+        sysProps: [
+            'briefcase.struct.hunt': 'true',
+            'briefcase.struct.outPath': layout.buildDirectory
+                    .file('briefcase-struct-hunt.txt').get().asFile.absolutePath,
+        ],
+        sysPropKeys: [cacheDir: 'briefcase.struct.cacheDir',
+                      names: 'briefcase.struct.namesFile'],
+    ],
+    // Finds cs2 scripts that reference briefcase param ids.
+    [
+        name: 'briefcaseParamScriptScan',
+        description: 'Finds cs2 scripts that reference briefcase param ids (661, 2074..2138).',
+        testClass: 'shortestpath/dump/BriefcaseParamScriptScanTest.class',
+        cachePrefix: 'briefcaseParam',
+        xteaPrefix: 'briefcaseParam',
+        sysProps: [
+            'briefcase.param.scan': 'true',
+            'briefcase.param.outPath': layout.buildDirectory
+                    .file('briefcase-param-scripts.txt').get().asFile.absolutePath,
+        ],
+        sysPropKeys: [cacheDir: 'briefcase.param.cacheDir',
+                      xtea: 'briefcase.param.xteaPath'],
+    ],
+    // Scans DBRows for canonical briefcase destination strings.
+    [
+        name: 'briefcaseDbRowScan',
+        description: 'Scans DBRows for canonical briefcase destination strings.',
+        testClass: 'shortestpath/dump/BriefcaseDbRowScanTest.class',
+        cachePrefix: 'briefcaseDb',
+        namesProp: 'briefcaseDbNamesFile',
+        sysProps: [
+            'briefcase.db.scan': 'true',
+            'briefcase.db.outPath': layout.buildDirectory
+                    .file('briefcase-dbrow.txt').get().asFile.absolutePath,
+        ],
+        sysPropKeys: [cacheDir: 'briefcase.db.cacheDir',
+                      names: 'briefcase.db.namesFile'],
+    ],
+    // Enumerates DBTables with COORDGRID+STRING (candidate briefcase
+    // tables).
     [
         name: 'briefcaseTeleportTables',
         description: 'Enumerates DBTables with COORDGRID+STRING (candidate briefcase tables).',
@@ -66,7 +328,7 @@ def cacheDumperSpecs = [
 // Registers one dumper/probe Test task per spec entry. The factory is
 // the single emission path for the fleet, so the shared invariants
 // (upToDateWhen, jvmArgs, testLogging, existence guards) cannot drift
-// per-task — and must never grow an ignoreFailures.
+// per-task — and must never grow a failure-swallowing flag.
 def registerCacheDumper = { Map spec ->
     def cacheDir = providers.gradleProperty("${spec.cachePrefix}CacheDir").orElse('')
     def xteaPath = spec.xteaPrefix
@@ -126,459 +388,3 @@ def registerCacheDumper = { Map spec ->
 }
 
 cacheDumperSpecs.each(registerCacheDumper)
-
-// Dumps bank-related object placements (Bank booth / Bank chest / Bank table /
-// deposit box / GE booth) from an OSRS cache to a TSV. Pair with
-// scripts/rebuild_bank_tsv.py to add stand-tile rows to bank.tsv.
-//
-// Usage:
-//   python3 scripts/maintenance.py cache   # produces ./cache and a patched ./keys.json
-//   ./gradlew bankTileDump -PbankTileCacheDir=$PWD/cache -PbankTileXteaPath=$PWD/keys.json
-def bankTileCacheDir = providers.gradleProperty('bankTileCacheDir').orElse('')
-def bankTileXteaPath = providers.gradleProperty('bankTileXteaPath').orElse('')
-def bankTileDefaultOutput = layout.buildDirectory
-        .file('bank-tiles/bank_tile_placements.tsv').get().asFile.absolutePath
-def bankTileOutput = providers.gradleProperty('bankTileOutput')
-        .orElse(bankTileDefaultOutput)
-
-tasks.register('bankTileDump', Test) {
-    group = 'cache dumpers'
-    description = 'Dumps bank-related object placements from an OSRS cache to a TSV. ' +
-            'Required: -PbankTileCacheDir=<cache dir>, -PbankTileXteaPath=<keys.json>. ' +
-            'Optional: -PbankTileOutput=<tsv path>.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/BankTileDumperTest.class'
-    systemProperty 'bankTiles.dump', 'true'
-    systemProperty 'bankTiles.cacheDir', bankTileCacheDir.get()
-    systemProperty 'bankTiles.xteaPath', bankTileXteaPath.get()
-    systemProperty 'bankTiles.output', bankTileOutput.get()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging {
-        showStandardStreams = true
-    }
-    doFirst {
-        if (bankTileCacheDir.get().isEmpty() || bankTileXteaPath.get().isEmpty()) {
-            throw new GradleException("bankTileDump requires -PbankTileCacheDir and -PbankTileXteaPath. " +
-                    "Run collision-map-update/download-latest-cache.sh first to produce ./cache and ./keys.json, " +
-                    "then patch keys.json (mapsquare->region, key->keys).")
-        }
-    }
-    doLast {
-        logger.lifecycle("")
-        logger.lifecycle("Bank tile placements written to ${bankTileOutput.get()}")
-        logger.lifecycle("Merge into bank.tsv with:")
-        // rebuild_bank_tsv.py reads the default build/bank-tiles path —
-        // only a custom -PbankTileOutput needs copying there first.
-        if (bankTileOutput.get() != bankTileDefaultOutput) {
-            logger.lifecycle("  cp ${bankTileOutput.get()} build/bank-tiles/bank_tile_placements.tsv")
-        }
-        logger.lifecycle("  python3 scripts/rebuild_bank_tsv.py")
-    }
-}
-
-// Dumps Sailing-island amenity object definitions (varbit/varp transforms) plus
-// every placement from an OSRS cache. Used to identify the construction-gated
-// bank-chest varbits for bank.tsv. No output file — prints to the task log.
-def sailingAmenityCacheDir = providers.gradleProperty('sailingAmenityCacheDir').orElse('')
-def sailingAmenityXteaPath = providers.gradleProperty('sailingAmenityXteaPath').orElse('')
-
-tasks.register('sailingAmenityVarbitDump', Test) {
-    group = 'cache dumpers'
-    description = 'Dumps Sailing island amenity object defs + placements from an OSRS cache. ' +
-            'Required: -PsailingAmenityCacheDir=<cache dir>, -PsailingAmenityXteaPath=<keys.json>.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/SailingAmenityVarbitDumperTest.class'
-    systemProperty 'sailing.amenity.dump', 'true'
-    systemProperty 'sailing.amenity.cacheDir', sailingAmenityCacheDir.get()
-    systemProperty 'sailing.amenity.xteaPath', sailingAmenityXteaPath.get()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging {
-        showStandardStreams = true
-    }
-    doFirst {
-        if (sailingAmenityCacheDir.get().isEmpty() || sailingAmenityXteaPath.get().isEmpty()) {
-            throw new GradleException("sailingAmenityVarbitDump requires -PsailingAmenityCacheDir " +
-                    "and -PsailingAmenityXteaPath.")
-        }
-    }
-}
-
-// Generates the regionId -> LeagueRegion mapping consumed by the runtime
-// LeagueRegionChecker. Reads the curated bounding-box source-of-truth at
-// src/test/resources/leagues_regions.tsv, walks every loaded map region in
-// the cache, and emits the result as a TSV. Copy the output over
-// shortest-path/src/main/resources/leagues/regions.tsv after a successful
-// run.
-//
-// Usage:
-//   python3 scripts/maintenance.py cache   # produces ./cache and a patched ./keys.json
-//   ./gradlew leagueRegionDump \
-//     -PleagueRegionsCacheDir=$PWD/cache \
-//     -PleagueRegionsXteaPath=$PWD/keys.json
-//   cp build/league-regions/regions.tsv \
-//     shortest-path/src/main/resources/leagues/regions.tsv
-def leagueRegionsCacheDir = providers.gradleProperty('leagueRegionsCacheDir').orElse('')
-def leagueRegionsXteaPath = providers.gradleProperty('leagueRegionsXteaPath').orElse('')
-def leagueRegionsOutput = providers.gradleProperty('leagueRegionsOutput')
-        .orElse(layout.buildDirectory.file('league-regions/regions.tsv').get().asFile.absolutePath)
-
-tasks.register('leagueRegionDump', Test) {
-    group = 'cache dumpers'
-    description = 'Generates regions.tsv (regionId -> LeagueRegion) for the Demonic Pacts League. ' +
-            'Required: -PleagueRegionsCacheDir=<cache dir>, -PleagueRegionsXteaPath=<keys.json>. ' +
-            'Optional: -PleagueRegionsOutput=<tsv path>.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/LeagueRegionDumperTest.class'
-    systemProperty 'league.regions.dump', 'true'
-    systemProperty 'league.regions.cacheDir', leagueRegionsCacheDir.get()
-    systemProperty 'league.regions.xteaPath', leagueRegionsXteaPath.get()
-    systemProperty 'league.regions.output', leagueRegionsOutput.get()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging {
-        showStandardStreams = true
-    }
-    doFirst {
-        if (leagueRegionsCacheDir.get().isEmpty() || leagueRegionsXteaPath.get().isEmpty()) {
-            throw new GradleException("leagueRegionDump requires -PleagueRegionsCacheDir " +
-                    "and -PleagueRegionsXteaPath. Run collision-map-update/" +
-                    "download-latest-cache.sh first to produce ./cache and ./keys.json, then patch " +
-                    "keys.json (mapsquare->region, key->keys).")
-        }
-    }
-    doLast {
-        logger.lifecycle("")
-        logger.lifecycle("League region mapping written to ${leagueRegionsOutput.get()}")
-        logger.lifecycle("Copy into the plugin with:")
-        logger.lifecycle("  cp ${leagueRegionsOutput.get()} shortest-path/src/main/resources/leagues/regions.tsv")
-    }
-}
-
-// Generates the regionId -> F2P/MEMBERS mapping consumed by F2pRegionChecker.
-// Reads the curated bounding-box source-of-truth at
-// src/test/resources/f2p_regions.tsv, walks every surface-level map region
-// (chunkY < 100) in the cache, and emits the result as a TSV. Underground
-// chunks are omitted (they default to UNKNOWN = permissive at runtime).
-//
-// Usage:
-//   python3 scripts/maintenance.py cache   # produces ./cache and a patched ./keys.json
-//   ./gradlew f2pRegionDump \
-//     -Pf2pRegionsCacheDir=$PWD/cache \
-//     -Pf2pRegionsXteaPath=$PWD/keys.json
-//   cp build/f2p-regions/regions.tsv \
-//     shortest-path/src/main/resources/f2p/regions.tsv
-def f2pRegionsCacheDir = providers.gradleProperty('f2pRegionsCacheDir').orElse('')
-def f2pRegionsXteaPath = providers.gradleProperty('f2pRegionsXteaPath').orElse('')
-def f2pRegionsOutput = providers.gradleProperty('f2pRegionsOutput')
-        .orElse(layout.buildDirectory.file('f2p-regions/regions.tsv').get().asFile.absolutePath)
-
-tasks.register('f2pRegionDump', Test) {
-    group = 'cache dumpers'
-    description = 'Generates regions.tsv (regionId -> F2P|MEMBERS) for the F2P mode filter. ' +
-            'Required: -Pf2pRegionsCacheDir=<cache dir>, -Pf2pRegionsXteaPath=<keys.json>. ' +
-            'Optional: -Pf2pRegionsOutput=<tsv path>.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/F2pRegionDumperTest.class'
-    systemProperty 'f2p.regions.dump', 'true'
-    systemProperty 'f2p.regions.cacheDir', f2pRegionsCacheDir.get()
-    systemProperty 'f2p.regions.xteaPath', f2pRegionsXteaPath.get()
-    systemProperty 'f2p.regions.output', f2pRegionsOutput.get()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging {
-        showStandardStreams = true
-    }
-    doFirst {
-        if (f2pRegionsCacheDir.get().isEmpty() || f2pRegionsXteaPath.get().isEmpty()) {
-            throw new GradleException("f2pRegionDump requires -Pf2pRegionsCacheDir and -Pf2pRegionsXteaPath. " +
-                    "Run collision-map-update/download-latest-cache.sh first to produce ./cache and ./keys.json, " +
-                    "then patch keys.json (mapsquare->region, key->keys).")
-        }
-    }
-    doLast {
-        logger.lifecycle("")
-        logger.lifecycle("F2P region mapping written to ${f2pRegionsOutput.get()}")
-        if (file('shortest-path/src/main/resources/f2p').exists()) {
-            logger.lifecycle("Copy into the plugin with:")
-            logger.lifecycle("  cp ${f2pRegionsOutput.get()} shortest-path/src/main/resources/f2p/regions.tsv")
-        } else {
-            logger.lifecycle("F2P consumer not merged in the plugin yet — leaving staged output in build/; maintenance.py regions decides whether to copy")
-        }
-    }
-}
-
-// One-off probe that prints league-related item IDs (Banker's Briefcase, etc.)
-// from the cache to stdout. Useful when refreshing the hard-coded numeric IDs
-// in shortest-path/src/main/resources/transports/seasonal_transports.tsv.
-def leagueIdCacheDir = providers.gradleProperty('leagueIdCacheDir').orElse('')
-def leagueIdXteaPath = providers.gradleProperty('leagueIdXteaPath').orElse('')
-
-tasks.register('leagueIdProbe', Test) {
-    group = 'cache dumpers'
-    description = 'Prints Banker\'s Briefcase and other league item IDs from an OSRS cache. ' +
-            'Required: -PleagueIdCacheDir=<cache dir>, -PleagueIdXteaPath=<keys.json>.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/LeagueIdProbeTest.class'
-    systemProperty 'league.id.probe', 'true'
-    systemProperty 'league.id.cacheDir', leagueIdCacheDir.get()
-    systemProperty 'league.id.xteaPath', leagueIdXteaPath.get()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging {
-        showStandardStreams = true
-    }
-    doFirst {
-        if (leagueIdCacheDir.get().isEmpty() || leagueIdXteaPath.get().isEmpty()) {
-            throw new GradleException("leagueIdProbe requires -PleagueIdCacheDir and -PleagueIdXteaPath.")
-        }
-    }
-}
-
-
-// Scans every cache enum for known Banker's Briefcase destination strings to
-// surface the authoritative cache-side destination list.
-def briefcaseEnumCacheDir = providers.gradleProperty('briefcaseEnumCacheDir').orElse('')
-def briefcaseEnumXteaPath = providers.gradleProperty('briefcaseEnumXteaPath').orElse('')
-
-tasks.register('briefcaseEnumProbe', Test) {
-    group = 'cache dumpers'
-    description = "Scans cache enums for Banker's Briefcase destinations. " +
-            'Required: -PbriefcaseEnumCacheDir=<cache dir>, -PbriefcaseEnumXteaPath=<keys.json>.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/BriefcaseEnumProbeTest.class'
-    systemProperty 'briefcase.enum.probe', 'true'
-    systemProperty 'briefcase.enum.cacheDir', briefcaseEnumCacheDir.get()
-    systemProperty 'briefcase.enum.xteaPath', briefcaseEnumXteaPath.get()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (briefcaseEnumCacheDir.get().isEmpty() || briefcaseEnumXteaPath.get().isEmpty()) {
-            throw new GradleException("briefcaseEnumProbe requires -PbriefcaseEnumCacheDir and -PbriefcaseEnumXteaPath.")
-        }
-    }
-}
-
-
-// Dumps every league/relic teleport-bearing item's params, subops, and
-// interface options (sailing-dumper-style) to map menu indices to destinations.
-def leagueTeleportItemCacheDir = providers.gradleProperty('leagueTeleportItemCacheDir').orElse('')
-def leagueTeleportItemXteaPath = providers.gradleProperty('leagueTeleportItemXteaPath').orElse('')
-
-tasks.register('leagueTeleportItemDump', Test) {
-    group = 'cache dumpers'
-    description = 'Dumps params/subops for all league teleport items (briefcase, relics, etc).'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/LeagueTeleportItemDumperTest.class'
-    systemProperty 'league.teleport.item.dump', 'true'
-    systemProperty 'league.teleport.item.cacheDir', leagueTeleportItemCacheDir.get()
-    systemProperty 'league.teleport.item.xteaPath', leagueTeleportItemXteaPath.get()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (leagueTeleportItemCacheDir.get().isEmpty() || leagueTeleportItemXteaPath.get().isEmpty()) {
-            throw new GradleException("leagueTeleportItemDump requires -PleagueTeleportItemCacheDir and -PleagueTeleportItemXteaPath.")
-        }
-    }
-}
-
-
-// Scans every struct for league/region descriptor strings (e.g. "area covers...").
-def leagueAreaStructCacheDir = providers.gradleProperty('leagueAreaStructCacheDir').orElse('')
-def leagueAreaStructXteaPath = providers.gradleProperty('leagueAreaStructXteaPath').orElse('')
-
-tasks.register('leagueAreaStructDump', Test) {
-    group = 'cache dumpers'
-    description = 'Dumps all structs whose param strings reference league areas / region definitions.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/LeagueAreaStructDumperTest.class'
-    systemProperty 'league.area.struct.dump', 'true'
-    systemProperty 'league.area.struct.cacheDir', leagueAreaStructCacheDir.get()
-    systemProperty 'league.area.struct.xteaPath', leagueAreaStructXteaPath.get()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (leagueAreaStructCacheDir.get().isEmpty() || leagueAreaStructXteaPath.get().isEmpty()) {
-            throw new GradleException("leagueAreaStructDump requires -PleagueAreaStructCacheDir and -PleagueAreaStructXteaPath.")
-        }
-    }
-}
-
-
-// Scans committed transport anchors against the live cache for object/menu drift.
-// Advisory: findings go to build/transport-drift.txt, never a hard gate.
-def transportDriftCacheDir = providers.gradleProperty('transportDriftCacheDir').orElse('')
-def transportDriftXteaPath = providers.gradleProperty('transportDriftXteaPath').orElse('')
-
-tasks.register('transportAnchorDrift', Test) {
-    group = 'cache dumpers'
-    description = 'Scans committed transport anchors against the live cache for object/menu drift (advisory). ' +
-            'Required: -PtransportDriftCacheDir=<cache dir>, -PtransportDriftXteaPath=<keys.json>.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/TransportAnchorDriftTest.class'
-    systemProperty 'transport.drift.scan', 'true'
-    systemProperty 'transport.drift.cacheDir', transportDriftCacheDir.get()
-    systemProperty 'transport.drift.xteaPath', transportDriftXteaPath.get()
-    systemProperty 'transport.drift.tsvDir', "${rootDir}/shortest-path/src/main/resources".toString()
-    systemProperty 'transport.drift.outPath', "${layout.buildDirectory.get()}/transport-drift.txt".toString()
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (transportDriftCacheDir.get().isEmpty() || transportDriftXteaPath.get().isEmpty()) {
-            throw new GradleException("transportAnchorDrift requires -PtransportDriftCacheDir and -PtransportDriftXteaPath.")
-        }
-    }
-}
-
-
-// Scans all enums for overlap with a canonical destination-name list (one per line).
-def briefcaseDestCacheDir = providers.gradleProperty('briefcaseDestCacheDir').orElse('')
-def briefcaseDestXteaPath = providers.gradleProperty('briefcaseDestXteaPath').orElse('')
-def briefcaseDestNamesFile = providers.gradleProperty('briefcaseDestNamesFile').orElse('')
-
-tasks.register('briefcaseDestOverlapScan', Test) {
-    group = 'cache dumpers'
-    description = 'Finds enums whose string values overlap with the canonical briefcase destination list.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/BriefcaseDestOverlapScanTest.class'
-    systemProperty 'briefcase.dest.scan', 'true'
-    systemProperty 'briefcase.dest.cacheDir', briefcaseDestCacheDir.get()
-    systemProperty 'briefcase.dest.xteaPath', briefcaseDestXteaPath.get()
-    systemProperty 'briefcase.dest.namesFile', briefcaseDestNamesFile.get()
-    systemProperty 'briefcase.dest.outPath', "${layout.buildDirectory.get()}/briefcase-dest-overlap.txt"
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (briefcaseDestCacheDir.get().isEmpty() || briefcaseDestXteaPath.get().isEmpty() || briefcaseDestNamesFile.get().isEmpty()) {
-            throw new GradleException("briefcaseDestOverlapScan requires -PbriefcaseDestCacheDir, -PbriefcaseDestXteaPath, -PbriefcaseDestNamesFile.")
-        }
-    }
-}
-
-
-def briefcaseStructCacheDir = providers.gradleProperty('briefcaseStructCacheDir').orElse('')
-def briefcaseStructNamesFile = providers.gradleProperty('briefcaseStructNamesFile').orElse('')
-
-tasks.register('briefcaseStructHunt', Test) {
-    group = 'cache dumpers'
-    description = 'Finds structs containing both a canonical destination name and a WorldPoint-shaped int.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/BriefcaseStructHuntTest.class'
-    systemProperty 'briefcase.struct.hunt', 'true'
-    systemProperty 'briefcase.struct.cacheDir', briefcaseStructCacheDir.get()
-    systemProperty 'briefcase.struct.namesFile', briefcaseStructNamesFile.get()
-    systemProperty 'briefcase.struct.outPath', "${layout.buildDirectory.get()}/briefcase-struct-hunt.txt"
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (briefcaseStructCacheDir.get().isEmpty() || briefcaseStructNamesFile.get().isEmpty()) {
-            throw new GradleException("briefcaseStructHunt requires -PbriefcaseStructCacheDir and -PbriefcaseStructNamesFile.")
-        }
-    }
-}
-
-
-def briefcaseParamCacheDir = providers.gradleProperty('briefcaseParamCacheDir').orElse('')
-def briefcaseParamXteaPath = providers.gradleProperty('briefcaseParamXteaPath').orElse('')
-
-tasks.register('briefcaseParamScriptScan', Test) {
-    group = 'cache dumpers'
-    description = 'Finds cs2 scripts that reference briefcase param ids (661, 2074..2138).'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/BriefcaseParamScriptScanTest.class'
-    systemProperty 'briefcase.param.scan', 'true'
-    systemProperty 'briefcase.param.cacheDir', briefcaseParamCacheDir.get()
-    systemProperty 'briefcase.param.xteaPath', briefcaseParamXteaPath.get()
-    systemProperty 'briefcase.param.outPath', "${layout.buildDirectory.get()}/briefcase-param-scripts.txt"
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (briefcaseParamCacheDir.get().isEmpty() || briefcaseParamXteaPath.get().isEmpty()) {
-            throw new GradleException("requires -PbriefcaseParamCacheDir -PbriefcaseParamXteaPath")
-        }
-    }
-}
-
-
-def briefcaseDbCacheDir = providers.gradleProperty('briefcaseDbCacheDir').orElse('')
-def briefcaseDbNamesFile = providers.gradleProperty('briefcaseDbNamesFile').orElse('')
-
-tasks.register('briefcaseDbRowScan', Test) {
-    group = 'cache dumpers'
-    description = 'Scans DBRows for canonical briefcase destination strings.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/BriefcaseDbRowScanTest.class'
-    systemProperty 'briefcase.db.scan', 'true'
-    systemProperty 'briefcase.db.cacheDir', briefcaseDbCacheDir.get()
-    systemProperty 'briefcase.db.namesFile', briefcaseDbNamesFile.get()
-    systemProperty 'briefcase.db.outPath', "${layout.buildDirectory.get()}/briefcase-dbrow.txt"
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (briefcaseDbCacheDir.get().isEmpty() || briefcaseDbNamesFile.get().isEmpty()) {
-            throw new GradleException("requires -PbriefcaseDbCacheDir -PbriefcaseDbNamesFile")
-        }
-    }
-}
-
