@@ -1,6 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -37,10 +36,8 @@ public class BriefcaseDbRowScanTest {
             if (!s.isEmpty()) canonical.add(s.toLowerCase(Locale.ROOT));
         }
 
-        try (Store store = new Store(new File(cacheDir));
+        try (Store store = CacheUtils.openStore(cacheDir);
              PrintWriter out = new PrintWriter(outPath)) {
-            store.load();
-
             DBTableManager tables = new DBTableManager(store);
             tables.load();
             DBRowManager rows = new DBRowManager(store);

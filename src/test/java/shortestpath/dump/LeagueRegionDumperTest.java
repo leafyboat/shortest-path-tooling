@@ -1,8 +1,6 @@
 package shortestpath.dump;
 
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -77,11 +75,7 @@ public class LeagueRegionDumperTest
             throw new IllegalStateException("No bounding boxes loaded from " + SOURCE_RESOURCE);
         }
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath))
-        {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
         // Collect candidate region IDs from two sources:
         //   1. The cache's loaded regions (covers everything that has unencrypted content).
@@ -91,12 +85,9 @@ public class LeagueRegionDumperTest
         // only validated keys, while still mapping uncached underground areas covered by
         // the source-of-truth bboxes.
         Set<Integer> candidateRegionIds = new HashSet<>();
-        try (Store store = new Store(new File(cacheDir)))
+        try (Store store = CacheUtils.openStore(cacheDir))
         {
-            store.load();
-
-            RegionLoader regionLoader = new RegionLoader(store, xteaKeyManager);
-            regionLoader.loadRegions();
+            RegionLoader regionLoader = CacheUtils.loadRegions(store, xteaKeyManager);
 
             for (Region region : regionLoader.getRegions())
             {

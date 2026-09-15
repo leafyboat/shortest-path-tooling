@@ -1,6 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -42,9 +41,8 @@ public class BriefcaseStructHuntTest {
             if (!s.isEmpty()) canonical.add(s.toLowerCase(Locale.ROOT));
         }
 
-        try (Store store = new Store(new File(cacheDir));
+        try (Store store = CacheUtils.openStore(cacheDir);
              PrintWriter out = new PrintWriter(outPath)) {
-            store.load();
             StructManager sm = new StructManager(store);
             sm.load();
             Map<Integer, StructDefinition> all = sm.getStructs();

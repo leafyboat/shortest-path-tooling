@@ -1,6 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
 import java.io.PrintWriter;
 import net.runelite.cache.DBTableManager;
 import net.runelite.cache.DBRowManager;
@@ -24,9 +23,8 @@ public class BriefcaseTeleportTablesTest {
         String cacheDir = CacheUtils.requiredProperty("briefcase.tt.cacheDir");
         String outPath = System.getProperty("briefcase.tt.outPath", "build/briefcase-teleport-tables.txt");
 
-        try (Store store = new Store(new File(cacheDir));
+        try (Store store = CacheUtils.openStore(cacheDir);
              PrintWriter out = new PrintWriter(outPath)) {
-            store.load();
             DBTableManager tables = new DBTableManager(store);
             tables.load();
             DBRowManager rows = new DBRowManager(store);

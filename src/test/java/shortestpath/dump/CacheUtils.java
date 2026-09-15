@@ -1,5 +1,8 @@
 package shortestpath.dump;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,10 +14,12 @@ import net.runelite.cache.ItemManager;
 import net.runelite.cache.ObjectManager;
 import net.runelite.cache.definitions.ItemDefinition;
 import net.runelite.cache.definitions.ObjectDefinition;
+import net.runelite.cache.fs.Store;
 import net.runelite.cache.region.Location;
 import net.runelite.cache.region.Position;
 import net.runelite.cache.region.Region;
 import net.runelite.cache.region.RegionLoader;
+import net.runelite.cache.util.XteaKeyManager;
 
 /**
  * Shared utility methods for cache-dump test classes.
@@ -49,6 +54,46 @@ public final class CacheUtils {
             throw new IllegalStateException("Missing required system property -D" + key + "=...");
         }
         return value;
+    }
+
+    // -------------------------------------------------------------------------
+    // Cache bootstrap
+    // -------------------------------------------------------------------------
+
+    /**
+     * Opens the OSRS cache {@link Store} rooted at {@code cacheDir} and loads
+     * its index data. The caller keeps ownership: use the returned store in a
+     * try-with-resources block so it is closed when the dump finishes.
+     */
+    public static Store openStore(String cacheDir) throws IOException {
+        Store store = new Store(new File(cacheDir));
+        store.load();
+        return store;
+    }
+
+    /**
+     * Loads the XTEA decryption keys from {@code xteaPath} (a keys.json file)
+     * into a fresh {@link XteaKeyManager}.
+     */
+    public static XteaKeyManager loadXteaKeys(String xteaPath) throws IOException {
+        XteaKeyManager xteaKeyManager = new XteaKeyManager();
+        try (FileInputStream fin = new FileInputStream(xteaPath)) {
+            xteaKeyManager.loadKeys(fin);
+        }
+        return xteaKeyManager;
+    }
+
+    /**
+     * Creates a {@link RegionLoader} for the given store and loads every map
+     * region (decrypting with {@code xtea} where keys are available). Callers
+     * that need region bounds call {@link RegionLoader#calculateBounds()} on
+     * the returned loader themselves — it is a per-caller decision, not part
+     * of this bootstrap.
+     */
+    public static RegionLoader loadRegions(Store store, XteaKeyManager xtea) throws IOException {
+        RegionLoader regionLoader = new RegionLoader(store, xtea);
+        regionLoader.loadRegions();
+        return regionLoader;
     }
 
     // -------------------------------------------------------------------------
