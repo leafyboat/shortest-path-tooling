@@ -63,8 +63,10 @@ test {
 
 // Pull in the plugin's test helpers that the dashboard/dump code depends on.
 // These files stay in shortest-path/src/test/java (no changes to the plugin build).
+def shortestPathProjectDir = gradle.ext.shortestPathProjectDir
+
 compileTestJava.source fileTree(
-    dir: 'shortest-path/src/test/java',
+    dir: new File(shortestPathProjectDir, 'src/test/java'),
     includes: [
         'shortestpath/pathfinder/TestPathfinderConfig.java',
         'shortestpath/TestShortestPathConfig.java',

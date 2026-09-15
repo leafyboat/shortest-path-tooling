@@ -37,6 +37,21 @@ The published dashboard is also available on GitHub Pages:
 
 `https://skretzo.github.io/shortest-path/`
 
+## Using a separate shortest-path checkout
+
+Developers working on the plugin and tooling side by side can point the tooling
+build at an external checkout:
+
+```bash
+./gradlew -PshortestPathDir=../shortest-path test
+./gradlew -PshortestPathDir=../shortest-path dashboard
+```
+
+Paths are resolved relative to `shortest-path-tooling`. The `shortestPathDir`
+property controls both the Gradle composite build for
+`shortestpath:shortest-path` and the directly compiled plugin test helpers.
+The default remains the `./shortest-path` Git submodule.
+
 ## Available tasks
 
 | Task | Description |
