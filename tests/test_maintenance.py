@@ -1970,6 +1970,23 @@ def test_validate_summary_line(tmp_path, monkeypatch, capsys):
     assert f"validate: {n}/{n} checks passed" in out
 
 
+def test_validate_scenario_csv_skip_flag(tmp_path, monkeypatch,
+                                         capsys):
+    _, _, calls = prepare_validate(tmp_path, monkeypatch)
+    rc = mm.main(["validate", "--skip-scenario-csv"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "SKIP scenario-csv" in out
+    names = leaf_names(calls)
+    assert "scenario-csv" not in names
+    # The skipped check's leaf call is the only one removed.
+    assert sorted(names) == sorted(
+        n for n in (hard_leaf_names() + advisory_leaf_names())
+        if n != "scenario-csv")
+    n = len(mm.VALIDATE_HARD_CHECKS) - 1
+    assert f"validate: {n}/{n} checks passed" in out
+
+
 def _write_tsv(root, rel, header_cells, rows):
     """Write a fixture TSV: ``#``-prefixed header + verbatim rows."""
     path = root / rel

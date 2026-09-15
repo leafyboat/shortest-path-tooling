@@ -398,3 +398,186 @@ def test_exceptions_file_malformed_row(tmp_path, monkeypatch):
         monkeypatch.setattr(vd, "DESTINATION_EXCEPTIONS", exc)
         with pytest.raises(SystemExit):
             vd.CHECKS["destinations"]()
+
+
+# ---------- scenario-csv check ----------
+
+
+ROUTES_HEADER = ("name,category,start_x,start_y,start_plane,x,y,plane,"
+                 "preset,inventory,equipment,bank,varbits,skill_levels,"
+                 "config_overrides,expected_length,minimum_length")
+
+
+def _write_csv(root, rel, header, rows):
+    path = root / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(header + "\n" + "\n".join(rows) + "\n")
+    return rel
+
+
+def _patch_repo_leaf(vd, monkeypatch, repo, *, ls_files=()):
+    monkeypatch.setattr(vd, "REPO", repo)
+    monkeypatch.setattr(vd, "_git_ls_files_repo",
+                        lambda *ps: list(ls_files))
+
+
+def test_scenario_csv_clean_fixture_passes(tmp_path, monkeypatch):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        ROUTES_HEADER,
+        ["Gnome stronghold,quest,2459,3438,0,2460,3437,0,ALL,"
+         ",,,,,,,42,42",
+         "Lumbridge,quest,3222,3218,0,3222,3218,0,bank,"
+         ",,,,,useFairyRings=true,,10,10"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    assert vd.CHECKS["scenario-csv"]() == []
+
+
+def test_scenario_csv_flags(tmp_path, monkeypatch):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    header = ROUTES_HEADER + ",expect_reachable"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        header,
+        [# embedded comma: 19 fields vs 18 headers
+         "Bad,Name,3222,3218,0,3222,3218,0,ALL,,,,,,,,10,10,true",
+         # non-integer x
+         "R3,cat,3222,3218,0,abc,3218,0,ALL,,,,,,,10,10,true",
+         # unknown preset
+         "R4,cat,3222,3218,0,3222,3218,0,NOPE,,,,,,,10,10,true",
+         # unknown config_overrides key
+         "R5,cat,3222,3218,0,3222,3218,0,ALL,,,,,,noSuchKey=true,"
+         ",10,true",
+         # non-integer expected_length
+         "R6,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,abc,10,true",
+         # expect_reachable not true/false
+         "R7,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,maybe"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    findings = vd.CHECKS["scenario-csv"]()
+    assert any(f.startswith(f"{rel}:2") and "fields" in f
+               for f in findings)
+    assert any(f.startswith(f"{rel}:3") and "x" in f
+               and "abc" in f for f in findings)
+    assert any(f.startswith(f"{rel}:4") and "NOPE" in f
+               for f in findings)
+    assert any(f.startswith(f"{rel}:5") and "noSuchKey" in f
+               for f in findings)
+    assert any(f.startswith(f"{rel}:6") and "expected_length" in f
+               and "abc" in f for f in findings)
+    assert any(f.startswith(f"{rel}:7") and "expect_reachable" in f
+               and "maybe" in f for f in findings)
+
+
+def test_scenario_csv_missing_required_column(tmp_path, monkeypatch):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        "name,category,x,y",   # routes header missing plane
+        ["R,cat,1,2"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    findings = vd.CHECKS["scenario-csv"]()
+    assert any("plane" in f for f in findings)
+
+
+def test_scenario_csv_clue_format(tmp_path, monkeypatch):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    # clue grammar: requires clue_type+x+y+plane; routes-only rules
+    # (preset/config_overrides/expected_length) must not fire even
+    # when a like-named column carries values they would reject.
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/clues.csv",
+        "clue_type,x,y,plane,preset,source_file",
+        ["EASY,1234,5678,0,NOPE,clues.txt",
+         "HARD,notanint,5678,0,ALL,clues.txt"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    findings = vd.CHECKS["scenario-csv"]()
+    assert any(f.startswith(f"{rel}:3") and "x" in f
+               for f in findings)
+    # NOPE preset is tolerated under the clue grammar — the loader
+    # hardcodes ALL for clue rows and never reads preset.
+    assert not any("NOPE" in f for f in findings)
+
+
+def test_scenario_csv_unknown_columns_tolerated(tmp_path, monkeypatch):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    # source_file/source_line are registered extras carried by
+    # clue_locations_full.csv today; they must not be findings.
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        ROUTES_HEADER + ",source_file,source_line",
+        ["R,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,"
+         "routes.md,12"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    assert vd.CHECKS["scenario-csv"]() == []
+
+
+def test_scenario_csv_unknown_header_cell(tmp_path, monkeypatch):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    # A typo'd column is silently dropped by the Java loader — the
+    # same bug class the TSV header whitelist exists to catch.
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        ROUTES_HEADER + ",expeced_length",
+        ["R,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,10"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    findings = vd.CHECKS["scenario-csv"]()
+    assert any("expeced_length" in f for f in findings)
+
+
+def test_scenario_csv_expect_reachable_column_known(tmp_path,
+                                                  monkeypatch):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        ROUTES_HEADER + ",expect_reachable",
+        ["R1,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,true",
+         "R2,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,false"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    assert vd.CHECKS["scenario-csv"]() == []
+
+
+def test_scenario_csv_enumerates_committed_only(tmp_path,
+                                                monkeypatch):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    # A malformed CSV sits on disk but is uncommitted — the seam
+    # does not list it, so it can never enter the check.
+    bad_rel = _write_csv(
+        repo, "src/test/resources/dashboard/debug.csv",
+        ROUTES_HEADER,
+        ["R,cat,3222,3218,0,abc,3218,0,ALL,,,,,,,10,10"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[])
+    assert vd.CHECKS["scenario-csv"]() == []
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[bad_rel])
+    findings = vd.CHECKS["scenario-csv"]()
+    assert any("abc" in f for f in findings)
+
+
+def test_scenario_csv_registered_and_dispatches(tmp_path,
+                                                monkeypatch, capsys):
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        ROUTES_HEADER,
+        ["R,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    assert "scenario-csv" in vd.CHECKS
+    rc = vd.main(["scenario-csv"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "Summary:" in out
+
+
+def test_scenario_csv_committed_datasets_clean():
+    # The real committed dashboard CSVs are the healthy-data case.
+    vd = load_vd()
+    assert vd.CHECKS["scenario-csv"]() == []
