@@ -1332,6 +1332,16 @@ function renderReport(report) {
     `${report.summary.successfulRuns}/${report.summary.totalRuns} reached, ` +
     `${report.summary.failedRuns} unreached`
   );
+  if (report.summary.medianElapsedNanos != null) {
+    let latencyLine =
+      `median ${formatElapsed(report.summary.medianElapsedNanos)} · ` +
+      `p95 ${formatElapsed(report.summary.p95ElapsedNanos)} · ` +
+      `max ${formatElapsed(report.summary.maxElapsedNanos)}`;
+    if (report.summary.profiledRuns > 0) {
+      latencyLine += ` · ${report.summary.profiledRuns} profiled`;
+    }
+    summaryLines.push(latencyLine);
+  }
   if (report.subtitle) {
     summaryLines.push(report.subtitle);
   }

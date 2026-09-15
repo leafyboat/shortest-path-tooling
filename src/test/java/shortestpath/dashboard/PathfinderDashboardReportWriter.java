@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import shortestpath.ItemVariations;
 import shortestpath.WorldPointUtil;
 import shortestpath.pathfinder.PathfinderConfig;
@@ -39,6 +40,25 @@ public class PathfinderDashboardReportWriter {
         report.summary.successfulRuns = (int) runs.stream().filter(run -> run.reached).count();
         report.summary.failedRuns = runs.size() - report.summary.successfulRuns;
         report.summary.elapsedMillis = elapsedMillis;
+        // Per-run latency aggregates over run.stats.elapsedNanos: median is
+        // the middle element (mean of the two middles on even counts), p95 is
+        // the nearest-rank element at ceil(0.95 * n), max the last. All four
+        // fields stay null when no run carried stats.
+        List<Long> elapsed = runs.stream()
+            .filter(run -> run.stats != null)
+            .map(run -> run.stats.elapsedNanos)
+            .sorted()
+            .collect(Collectors.toList());
+        if (!elapsed.isEmpty()) {
+            int n = elapsed.size();
+            long median = (n % 2 == 1)
+                ? elapsed.get(n / 2)
+                : (elapsed.get(n / 2 - 1) + elapsed.get(n / 2)) / 2;
+            report.summary.medianElapsedNanos = median;
+            report.summary.p95ElapsedNanos = elapsed.get((int) Math.ceil(0.95 * n) - 1);
+            report.summary.maxElapsedNanos = elapsed.get(n - 1);
+            report.summary.profiledRuns = (int) runs.stream().filter(run -> run.phases != null).count();
+        }
         report.transportLayers = transportLayers;
         report.runs = runs;
         return report;

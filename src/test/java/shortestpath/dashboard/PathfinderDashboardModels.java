@@ -40,6 +40,15 @@ public final class PathfinderDashboardModels {
         public int successfulRuns;
         public int failedRuns;
         public long elapsedMillis;
+        /**
+         * Latency aggregates over {@code run.stats.elapsedNanos} — median,
+         * nearest-rank p95, and max. {@code null} when no run carried stats.
+         */
+        public Long medianElapsedNanos;
+        public Long p95ElapsedNanos;
+        public Long maxElapsedNanos;
+        /** Number of runs carrying profiler phase data ({@code run.phases != null}). */
+        public Integer profiledRuns;
     }
 
     public static class RunRecord {
