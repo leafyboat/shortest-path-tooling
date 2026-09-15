@@ -68,6 +68,60 @@ DESTINATION_FIELDS = frozenset({
     "VarPlayers",
 })
 
+# Dashboard preset names — mirrors the PRESETS registry keys in
+# src/test/java/shortestpath/dashboard/DashboardPresets.java.  The
+# loader upper-cases the CSV cell before lookup, so matching is
+# case-insensitive here as well.
+SCENARIO_PRESETS = frozenset({
+    "NONE", "ALL", "BANK", "BANK_PERM", "INVENTORY",
+    "INVENTORY_NON_CONSUMABLE", "SEASONAL", "UNIT_TEST",
+})
+
+# config_overrides keys — mirrors every case label of the switch in
+# DashboardScenarioRunner.applyConfigOverrides
+# (src/test/java/shortestpath/dashboard/DashboardScenarioRunner.java).
+# An unlisted key aborts the whole dataset run with
+# IllegalArgumentException, so the lint whitelists them up front.
+SCENARIO_CONFIG_KEYS = frozenset({
+    "avoidWilderness", "useAgilityShortcuts", "useGrappleShortcuts",
+    "useBoats", "useCanoes", "useCharterShips", "useShips",
+    "useFairyRings", "useGnomeGliders", "useHotAirBalloons",
+    "useMagicCarpets", "useMagicMushtrees", "useMinecarts",
+    "useQuetzals", "useSpiritTrees", "useTeleportationItems",
+    "useTeleportationLevers", "useTeleportationPortals",
+    "useTeleportationSpells", "useTeleportationMinigames",
+    "useWildernessObelisks", "useSeasonalTransports",
+    "includeBankPath", "bypassVarbitChecks", "currencyThreshold",
+    "calculationCutoff", "usePoh", "usePohFairyRing",
+    "usePohSpiritTree", "useTeleportationPortalsPoh",
+    "usePohMountedItems", "usePohObelisk",
+    "costConsumableTeleportationItems",
+    "costNonConsumableTeleportationItems", "costAgilityShortcuts",
+    "costGrappleShortcuts", "costFairyRings", "costBoats",
+    "costCanoes", "costCharterShips", "costShips",
+    "costGnomeGliders", "costHotAirBalloons", "costMagicCarpets",
+    "costMagicMushtrees", "costMinecarts", "costQuetzals",
+    "costSpiritTrees", "costTeleportationLevers",
+    "costTeleportationPortals", "costTeleportationSpells",
+    "costTeleportationMinigames", "costWildernessObelisks",
+    "costSeasonalTransports",
+})
+
+# Column names the dashboard scenario loader understands, across both
+# CSV grammars — mirrors the indexOf lookups in
+# DashboardScenarioLoader.parseRoutesCsv/parseClueCsv.  A column not
+# listed here is silently ignored by the loader (dropped data, the
+# same bug class as an unknown TSV header), so it is a finding.
+# ``source_file``/``source_line`` are tolerated provenance extras and
+# ``expect_reachable`` is reserved for the reachability column.
+SCENARIO_KNOWN_COLUMNS = frozenset({
+    "name", "category", "start_x", "start_y", "start_plane",
+    "x", "y", "plane", "preset", "teleports", "inventory",
+    "equipment", "bank", "varbits", "varplayers", "skill_levels",
+    "config_overrides", "expected_length", "minimum_length",
+    "expect_reachable", "clue_type", "source_file", "source_line",
+})
+
 
 def _git_ls_files(*pathspecs):
     """Committed submodule files matching the given pathspecs.
@@ -83,6 +137,25 @@ def _git_ls_files(*pathspecs):
     if proc.returncode != 0:
         tail = (proc.stderr or "").strip().splitlines()
         sys.exit("git -C shortest-path ls-files failed: "
+                 + (tail[-1] if tail else f"exit {proc.returncode}"))
+    return [line for line in proc.stdout.splitlines() if line.strip()]
+
+
+def _git_ls_files_repo(*pathspecs):
+    """Committed tooling-repo files matching the given pathspecs.
+
+    Same contract as ``_git_ls_files`` but rooted at this repository
+    rather than the plugin submodule — used for the dashboard
+    datasets under ``src/test/resources/dashboard/``.  The leaf's
+    repo-level subprocess seam — monkeypatched in tests.
+    """
+    proc = subprocess.run(
+        ["git", "ls-files", *pathspecs],
+        cwd=REPO, capture_output=True, text=True,
+        timeout=GIT_TIMEOUT_SECONDS)
+    if proc.returncode != 0:
+        tail = (proc.stderr or "").strip().splitlines()
+        sys.exit("git ls-files failed: "
                  + (tail[-1] if tail else f"exit {proc.returncode}"))
     return [line for line in proc.stdout.splitlines() if line.strip()]
 
@@ -489,6 +562,121 @@ def check_destinations():
     return findings
 
 
+def _int_or_finding(findings, rel, lineno, col, cell):
+    """Append a finding unless ``cell`` parses as an integer."""
+    try:
+        int(cell)
+    except ValueError:
+        findings.append(
+            f"{rel}:{lineno}: non-integer {col} {cell!r}")
+
+
+def check_scenario_csv():
+    """Lint committed dashboard scenario CSVs against the loader grammar.
+
+    DashboardScenarioLoader splits rows on ``,`` with no quote
+    handling, so an embedded comma in ``name``/``category`` shifts
+    every later field; a header cell outside the known column set is
+    silently ignored (dropped data); an unknown ``preset`` or
+    ``config_overrides`` key aborts the whole dataset run with
+    ``IllegalArgumentException``.  Two grammars, dispatched on the
+    header: a ``clue_type`` column means the clue-step format
+    (requires ``clue_type`` + ``x``/``y``/``plane``), otherwise the
+    extended routes format (requires ``x``/``y``/``plane``).
+
+    Files are enumerated via ``git ls-files`` on the tooling repo —
+    never a filesystem glob — so a gitignored scratch CSV can never
+    leak into the gate.
+    """
+    findings = []
+    rels = _git_ls_files_repo("src/test/resources/dashboard")
+    for rel in sorted(r for r in rels if r.endswith(".csv")):
+        lines = (REPO / rel).read_text().splitlines()
+        if not lines:
+            continue
+        # The loader takes the first line as the header verbatim.
+        headers = [h.strip() for h in lines[0].split(",")]
+        for cell in headers:
+            if cell and cell not in SCENARIO_KNOWN_COLUMNS:
+                findings.append(
+                    f"{rel}:1: unknown header cell {cell!r}")
+        clue = "clue_type" in headers
+        required = (("clue_type", "x", "y", "plane") if clue
+                    else ("x", "y", "plane"))
+        idx = {h: i for i, h in enumerate(headers)}
+        missing = [c for c in required if c not in idx]
+        if missing:
+            findings.append(
+                f"{rel}:1: missing required column {missing[0]!r}")
+            continue
+        need = max(idx[c] for c in required) + 1
+        for lineno, line in enumerate(lines[1:], 2):
+            if not line.strip() or line.startswith("#"):
+                continue
+            fields = line.split(",")
+            if len(fields) > len(headers):
+                findings.append(
+                    f"{rel}:{lineno}: row has {len(fields)} fields "
+                    f"vs {len(headers)} headers (embedded comma)")
+                continue
+            if len(fields) < need:
+                findings.append(
+                    f"{rel}:{lineno}: row has {len(fields)} "
+                    f"fields, needs {need} to cover required "
+                    f"columns")
+                continue
+            for col in required:
+                cell = fields[idx[col]].strip()
+                if not cell:
+                    findings.append(
+                        f"{rel}:{lineno}: empty required column "
+                        f"{col!r}")
+                elif col != "clue_type":
+                    _int_or_finding(findings, rel, lineno, col, cell)
+            if clue:
+                continue
+            for col in ("start_x", "start_y", "start_plane",
+                        "expected_length", "minimum_length"):
+                i = idx.get(col, -1)
+                if 0 <= i < len(fields):
+                    cell = fields[i].strip()
+                    if cell:
+                        _int_or_finding(
+                            findings, rel, lineno, col, cell)
+            for col in ("preset", "teleports"):
+                i = idx.get(col, -1)
+                if 0 <= i < len(fields):
+                    cell = fields[i].strip()
+                    if cell and cell.upper() not in SCENARIO_PRESETS:
+                        findings.append(
+                            f"{rel}:{lineno}: unknown preset "
+                            f"{cell!r}")
+            i = idx.get("config_overrides", -1)
+            if 0 <= i < len(fields):
+                for token in fields[i].split(";"):
+                    token = token.strip()
+                    if not token:
+                        continue
+                    key, _, value = token.partition("=")
+                    key = key.strip()
+                    if key not in SCENARIO_CONFIG_KEYS:
+                        findings.append(
+                            f"{rel}:{lineno}: unknown "
+                            f"config_overrides key {key!r}")
+                    elif not value.strip():
+                        findings.append(
+                            f"{rel}:{lineno}: config_overrides "
+                            f"key {key!r} has an empty value")
+            i = idx.get("expect_reachable", -1)
+            if 0 <= i < len(fields):
+                cell = fields[i].strip()
+                if cell and cell.lower() not in ("true", "false"):
+                    findings.append(
+                        f"{rel}:{lineno}: expect_reachable "
+                        f"{cell!r} is not true/false")
+    return findings
+
+
 # name -> check function returning a list of finding strings.
 CHECKS = {
     "tsv-structure": check_tsv_structure,
@@ -497,6 +685,7 @@ CHECKS = {
     "bbox": check_bbox,
     "regions": check_regions,
     "destinations": check_destinations,
+    "scenario-csv": check_scenario_csv,
 }
 
 # Checks whose findings are reported but never move the exit code.

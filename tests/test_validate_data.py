@@ -427,10 +427,10 @@ def test_scenario_csv_clean_fixture_passes(tmp_path, monkeypatch):
     rel = _write_csv(
         repo, "src/test/resources/dashboard/routes.csv",
         ROUTES_HEADER,
-        ["Gnome stronghold,quest,2459,3438,0,2460,3437,0,ALL,"
+        ["Gnome stronghold,quest,2459,3438,0,2460,3437,0,ALL"
          ",,,,,,,42,42",
-         "Lumbridge,quest,3222,3218,0,3222,3218,0,bank,"
-         ",,,,,useFairyRings=true,,10,10"])
+         "Lumbridge,quest,3222,3218,0,3222,3218,0,bank"
+         ",,,,,,useFairyRings=true,10,10"])
     _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
     assert vd.CHECKS["scenario-csv"]() == []
 
