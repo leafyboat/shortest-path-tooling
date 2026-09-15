@@ -1,7 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.DirectoryStream;
@@ -78,25 +76,20 @@ public class TransportAnchorDriftTest {
 
         List<Anchor> anchors = readAnchors(transportsDir);
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
         Path outFile = Paths.get(outPath);
         if (outFile.getParent() != null) {
             Files.createDirectories(outFile.getParent());
         }
 
-        try (Store store = new Store(new File(cacheDir));
+        try (Store store = CacheUtils.openStore(cacheDir);
              PrintWriter out = new PrintWriter(outFile.toFile())) {
-            store.load();
 
             ObjectManager objectManager = new ObjectManager(store);
             objectManager.load();
 
-            RegionLoader regionLoader = new RegionLoader(store, xteaKeyManager);
-            regionLoader.loadRegions();
+            RegionLoader regionLoader = CacheUtils.loadRegions(store, xteaKeyManager);
             regionLoader.calculateBounds();
 
             List<String> missingObject = new ArrayList<>();

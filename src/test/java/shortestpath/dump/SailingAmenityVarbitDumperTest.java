@@ -1,7 +1,5 @@
 package shortestpath.dump;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -57,14 +55,9 @@ public class SailingAmenityVarbitDumperTest {
         String cacheDir = CacheUtils.requiredProperty("sailing.amenity.cacheDir");
         String xteaPath = CacheUtils.requiredProperty("sailing.amenity.xteaPath");
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
-        try (Store store = new Store(new File(cacheDir))) {
-            store.load();
-
+        try (Store store = CacheUtils.openStore(cacheDir)) {
             ObjectManager objectManager = new ObjectManager(store);
             objectManager.load();
 
@@ -72,8 +65,7 @@ public class SailingAmenityVarbitDumperTest {
             List<ObjectDefinition> parents = CacheUtils.collectMultiLocParents(objectManager, SEED_IDS);
 
             // 2. World placements of those parents (one per island).
-            RegionLoader regionLoader = new RegionLoader(store, xteaKeyManager);
-            regionLoader.loadRegions();
+            RegionLoader regionLoader = CacheUtils.loadRegions(store, xteaKeyManager);
             regionLoader.calculateBounds();
 
             Map<Integer, int[]> placement =

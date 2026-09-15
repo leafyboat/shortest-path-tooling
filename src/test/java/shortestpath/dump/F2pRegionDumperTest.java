@@ -1,8 +1,6 @@
 package shortestpath.dump;
 
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -85,11 +83,7 @@ public class F2pRegionDumperTest
             throw new IllegalStateException("No F2P bounding boxes loaded from " + SOURCE_RESOURCE);
         }
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath))
-        {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
         // Collect surface region IDs from two sources:
         //   1. The cache's loaded surface regions (needed to emit MEMBERS for
@@ -98,12 +92,9 @@ public class F2pRegionDumperTest
         //   2. Every surface chunk covered by an F2P bbox (ensures F2P areas are
         //      tagged even if the cache cannot decrypt those regions without xtea).
         Set<Integer> candidateRegionIds = new HashSet<>();
-        try (Store store = new Store(new File(cacheDir)))
+        try (Store store = CacheUtils.openStore(cacheDir))
         {
-            store.load();
-
-            RegionLoader regionLoader = new RegionLoader(store, xteaKeyManager);
-            regionLoader.loadRegions();
+            RegionLoader regionLoader = CacheUtils.loadRegions(store, xteaKeyManager);
 
             for (Region region : regionLoader.getRegions())
             {

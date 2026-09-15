@@ -1,8 +1,6 @@
 package shortestpath.dump;
 
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -91,19 +89,13 @@ public class BankTileDumperTest {
 
         Files.createDirectories(output.getParent());
 
-        XteaKeyManager xteaKeyManager = new XteaKeyManager();
-        try (FileInputStream fin = new FileInputStream(xteaPath)) {
-            xteaKeyManager.loadKeys(fin);
-        }
+        XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
         List<Row> rows;
-        try (Store store = new Store(new File(cacheDir))) {
-            store.load();
-
+        try (Store store = CacheUtils.openStore(cacheDir)) {
             ObjectManager objectManager = new ObjectManager(store);
             objectManager.load();
-            RegionLoader regionLoader = new RegionLoader(store, xteaKeyManager);
-            regionLoader.loadRegions();
+            RegionLoader regionLoader = CacheUtils.loadRegions(store, xteaKeyManager);
             regionLoader.calculateBounds();
 
             Set<Integer> matchingIds = collectMatchingIds(objectManager, patterns);
