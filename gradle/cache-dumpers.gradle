@@ -6,6 +6,127 @@
 // fingerprint as inputs — without the override an UP-TO-DATE skip
 // after a cache refresh would silently serve stale output.
 
+// Task registration is spec-driven: each map below describes one
+// dumper/probe, and `registerCacheDumper` turns it into a
+// `tasks.register(name, Test)` with the shared wiring (classpath,
+// up-to-date override, -P providers, existence-checking doFirst
+// guard) that used to be copy-pasted per task.
+//
+// Spec fields:
+//   name          - gradle task name
+//   description   - task description
+//   testClass     - `include` pattern for the JUnit class
+//   cachePrefix   - -P<prefix>CacheDir prop (must name an existing dir)
+//   xteaPrefix    - -P<prefix>XteaPath prop (optional; must name an
+//                   existing file when the spec sets it)
+//   namesProp     - full -P name of a required names-file prop (optional)
+//   outputProp    - -P name of an optional output-path override (optional)
+//   outputDefault - buildDir-relative default for outputProp
+//   sysProps      - static sysprops; every value MUST be a plain String —
+//                   a GString in the systemProperties input map fails
+//                   Gradle fingerprinting before doFirst can even run
+//   sysPropKeys   - sysprop keys for the cacheDir/xtea/names/output props
+//   hint          - optional doLast body: closure taking
+//                   (resolvedOutputPath, defaultOutputPath)
+//
+// The -P names and -D sysprop keys are a load-bearing contract:
+// maintenance.py PROBE_TASKS/NAMES_FILE_TASKS construct the -P names
+// and the Java requiredProperty/getProperty call sites read the keys.
+def cacheDumperSpecs = [
+    // Scans all CLIENTSCRIPT archives for league relic teleport dispatch scripts.
+    [
+        name: 'leagueScriptScan',
+        description: 'Scans all cs2 client scripts for league teleport destinations.',
+        testClass: 'shortestpath/dump/LeagueScriptScannerTest.class',
+        cachePrefix: 'leagueScript',
+        xteaPrefix: 'leagueScript',
+        sysProps: [
+            'league.script.scan': 'true',
+            'league.script.outPath': layout.buildDirectory
+                    .file('league-scripts.txt').get().asFile.absolutePath,
+        ],
+        sysPropKeys: [cacheDir: 'league.script.cacheDir',
+                      xtea: 'league.script.xteaPath'],
+    ],
+    // Enumerates DBTables with COORDGRID+STRING (candidate briefcase tables).
+    [
+        name: 'briefcaseTeleportTables',
+        description: 'Enumerates DBTables with COORDGRID+STRING (candidate briefcase tables).',
+        testClass: 'shortestpath/dump/BriefcaseTeleportTablesTest.class',
+        cachePrefix: 'briefcaseTt',
+        sysProps: [
+            'briefcase.tt.scan': 'true',
+            'briefcase.tt.outPath': layout.buildDirectory
+                    .file('briefcase-teleport-tables.txt').get().asFile.absolutePath,
+        ],
+        sysPropKeys: [cacheDir: 'briefcase.tt.cacheDir'],
+    ],
+]
+
+// Registers one dumper/probe Test task per spec entry. The factory is
+// the single emission path for the fleet, so the shared invariants
+// (upToDateWhen, jvmArgs, testLogging, existence guards) cannot drift
+// per-task — and must never grow an ignoreFailures.
+def registerCacheDumper = { Map spec ->
+    def cacheDir = providers.gradleProperty("${spec.cachePrefix}CacheDir").orElse('')
+    def xteaPath = spec.xteaPrefix
+            ? providers.gradleProperty("${spec.xteaPrefix}XteaPath").orElse('')
+            : null
+    def namesFile = spec.namesProp
+            ? providers.gradleProperty(spec.namesProp).orElse('')
+            : null
+    def output = spec.outputProp
+            ? providers.gradleProperty(spec.outputProp)
+                    .orElse(layout.buildDirectory.file(spec.outputDefault)
+                            .get().asFile.absolutePath)
+            : null
+
+    tasks.register(spec.name, Test) {
+        group = 'cache dumpers'
+        description = spec.description
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+        useJUnit()
+        // Inputs (./cache, keys.json) are -P strings Gradle cannot
+        // fingerprint — never let an UP-TO-DATE skip serve stale output.
+        outputs.upToDateWhen { false }
+        include spec.testClass
+        spec.sysProps.each { k, v -> systemProperty k, v }
+        systemProperty spec.sysPropKeys.cacheDir, cacheDir.get()
+        if (xteaPath) systemProperty spec.sysPropKeys.xtea, xteaPath.get()
+        if (namesFile) systemProperty spec.sysPropKeys.names, namesFile.get()
+        if (output) systemProperty spec.sysPropKeys.output, output.get()
+        jvmArgs = ['-Xms1g', '-Xmx8g']
+        testLogging { showStandardStreams = true }
+        doFirst {
+            // Existence, not emptiness — a typo'd or absent path must
+            // fail here, not inside the forked JVM.
+            def bad = []
+            if (!new File(cacheDir.get()).isDirectory()) {
+                bad << "-P${spec.cachePrefix}CacheDir=${cacheDir.get()}"
+            }
+            if (xteaPath && !new File(xteaPath.get()).isFile()) {
+                bad << "-P${spec.xteaPrefix}XteaPath=${xteaPath.get()}"
+            }
+            if (namesFile && !new File(namesFile.get()).isFile()) {
+                bad << "-P${spec.namesProp}=${namesFile.get()}"
+            }
+            if (bad) {
+                throw new GradleException(
+                        "${spec.name} requires ${bad.join(', ')}. " +
+                        "Run python3 scripts/maintenance.py cache first to produce ./cache and ./keys.json.")
+            }
+        }
+        if (spec.hint) {
+            def defaultOutput = layout.buildDirectory
+                    .file(spec.outputDefault).get().asFile.absolutePath
+            doLast { spec.hint(output.get(), defaultOutput) }
+        }
+    }
+}
+
+cacheDumperSpecs.each(registerCacheDumper)
+
 // Dumps bank-related object placements (Bank booth / Bank chest / Bank table /
 // deposit box / GE booth) from an OSRS cache to a TSV. Pair with
 // scripts/rebuild_bank_tsv.py to add stand-tile rows to bank.tsv.
@@ -320,34 +441,6 @@ tasks.register('leagueAreaStructDump', Test) {
 }
 
 
-// Scans all CLIENTSCRIPT archives for league relic teleport dispatch scripts.
-def leagueScriptCacheDir = providers.gradleProperty('leagueScriptCacheDir').orElse('')
-def leagueScriptXteaPath = providers.gradleProperty('leagueScriptXteaPath').orElse('')
-
-tasks.register('leagueScriptScan', Test) {
-    group = 'cache dumpers'
-    description = 'Scans all cs2 client scripts for league teleport destinations.'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/LeagueScriptScannerTest.class'
-    systemProperty 'league.script.scan', 'true'
-    systemProperty 'league.script.cacheDir', leagueScriptCacheDir.get()
-    systemProperty 'league.script.xteaPath', leagueScriptXteaPath.get()
-    systemProperty 'league.script.outPath', "${layout.buildDirectory.get()}/league-scripts.txt"
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (leagueScriptCacheDir.get().isEmpty() || leagueScriptXteaPath.get().isEmpty()) {
-            throw new GradleException("leagueScriptScan requires -PleagueScriptCacheDir and -PleagueScriptXteaPath.")
-        }
-    }
-}
-
-
 // Scans committed transport anchors against the live cache for object/menu drift.
 // Advisory: findings go to build/transport-drift.txt, never a hard gate.
 def transportDriftCacheDir = providers.gradleProperty('transportDriftCacheDir').orElse('')
@@ -489,25 +582,3 @@ tasks.register('briefcaseDbRowScan', Test) {
     }
 }
 
-def briefcaseTtCacheDir = providers.gradleProperty('briefcaseTtCacheDir').orElse('')
-tasks.register('briefcaseTeleportTables', Test) {
-    group = 'cache dumpers'
-    description = 'Enumerates DBTables with COORDGRID+STRING (candidate briefcase tables).'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    // Inputs (./cache, keys.json) are -P strings Gradle cannot
-    // fingerprint — never let an UP-TO-DATE skip serve stale output.
-    outputs.upToDateWhen { false }
-    include 'shortestpath/dump/BriefcaseTeleportTablesTest.class'
-    systemProperty 'briefcase.tt.scan', 'true'
-    systemProperty 'briefcase.tt.cacheDir', briefcaseTtCacheDir.get()
-    systemProperty 'briefcase.tt.outPath', "${layout.buildDirectory.get()}/briefcase-teleport-tables.txt"
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging { showStandardStreams = true }
-    doFirst {
-        if (briefcaseTtCacheDir.get().isEmpty()) {
-            throw new GradleException("requires -PbriefcaseTtCacheDir")
-        }
-    }
-}
