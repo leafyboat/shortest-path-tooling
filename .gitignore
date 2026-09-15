@@ -40,4 +40,4 @@ specs/
 # GSD stop hook counter (session-local)
 .planning/.gsd-stop-counter
 .windsurf/
-
+AGENTS.md
