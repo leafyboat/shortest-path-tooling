@@ -442,7 +442,11 @@ def main() -> int:
     for (x, y, p, name) in sorted_keys:
         s, q, vb, vp = name_reqs.get(name, ("", "", "", ""))
         out_lines.append(f"{x} {y} {p}\t{name}\t{s}\t{q}\t{vb}\t{vp}")
-    BANK_TSV.write_text("\n".join(out_lines) + "\n")
+    # Write-temp-then-rename: a crash or kill mid-write must not leave a
+    # truncated bank.tsv committed in place.
+    tmp_tsv = BANK_TSV.with_suffix(".tmp")
+    tmp_tsv.write_text("\n".join(out_lines) + "\n")
+    tmp_tsv.replace(BANK_TSV)
 
     print(f"Wrote {len(sorted_keys)} rows to {BANK_TSV}")
     print(f"  Curated tiles preserved: {len(bank_rows)}")
