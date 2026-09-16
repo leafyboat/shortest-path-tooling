@@ -21,3 +21,5 @@ Camulet (#314) teleports to Enakhras temple,routing-issue-314,3000,3300,0,3105,9
 Mythical cape (#160) teleports to Myths Guild,routing-issue-160,2600,3200,0,2457,2850,0,UNIT_TEST,22114:1,,,,,,useTeleportationItems=INVENTORY,,2,
 Quetzal whistle (#537) works after Twilights Promise,routing-issue-537,3213,3428,0,1411,3361,0,UNIT_TEST,29271:1,,,,,,useQuetzals=true,83,,,Twilight's Promise=FINISHED
 Quetzal whistle (#537) locked before Twilights Promise,routing-issue-537,3213,3428,0,1411,3361,0,UNIT_TEST,29271:1,,,,,,useQuetzals=true,,450,,Twilight's Promise=NOT_STARTED
+Ape Atoll glider (#396) works after Monkey Madness II,routing-issue-396,2462,3505,0,2711,2803,0,UNIT_TEST,,,,,,,useGnomeGliders=true,33,,,The Grand Tree=FINISHED;Monkey Madness II=FINISHED
+Ape Atoll glider (#396) needs Monkey Madness II,routing-issue-396,2462,3505,0,2711,2803,0,UNIT_TEST,,,,,,,useGnomeGliders=true,,,false,The Grand Tree=FINISHED;Monkey Madness II=NOT_STARTED
