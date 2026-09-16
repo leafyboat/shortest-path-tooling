@@ -141,8 +141,10 @@ The `preset` column maps to a named `DashboardPresets` entry that configures the
 | `NONE` | No teleportation items |
 | `ALL` | All teleportation items enabled |
 | `BANK` | All teleportation items (bank mode, diary stub = not complete) |
-| `INVENTORY` | Inventory and bank teleportation items |
+| `BANK_PERM` | Bank mode with non-consumable teleportation items (diary stub = not complete) |
+| `INVENTORY` | Inventory teleportation items only |
 | `INVENTORY_NON_CONSUMABLE` | Non-consumable inventory items only |
+| `SEASONAL` | Seasonal world — inventory items + seasonal transports, avoids wilderness |
 | `UNIT_TEST` | Exact Mockito defaults — reproduces `PathfinderTest` config precisely |
 
 Preset names are case-insensitive. The old column name `teleports` is accepted as an alias for `preset`.
