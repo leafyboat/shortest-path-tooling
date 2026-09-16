@@ -294,14 +294,17 @@ _FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _SECTION_HEADING_RE = re.compile(r"^## .+")
 
 
-def split_sections(body: str) -> Dict[str, str]:
-    """Map ``## Heading`` -> section text (heading included).
+def _section_pairs(body: str) -> List[Tuple[str, str]]:
+    """Ordered ``(heading-name, section-text)`` pairs, fence-aware.
 
     Lines inside fenced code blocks are data, not structure: upstream
     text is always emitted behind a fence, so a ``## `` line inside it
-    must never be adopted as a maintainer section.
+    must never be adopted as a maintainer section.  Duplicate headings
+    keep every occurrence — callers needing a name->text map overlay
+    them (last wins) while the canonical-order scan needs the raw
+    ordering.
     """
-    out: Dict[str, str] = {}
+    out: List[Tuple[str, str]] = []
     fence: Optional[str] = None
     name: Optional[str] = None
     buf: List[str] = []
@@ -315,14 +318,27 @@ def split_sections(body: str) -> Dict[str, str]:
                 fence = None
         elif fence is None and _SECTION_HEADING_RE.match(line):
             if name is not None:
-                out[name] = "\n".join(buf).rstrip()
+                out.append((name, "\n".join(buf).rstrip()))
             name = line[3:].strip()
             buf = [line]
             continue
         if name is not None:
             buf.append(line)
     if name is not None:
-        out[name] = "\n".join(buf).rstrip()
+        out.append((name, "\n".join(buf).rstrip()))
+    return out
+
+
+def split_sections(body: str) -> Dict[str, str]:
+    """Map ``## Heading`` -> section text (heading included).
+
+    Lines inside fenced code blocks are data, not structure: upstream
+    text is always emitted behind a fence, so a ``## `` line inside it
+    must never be adopted as a maintainer section.
+    """
+    out: Dict[str, str] = {}
+    for name, text in _section_pairs(body):
+        out[name] = text
     return out
 
 
@@ -346,9 +362,7 @@ def maintainer_sections_from(body: str) -> Dict[str, str]:
     forged inside untrusted upstream text cannot be adopted as
     maintainer content on re-sync.
     """
-    parts = re.split(r"(?m)^(## .+)$", body or "")
-    headings = [(parts[i][3:].strip(), parts[i] + parts[i + 1])
-                for i in range(1, len(parts) - 1, 2)]
+    headings = _section_pairs(body)
     canon = {name: i for i, name in enumerate(MAINTAINER_SECTIONS)}
     out: Dict[str, str] = {}
     prev = len(MAINTAINER_SECTIONS)

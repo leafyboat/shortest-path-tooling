@@ -697,6 +697,25 @@ def test_upstream_forged_heading_demoted(tmp_path, monkeypatch):
     assert "forged requirement" not in sections["Requirements"]
 
 
+def test_maintainer_sections_fence_aware():
+    # A fenced `## ` line inside a maintainer section is body text, not
+    # a heading — the previous naive split cut "Triage Notes" at that
+    # line and the canonical-order scan dropped the orphaned tail, so a
+    # maintainer pasting markdown into the section silently lost content
+    # on the next sync.
+    body = (
+        "## Triage Notes\n\n"
+        "before\n\n"
+        "````\npasted markdown\n\n## Not A Heading\ninside\n````\n\n"
+        "after\n\n"
+        "## Requirements\n\n- fix it\n")
+    sections = ii.maintainer_sections_from(body)
+    assert "## Not A Heading" in sections["Triage Notes"]
+    assert "after" in sections["Triage Notes"]
+    assert "- fix it" in sections["Requirements"]
+    assert "Not A Heading" not in sections
+
+
 def test_existing_forged_section_not_harvested(tmp_path, monkeypatch):
     # Legacy file: forged `## Requirements` inside the comments region
     # with the real maintainer section deleted.  Re-sync must fall back
