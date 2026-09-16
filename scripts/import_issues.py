@@ -345,10 +345,14 @@ def split_sections(body: str) -> Dict[str, str]:
 def demote_headings(text: str) -> str:
     """Demote ``## `` headings inside untrusted text to ``### ``.
 
-    ``split_sections`` harvests ``## `` sections regex-wise with no
-    awareness of the four-backtick fences, so a ``## `` line inside an
-    upstream title, body, or comment would otherwise mint a forged
-    maintainer section on the next re-sync.
+    ``maintainer_sections_from`` harvests ``## `` sections as
+    maintainer-owned content, so a ``## `` line inside an upstream
+    title, body, or comment must never reach the shadow file at heading
+    level — it would otherwise mint a forged maintainer section on the
+    next re-sync.  The harvester is fence-aware, but the title is
+    emitted unfenced and a malformed or truncated upstream fence could
+    still leak a heading to top level, so demotion stays
+    defence-in-depth rather than relying on the fence alone.
     """
     return re.sub(r"(?m)^## ", "### ", text or "")
 
