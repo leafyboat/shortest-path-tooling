@@ -94,7 +94,7 @@ SCENARIO_KNOWN_COLUMNS = frozenset({
     "x", "y", "plane", "preset", "teleports",
     "inventory", "equipment", "bank", "varbits", "varplayers",
     "skill_levels", "config_overrides",
-    "expected_length", "minimum_length", "expect_reachable",
+    "expected_length", "minimum_length", "expect_reachable", "quests",
 })
 # Mirrors the dashboard preset registry names (case-insensitive lookup).
 SCENARIO_PRESETS = frozenset({
@@ -107,15 +107,24 @@ SCENARIO_COORD_COLUMNS = ("start_x", "start_y", "start_plane",
                           "x", "y", "plane")
 # Optional-column grammars, matching the loader's documented formats:
 # items `itemId:qty;…`, int maps `id=value;…`, skill levels `SKILL=level;…`,
-# config overrides `setting=value;…`.
+# config overrides `setting=value;…`, quest states `Quest Name=STATE;…`.
 ITEMS_RE = re.compile(r"^\d+(:\d+)?(;\d+(:\d+)?)*$")
 INT_MAP_RE = re.compile(r"^\d+=\d+(;\d+=\d+)*$")
 SKILL_MAP_RE = re.compile(r"^[A-Z_]+=\d+(;[A-Z_]+=\d+)*$")
 STR_MAP_RE = re.compile(r"^[^=;]+=[^;]*(;[^=;]+=[^;]*)*$")
+# quests cells are `Quest Name=STATE` tokens — quest names carry spaces,
+# apostrophes, `&`, `-` and `.` but never `=`, `;` or `,` (the loader
+# splits on those), and STATE is a QuestState enum name.  A bare name
+# would silently mean FINISHED — already the default — so `=STATE` is
+# mandatory.
+QUEST_MAP_RE = re.compile(
+    r"^[^=;,]+=(NOT_STARTED|IN_PROGRESS|FINISHED)"
+    r"(;[^=;,]+=(NOT_STARTED|IN_PROGRESS|FINISHED))*$")
 OPTIONAL_COLUMN_GRAMMARS = {
     "inventory": ITEMS_RE, "equipment": ITEMS_RE, "bank": ITEMS_RE,
     "varbits": INT_MAP_RE, "varplayers": INT_MAP_RE,
     "skill_levels": SKILL_MAP_RE, "config_overrides": STR_MAP_RE,
+    "quests": QUEST_MAP_RE,
 }
 
 
