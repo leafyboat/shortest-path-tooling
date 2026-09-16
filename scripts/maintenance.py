@@ -198,8 +198,15 @@ def do_collision_map(args: argparse.Namespace) -> int:
     (fork) branch intact.
     """
     require_clean_submodule()
-    old = run(["git", "-C", "shortest-path", "rev-parse", "HEAD"],
-              timeout=GIT_TIMEOUT_SECONDS).stdout.strip()
+    old_proc = run(["git", "-C", "shortest-path", "rev-parse", "HEAD"],
+                   timeout=GIT_TIMEOUT_SECONDS)
+    if old_proc.returncode != 0 or not old_proc.stdout.strip():
+        print("git rev-parse HEAD failed in submodule:", file=sys.stderr)
+        tail = _stderr_tail(old_proc)
+        if tail:
+            print(tail, file=sys.stderr)
+        return 1
+    old = old_proc.stdout.strip()
     fetch = run(["git", "-C", "shortest-path", "fetch", "upstream"],
                 timeout=GIT_TIMEOUT_SECONDS)
     if fetch.returncode != 0:
@@ -217,8 +224,15 @@ def do_collision_map(args: argparse.Namespace) -> int:
         if tail:
             print(tail, file=sys.stderr)
         return 1
-    new = run(["git", "-C", "shortest-path", "rev-parse", "HEAD"],
-              timeout=GIT_TIMEOUT_SECONDS).stdout.strip()
+    new_proc = run(["git", "-C", "shortest-path", "rev-parse", "HEAD"],
+                   timeout=GIT_TIMEOUT_SECONDS)
+    if new_proc.returncode != 0 or not new_proc.stdout.strip():
+        print("git rev-parse HEAD failed in submodule:", file=sys.stderr)
+        tail = _stderr_tail(new_proc)
+        if tail:
+            print(tail, file=sys.stderr)
+        return 1
+    new = new_proc.stdout.strip()
     if new == old:
         print(f"collision-map.zip already up to date ({old[:7]})")
         return 0
