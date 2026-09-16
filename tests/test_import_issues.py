@@ -549,6 +549,17 @@ def test_check_scenario_header_columns(tmp_path, capsys):
     assert "bogus_col" in capsys.readouterr().out
 
 
+def test_lint_accepts_expect_reachable(tmp_path, capsys):
+    # `expect_reachable` is the committed-datasets column for intentional
+    # unreachable assertions — the lint whitelist must accept it.
+    make_shadow(tmp_path, 1, status="triaged", body_text=PRD_BODY)
+    make_scenarios_csv(tmp_path, [scenario_row() + ",false"],
+                       header=SCENARIO_HEADER + ",expect_reachable")
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "expect_reachable" not in capsys.readouterr().out
+
+
 # --------------------------------------------------------------------------
 # re-sync preservation, upstream-state mapping, STATE.md digest
 # --------------------------------------------------------------------------
