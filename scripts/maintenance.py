@@ -753,6 +753,14 @@ def do_collision_map_local(args: argparse.Namespace) -> int:
         if diff.stdout:
             print(diff.stdout,
                   end="" if diff.stdout.endswith("\n") else "\n")
+        if diff.returncode != 0:
+            # A crashed comparator must not read as a clean diff — the
+            # "review the diff" wording below would otherwise present a
+            # failed comparison as a reviewed one.
+            tail = _stderr_tail(diff)
+            if tail:
+                print(tail, file=sys.stderr)
+            return 1
         if compare_only:
             print("compare-only: regenerated artifact at "
                   "build/validate-collision-map.zip (submodule "

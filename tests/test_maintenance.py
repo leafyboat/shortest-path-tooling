@@ -795,6 +795,27 @@ def test_compare_only_diffs(tmp_path, monkeypatch, capsys):
     assert "commit on your origin" not in out
 
 
+def test_local_compare_failure_returns_1(tmp_path, monkeypatch, capsys):
+    # A crashed comparator must not read as a clean diff — the
+    # "review the diff" wording must never print.
+    repo, _, calls = prepare_local(tmp_path, monkeypatch)
+    inner = mm.run
+
+    def fake_run(cmd, **kwargs):
+        proc = inner(cmd, **kwargs)
+        if local_kind(cmd) == "compare":
+            proc = cp(cmd, proc.stdout, "comparator blew up", rc=1)
+        return proc
+
+    monkeypatch.setattr(mm, "run", fake_run)
+    rc = mm.main(["collision-map", "--local", "--compare-only"])
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "comparator blew up" in captured.err
+    assert "review the diff" not in captured.out
+    assert "compare-only: regenerated" not in captured.out
+
+
 def test_compare_only_no_baseline(tmp_path, monkeypatch, capsys):
     repo, _, calls = prepare_local(tmp_path, monkeypatch,
                                    existing_zip=False)
