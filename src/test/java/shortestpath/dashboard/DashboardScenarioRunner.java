@@ -135,8 +135,11 @@ public final class DashboardScenarioRunner {
             scenario.getQuestStates(), config.isBypassVarbitChecks(),
             config.isBypassVarPlayerChecks());
 
-        // Assign bank container
-        boolean isBankPreset = "BANK".equalsIgnoreCase(scenario.getPreset());
+        // Assign bank container. BANK and BANK_PERM both set includeBankPath=true,
+        // so both need a non-null bank container — otherwise banked teleport items
+        // are silently unavailable while the pathfinder still enters bank-visit states.
+        boolean isBankPreset = "BANK".equalsIgnoreCase(scenario.getPreset())
+            || "BANK_PERM".equalsIgnoreCase(scenario.getPreset());
         if (isBankPreset) {
             pfConfig.bank = universalBankContainer;
         } else if (!scenario.getBank().isEmpty()) {
