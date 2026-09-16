@@ -94,7 +94,7 @@ SCENARIO_KNOWN_COLUMNS = frozenset({
     "x", "y", "plane", "preset", "teleports",
     "inventory", "equipment", "bank", "varbits", "varplayers",
     "skill_levels", "config_overrides",
-    "expected_length", "minimum_length",
+    "expected_length", "minimum_length", "expect_reachable",
 })
 # Mirrors the dashboard preset registry names (case-insensitive lookup).
 SCENARIO_PRESETS = frozenset({
