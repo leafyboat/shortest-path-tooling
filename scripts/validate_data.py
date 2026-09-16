@@ -892,7 +892,16 @@ def check_scenario_var_gating():
                     if ident.isdigit():
                         stubbed.add(int(ident))
                 dead = stubbed & corpus
-                if dead and config.get(flag, "").lower() != "false":
+                # Mirror the harness's Boolean.parseBoolean: the bypass
+                # stays on (checks disabled, stub dead for gating) only
+                # when the flag is absent or parses true — i.e. equals
+                # "true" case-insensitively. Every other value ("false",
+                # "0", "off", empty) disables the bypass and the stub is
+                # live for transport gating.
+                flag_value = config.get(flag)
+                checks_enabled = (flag_value is not None
+                                  and flag_value.lower() != "true")
+                if dead and not checks_enabled:
                     findings.append(
                         f"{rel}:{lineno}: {col} stub ids "
                         f"{sorted(dead)} are transport-requirement "
