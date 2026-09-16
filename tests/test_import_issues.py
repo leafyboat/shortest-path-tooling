@@ -560,6 +560,34 @@ def test_lint_accepts_expect_reachable(tmp_path, capsys):
     assert "expect_reachable" not in capsys.readouterr().out
 
 
+def test_lint_accepts_quests(tmp_path, capsys):
+    # `quests` carries `Quest Name=STATE` tokens (NOT_STARTED/IN_PROGRESS/
+    # FINISHED) — the staging lint must whitelist the column and accept
+    # the grammar so quest-gated scenarios can be staged.
+    make_shadow(tmp_path, 1, status="triaged", body_text=PRD_BODY)
+    make_scenarios_csv(
+        tmp_path,
+        [scenario_row() + ",false,The Grand Tree=NOT_STARTED"],
+        header=SCENARIO_HEADER + ",expect_reachable,quests")
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "quests" not in capsys.readouterr().out
+
+
+def test_lint_rejects_malformed_quests(tmp_path, capsys):
+    # A bare quest name carries no =STATE — it would silently mean
+    # FINISHED, which is already the implicit default — so the cell must
+    # fail the grammar rather than lint clean while changing nothing.
+    make_shadow(tmp_path, 1, status="triaged", body_text=PRD_BODY)
+    make_scenarios_csv(
+        tmp_path,
+        [scenario_row() + ",false,The Grand Tree"],
+        header=SCENARIO_HEADER + ",expect_reachable,quests")
+    rc = run_check(tmp_path)
+    assert rc != 0
+    assert "does not match its grammar" in capsys.readouterr().out
+
+
 # --------------------------------------------------------------------------
 # re-sync preservation, upstream-state mapping, STATE.md digest
 # --------------------------------------------------------------------------
