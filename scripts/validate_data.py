@@ -139,6 +139,10 @@ SCENARIO_SKILL_MAP_RE = re.compile(r"^[A-Z_]+=\d+(;[A-Z_]+=\d+)*$")
 # quests cells are `Quest Name=STATE` tokens — quest names carry spaces,
 # apostrophes, `&`, `-` and `.` but never `=`, `;` or `,` (the loader splits
 # on those), and STATE is a QuestState enum name.
+# Residual: the name token itself is not checked against the Quest.getName()
+# vocabulary (a ~200-entry enum in the runelite-api jar, not available to this
+# lint), so a typo'd quest name passes here and is only caught at load time —
+# parseQuestStateMap throws IllegalArgumentException and aborts the dataset run.
 SCENARIO_QUEST_MAP_RE = re.compile(
     r"^[^=;,]+=(NOT_STARTED|IN_PROGRESS|FINISHED)"
     r"(;[^=;,]+=(NOT_STARTED|IN_PROGRESS|FINISHED))*$")
