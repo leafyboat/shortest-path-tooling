@@ -1015,7 +1015,8 @@ VALIDATE_HARD_CHECKS: Tuple[Tuple[str, str], ...] = (
     ("scenario-csv", "leaf"), ("region-override", "leaf"),
     ("freshness", "internal"))
 VALIDATE_ADVISORY_CHECKS: Tuple[Tuple[str, str], ...] = (
-    ("destinations", "leaf"), ("drift", "drift"), ("season", "season"))
+    ("destinations", "leaf"), ("scenario-var-gating", "leaf"),
+    ("drift", "drift"), ("season", "season"))
 
 CACHES_JSON_URL = "https://archive.openrs2.org/caches.json"
 SEASON_MARKER = REPO / "src" / "test" / "resources" / "season_active"
@@ -1441,6 +1442,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     vd.add_argument(
         "--skip-destinations", action="store_true",
         help="Omit the advisory destination-walkability check")
+    vd.add_argument(
+        "--skip-scenario-var-gating", action="store_true",
+        help="Omit the advisory scenario var-stub gating check")
     vd.add_argument(
         "--drift", action="store_true",
         help="Run the cache-backed transport-anchor drift detector "

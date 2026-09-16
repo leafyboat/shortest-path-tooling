@@ -2093,8 +2093,11 @@ def test_validate_destinations_skip_flag(tmp_path, monkeypatch, capsys):
     assert "SKIP destinations" in out
     names = leaf_names(calls)
     assert "destinations" not in names
-    # Hard leaf checks are unaffected by the advisory skip flag.
-    assert sorted(names) == sorted(hard_leaf_names())
+    # Hard leaf checks are unaffected by the advisory skip flag; the
+    # skipped check's leaf call is the only one removed.
+    assert sorted(names) == sorted(
+        n for n in (hard_leaf_names() + advisory_leaf_names())
+        if n != "destinations")
 
 
 def test_validate_destinations_advisory_rc_ignored(tmp_path,

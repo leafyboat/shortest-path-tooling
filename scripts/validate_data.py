@@ -817,6 +817,92 @@ def check_scenario_csv():
     return findings
 
 
+def check_scenario_var_gating():
+    """Advisory: scenario var stubs that can never gate a transport.
+
+    A ``varbits``/``varplayers`` cell whose ids appear in the committed
+    transports TSV ``Varbits``/``VarPlayers`` requirement columns is a
+    transport-gating stub — but it only reaches the gate when the row
+    also sets ``bypassVarbitChecks=false`` /
+    ``bypassVarPlayerChecks=false`` (both default to bypassed in the
+    harness).  A gating-id stub without the matching flag is silently
+    dead for transport gating, so the finding names the ids and notes
+    the stub may still feed direct client reads or always-enforced
+    destination requirements — varbit 4498 is legitimately dual-use,
+    which is why this tier is advisory rather than hard.
+
+    The corpus is built per transports file from that file's own
+    header — column order differs per file — and ``destinations/`` is
+    excluded even if the seam lists it: bank-destination requirements
+    are never bypassed, so stubs feeding them are never dead.  Both
+    enumerations go through the git seams, so an uncommitted scratch
+    TSV/CSV can never enter a finding.
+    """
+    varbit_corpus = set()
+    varp_corpus = set()
+    for rel in sorted(r for r in _git_ls_files(f"{RESOURCES}/transports")
+                      if r.endswith(".tsv")
+                      and r.startswith(f"{RESOURCES}/transports/")):
+        headers, _, rows = _parse_tsv(PLUGIN / rel)
+        if headers is None:
+            continue
+        for col, corpus in (("Varbits", varbit_corpus),
+                            ("VarPlayers", varp_corpus)):
+            if col not in headers:
+                continue
+            ci = headers.index(col)
+            for _lineno, fields in rows:
+                if ci >= len(fields):
+                    continue
+                for token in fields[ci].split(";"):
+                    m = re.match(r"(\d+)[=><&@]", token.strip())
+                    if m:
+                        corpus.add(int(m.group(1)))
+
+    findings = []
+    rels = _git_ls_files_repo("src/test/resources/dashboard")
+    for rel in sorted(r for r in rels if r.endswith(".csv")):
+        lines = (REPO / rel).read_text().splitlines()
+        if not lines:
+            continue
+        headers = [h.strip() for h in lines[0].split(",")]
+        idx = {h: i for i, h in enumerate(headers)}
+        config_i = idx.get("config_overrides", -1)
+        for lineno, line in enumerate(lines[1:], 2):
+            if not line.strip() or line.startswith("#"):
+                continue
+            fields = line.split(",")
+            config = {}
+            if 0 <= config_i < len(fields):
+                for token in fields[config_i].split(";"):
+                    key, _, value = token.partition("=")
+                    key = key.strip()
+                    if key:
+                        config[key] = value.strip()
+            for col, corpus, flag in (
+                    ("varbits", varbit_corpus, "bypassVarbitChecks"),
+                    ("varplayers", varp_corpus, "bypassVarPlayerChecks")):
+                i = idx.get(col, -1)
+                if not 0 <= i < len(fields):
+                    continue
+                stubbed = set()
+                for token in fields[i].split(";"):
+                    ident, _, _value = token.partition("=")
+                    ident = ident.strip()
+                    if ident.isdigit():
+                        stubbed.add(int(ident))
+                dead = stubbed & corpus
+                if dead and config.get(flag, "").lower() != "false":
+                    findings.append(
+                        f"{rel}:{lineno}: {col} stub ids "
+                        f"{sorted(dead)} are transport-requirement "
+                        f"gated but {flag} is not false — stub is dead "
+                        f"for transport gating (it may still feed "
+                        f"direct client reads or destination "
+                        f"requirements)")
+    return findings
+
+
 # name -> check function returning a list of finding strings.
 CHECKS = {
     "tsv-structure": check_tsv_structure,
@@ -827,13 +913,15 @@ CHECKS = {
     "destinations": check_destinations,
     "scenario-csv": check_scenario_csv,
     "region-override": check_region_override,
+    "scenario-var-gating": check_scenario_var_gating,
 }
 
 # Checks whose findings are reported but never move the exit code.
-ADVISORY_CHECKS = frozenset({"destinations"})
+ADVISORY_CHECKS = frozenset({"destinations", "scenario-var-gating"})
 
 # Section titles for advisory check output.
-SECTION_TITLES = {"destinations": "Destination walkability"}
+SECTION_TITLES = {"destinations": "Destination walkability",
+                  "scenario-var-gating": "Scenario var gating bypass"}
 
 
 def main(argv=None):
