@@ -1,6 +1,7 @@
 package shortestpath.dashboard;
 
 import java.util.Map;
+import java.util.Objects;
 import net.runelite.api.Client;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
@@ -34,7 +35,7 @@ public class DashboardQuestConfig extends TestPathfinderConfig {
             Map<Quest, QuestState> questStates,
             boolean bypassVarbitChecks, boolean bypassVarPlayerChecks) {
         super(client, config, QuestState.FINISHED, bypassVarbitChecks, bypassVarPlayerChecks);
-        this.questStates = questStates;
+        this.questStates = Objects.requireNonNull(questStates, "questStates");
     }
 
     @Override
