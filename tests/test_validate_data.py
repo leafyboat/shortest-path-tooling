@@ -1011,19 +1011,21 @@ def test_var_gating_varplayer_side_and_registry(tmp_path, monkeypatch,
 
 
 def test_var_gating_committed_corpus_flags_dual_use():
-    # On the real committed data the check must flag the known dead /
+    # On the real committed data the check must flag the known
     # dual-use stubs: varbit 4498 (Lumbridge diary elite — a direct
     # read AND a diary-cape transport requirement) stubbed 4498=0 in
-    # unit-tests.csv, and the varplayers=139=50 rows in
-    # routing-issues.csv (varp 139 is LEGENDSQUEST progress — in the
-    # corpus via 139>49 gates).
+    # unit-tests.csv.  The varplayers=139=50 rows in routing-issues.csv
+    # used to be flagged here too (varp 139 is LEGENDSQUEST progress —
+    # in the corpus via 139>49 gates), but they now carry
+    # bypassVarPlayerChecks=false, so the corpus must report nothing
+    # for them.
     vd = load_vd()
     findings = vd.CHECKS["scenario-var-gating"]()
     assert findings
     assert any(
         f.startswith("src/test/resources/dashboard/unit-tests.csv")
         and "4498" in f for f in findings)
-    assert any(
+    assert not any(
         f.startswith("src/test/resources/dashboard/routing-issues.csv")
         and "139" in f for f in findings)
     # Every finding names at least one stubbed id and carries the
