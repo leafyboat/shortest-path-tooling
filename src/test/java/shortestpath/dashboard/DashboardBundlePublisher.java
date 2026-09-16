@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public final class DashboardBundlePublisher {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -17,6 +18,13 @@ public final class DashboardBundlePublisher {
     public static final String OUTPUT_ROOT_PROPERTY = "dashboard.outputRoot";
     public static final String BUNDLE_NAME_PROPERTY = "dashboard.bundleName";
     public static final Path DEFAULT_OUTPUT_ROOT = Paths.get("build", "reports", "pathfinder-dashboard");
+
+    // Bundle names are slugs — the Gradle task derives them from the
+    // dataset filename. Path.resolve would silently accept separators
+    // and absolute paths, so an operator-supplied -PdashboardBundle
+    // must be confined to the slug alphabet or '../' segments escape
+    // the reports tree.
+    private static final Pattern BUNDLE_NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
 
     private final PathfinderDashboardAssetWriter assetWriter = new PathfinderDashboardAssetWriter();
 
@@ -38,7 +46,8 @@ public final class DashboardBundlePublisher {
         if (run.tileHeatmap == null || run.tileHeatmap.tiles == null || run.tileHeatmap.tiles.isEmpty()) {
             return;
         }
-        Path heatmapDir = getOutputRoot().resolve("bundles").resolve(bundleName).resolve("heatmaps");
+        Path heatmapDir = getOutputRoot().resolve("bundles")
+            .resolve(requireBundleName(bundleName)).resolve("heatmaps");
         Files.createDirectories(heatmapDir);
         String heatmapFileName = runIndex + ".json";
         writeCompactHeatmap(heatmapDir.resolve(heatmapFileName), run.tileHeatmap.tiles);
@@ -61,7 +70,7 @@ public final class DashboardBundlePublisher {
         Path outputRoot = getOutputRoot();
         assetWriter.writeAssets(outputRoot);
 
-        Path bundleDir = outputRoot.resolve("bundles").resolve(bundleName);
+        Path bundleDir = outputRoot.resolve("bundles").resolve(requireBundleName(bundleName));
         Path heatmapDir = bundleDir.resolve("heatmaps");
         Files.createDirectories(bundleDir);
 
@@ -85,6 +94,15 @@ public final class DashboardBundlePublisher {
 
         updateBundleIndex(outputRoot, bundleName, report);
         return reportPath;
+    }
+
+    private static String requireBundleName(String bundleName) {
+        if (bundleName == null || !BUNDLE_NAME_PATTERN.matcher(bundleName).matches()) {
+            throw new IllegalArgumentException(
+                "dashboard bundle name must match " + BUNDLE_NAME_PATTERN.pattern()
+                    + " (no path separators or absolute paths), got: " + bundleName);
+        }
+        return bundleName;
     }
 
     private void updateBundleIndex(Path outputRoot, String bundleName,
