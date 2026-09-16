@@ -91,7 +91,7 @@ The loader (`DashboardScenarioLoader`) auto-detects format from the header row.
 Header row must include `start_x` and `preset` (or the legacy alias `teleports`).
 
 ```
-name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,varplayers,skill_levels,config_overrides,expected_length,minimum_length
+name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,varplayers,skill_levels,config_overrides,expected_length,minimum_length,expect_reachable,quests
 ```
 
 | Column | Required | Description |
@@ -104,14 +104,33 @@ name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,b
 | `inventory` | no | `itemId:qty;itemId:qty` — items in inventory (qty defaults to 1) |
 | `equipment` | no | `itemId:qty;itemId:qty` — equipped items |
 | `bank` | no | `itemId:qty;itemId:qty` — items in bank |
-| `varbits` | no | `id=value;id=value` — varbit overrides |
-| `varplayers` | no | `id=value;id=value` — varplayer overrides |
+| `varbits` | no | `id=value;id=value` — stubs `Client.getVarbitValue(id)`; varbits are bit-packed slices of varplayer state |
+| `varplayers` | no | `id=value;id=value` — stubs `Client.getVarpValue(id)`, the raw varp. E.g. quest points are varp `101` (`VarPlayerID.QP`); varp `139` is `LEGENDSQUEST` progress — a common mix-up |
 | `skill_levels` | no | `SKILL_NAME=level;…` (e.g. `AGILITY=70;MAGIC=55`) |
+| `quests` | no | `Quest Name=STATE;…` — per-quest state overrides (see [Quests](#quests)) |
 | `config_overrides` | no | `settingName=value;…` — override specific `ShortestPathConfig` settings |
 | `expected_length` | no | Expected path length in tiles; fails the run if actual differs |
 | `minimum_length` | no | Minimum acceptable path length; fails if actual is shorter |
+| `expect_reachable` | no | `false` asserts the route is unreachable (an intentional-failure scenario); absent or `true` means expected reachable |
 
 An empty column is equivalent to omitting it. Rows beginning with `#` are treated as comments.
+
+#### Variable stubs and the bypass flags
+
+`varbits` and `varplayers` stub two *different* client reads — `getVarbitValue` vs `getVarpValue` — and they interact with transport gating in a way that is easy to miss:
+
+- Transport TSVs under `transports/` carry separate `Varbits` and `VarPlayers` requirement columns, evaluated by `varbitChecks`/`varPlayerChecks` in `PathfinderConfig`.
+- The harness **bypasses both checks by default** (`bypassVarbitChecks=true`, `bypassVarPlayerChecks=true`), so a stubbed id only gates a transport when the row also sets the matching `config_overrides` key — `bypassVarbitChecks=false` or `bypassVarPlayerChecks=false`.
+- Example: the digsite rows in `routing-issues.csv` pair `varbits=3637=153` / `varbits=3637=0` with `bypassVarbitChecks=false` so the kudos varbit actually opens/closes the gate transport.
+- A stub whose id appears in a `Varbits`/`VarPlayers` requirement column but lacks the matching `bypass*Checks=false` is *dead for transport gating* — it may still feed direct client reads (e.g. the quest-points read of varp `101`) or destination requirements. The `scenario-var-gating` advisory check in `scripts/validate_data.py` reports exactly these rows.
+- Asymmetry: `destinations/game_features/bank.tsv` requirement columns (`Skills`/`Quests`/`Varbits`/`VarPlayers`) read the client directly and are **never bypassed** — scenario stubs always feed them, no flag needed.
+- Flipping a bypass flag off evaluates *every* requirement of that kind in the corpus against the stubs — unstubbed ids read Mockito's default `0`, so unrelated transports can gate off too. Re-capture `expected_length` with the `captureExpectedLengths` task after enabling a bypass on a row.
+
+#### Quests
+
+`quests` cells are `Quest Name=STATE;…` tokens. Names must match `Quest.getName()` exactly (spaces, apostrophes and `&` are fine; `=`/`;`/`,` never appear in quest names) and `STATE` is one of `NOT_STARTED`, `IN_PROGRESS`, `FINISHED`. The column defaults to all-quests-`FINISHED`, matching the historical harness behavior — overrides only ever narrow state, and only `FINISHED` satisfies a quest requirement. Unknown names, unknown states, and `=`-less tokens abort the dataset run with `IllegalArgumentException`.
+
+Quest states gate more than individual transports: `The Grand Tree=NOT_STARTED` disables the whole gnome-glider transport type, `Bone Voyage` gates all magic mushtrees, and `Tree Gnome Village` gates all spirit trees — plus quest requirements on `bank.tsv` destinations.
 
 #### Presets
 
