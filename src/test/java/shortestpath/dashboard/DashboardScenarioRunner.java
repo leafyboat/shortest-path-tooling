@@ -14,7 +14,6 @@ import net.runelite.api.Skill;
 import net.runelite.api.WorldType;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarbitID;
-import net.runelite.api.QuestState;
 import shortestpath.TeleportationItem;
 import shortestpath.pathfinder.TestPathfinderConfig;
 
@@ -32,7 +31,8 @@ import shortestpath.pathfinder.TestPathfinderConfig;
  *   <li>Stub inventory and equipment containers.</li>
  *   <li>Apply per-scenario skill level overrides.</li>
  *   <li>Apply {@code config_overrides}.</li>
- *   <li>Create {@link TestPathfinderConfig} and assign bank container.</li>
+ *   <li>Create {@link DashboardQuestConfig} (carrying the scenario's per-quest
+ *       states) and assign bank container.</li>
  *   <li>Call {@code refresh()} on the config.</li>
  * </ol>
  */
@@ -125,9 +125,13 @@ public final class DashboardScenarioRunner {
         // Step 8: config_overrides dispatch
         applyConfigOverrides(scenario.getConfigOverrides(), config);
 
-        // Step 9: build TestPathfinderConfig
-        TestPathfinderConfig pfConfig = new TestPathfinderConfig(client, config, QuestState.FINISHED,
-            config.isBypassVarbitChecks(), true);
+        // Step 9: build the pathfinder config. DashboardQuestConfig carries the
+        // scenario's per-quest state map; it must exist before refresh() so the
+        // questStates snapshot in refreshTransports sees the overrides.
+        // varPlayer parity: the literal true keeps varPlayerChecks bypassed for
+        // now — wiring config.isBypassVarPlayerChecks() is follow-up work.
+        TestPathfinderConfig pfConfig = new DashboardQuestConfig(client, config,
+            scenario.getQuestStates(), config.isBypassVarbitChecks(), true);
 
         // Assign bank container
         boolean isBankPreset = "BANK".equalsIgnoreCase(scenario.getPreset());

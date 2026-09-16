@@ -10,6 +10,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import shortestpath.Util;
 import shortestpath.WorldPointUtil;
 
@@ -22,7 +24,7 @@ import shortestpath.WorldPointUtil;
  *       {@code teleports} column alias). Supports the full set of optional columns:
  *       {@code inventory}, {@code equipment}, {@code bank}, {@code varbits}, {@code varplayers},
  *       {@code skill_levels}, {@code config_overrides}, {@code expected_length},
- *       {@code minimum_length}, {@code expect_reachable}.</li>
+ *       {@code minimum_length}, {@code expect_reachable}, {@code quests}.</li>
  *   <li><b>Clue-step CSV</b> — has {@code clue_type}, {@code x}, {@code y}, {@code plane}.</li>
  *   <li><b>TSV</b> — tab-separated with {@code Description}, {@code X}, {@code Y}, {@code Plane}.</li>
  * </ol>
@@ -31,6 +33,9 @@ import shortestpath.WorldPointUtil;
  * <pre>
  * inventory / equipment / bank : itemId:qty;itemId:qty   (qty defaults to 1)
  * varbits / varplayers         : id=value;id=value
+ * quests                       : Quest Name=STATE;…      (exact Quest.getName()
+ *                                match; STATE is NOT_STARTED|IN_PROGRESS|FINISHED;
+ *                                absent/empty → every quest FINISHED)
  * skill_levels                 : SKILL_NAME=level;…      (e.g. AGILITY=70)
  * config_overrides             : settingName=value;…
  * expected_length              : integer
@@ -104,6 +109,7 @@ public final class DashboardScenarioLoader {
         int bankIdx             = indexOf(headers, "bank");
         int varbitsIdx          = indexOf(headers, "varbits");
         int varplayersIdx       = indexOf(headers, "varplayers");
+        int questsIdx           = indexOf(headers, "quests");
         int skillLevelsIdx      = indexOf(headers, "skill_levels");
         int configOverridesIdx  = indexOf(headers, "config_overrides");
         int expectedLengthIdx   = indexOf(headers, "expected_length");
@@ -144,7 +150,8 @@ public final class DashboardScenarioLoader {
                 .varbits(parseIntMap("varbits", get(f, varbitsIdx, "")))
                 .varplayers(parseIntMap("varplayers", get(f, varplayersIdx, "")))
                 .skillLevels(parseStringIntMap("skill_levels", get(f, skillLevelsIdx, "")))
-                .configOverrides(parseStringStringMap(get(f, configOverridesIdx, "")));
+                .configOverrides(parseStringStringMap(get(f, configOverridesIdx, "")))
+                .questStates(parseQuestStateMap("quests", get(f, questsIdx, "")));
 
             String expLen = get(f, expectedLengthIdx, "");
             if (!expLen.isEmpty()) {
@@ -278,6 +285,53 @@ public final class DashboardScenarioLoader {
                     column + " entry '" + token + "' must be 'key=value'");
             }
             map.put(Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()));
+        }
+        return map;
+    }
+
+    /**
+     * Parses {@code Quest Name=STATE;Quest Name=STATE} into a quest-state map.
+     * Names resolve by exact, case-sensitive {@link Quest#getName()} equality —
+     * the same convention as the {@code Quests} column in the transport TSVs —
+     * but unlike {@code QuestParser} an unmatched name is an error, not a
+     * silent drop: a typo'd quest name must never look like it tested something.
+     * Bare names (no {@code =STATE}) and unknown states are likewise rejected.
+     */
+    private static Map<Quest, QuestState> parseQuestStateMap(String column, String raw) {
+        Map<Quest, QuestState> map = new LinkedHashMap<>();
+        if (raw == null || raw.isBlank()) {
+            return map;
+        }
+        for (String token : raw.split(";")) {
+            token = token.trim();
+            if (token.isEmpty()) {
+                continue;
+            }
+            String[] parts = token.split("=", 2);
+            if (parts.length != 2) {
+                throw new IllegalArgumentException(
+                    column + " entry '" + token + "' must be 'Quest Name=STATE'");
+            }
+            String name = parts[0].trim();
+            Quest quest = null;
+            for (Quest q : Quest.values()) {
+                if (q.getName().equals(name)) {
+                    quest = q;
+                    break;
+                }
+            }
+            if (quest == null) {
+                throw new IllegalArgumentException(
+                    column + " entry '" + name + "' matches no Quest enum name");
+            }
+            String stateName = parts[1].trim();
+            try {
+                map.put(quest, QuestState.valueOf(stateName));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                    column + " entry '" + token + "' has unknown state '" + stateName
+                    + "' — expected NOT_STARTED, IN_PROGRESS or FINISHED");
+            }
         }
         return map;
     }

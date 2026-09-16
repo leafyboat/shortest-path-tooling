@@ -1,4 +1,4 @@
-name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,skill_levels,config_overrides,expected_length,minimum_length
+name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,skill_levels,config_overrides,expected_length,minimum_length,expect_reachable,quests
 Banked mith grapple should not leak to non-bank grapple branch,agility-grapple,3025,3365,0,3026,3393,0,UNIT_TEST,9183:1,,9419:1,,,useGrappleShortcuts=true;useAgilityShortcuts=true;useTeleportationItems=INVENTORY_AND_BANK;includeBankPath=true,66,
 Catherby charter tile reuse -> bank -> Musa Point with banked coins,charter,2792,3414,0,2954,3158,0,UNIT_TEST,,,995:10000,,,useCharterShips=true;useTeleportationItems=INVENTORY_AND_BANK;includeBankPath=true,78,
 Catherby bank branch should not leak coins to charter branch,charter,2807,3435,0,2954,3158,0,UNIT_TEST,,,995:10000,,,useCharterShips=true;useTeleportationItems=INVENTORY_AND_BANK;includeBankPath=true,46,
@@ -26,3 +26,5 @@ Wizards' Guild -> Edgeville with no items and wilderness allowed,wilderness,2485
 Wizards' Guild -> Edgeville with burning amulet and wilderness allowed,wilderness,2485,3080,0,3087,3492,0,UNIT_TEST,21166:1,,,,MAGIC=99,avoidWilderness=false;useTeleportationItems=INVENTORY,162,
 Keldagrim east -> west via other plane,keldagrim,2894,10199,0,2864,10199,0,UNIT_TEST,,,,,,useTeleportationItems=NONE,64,
 Keldagrim west -> east via other plane,keldagrim,2864,10199,0,2894,10199,0,UNIT_TEST,,,,,,useTeleportationItems=NONE,64,
+Grand Tree quest gates gnome glider (finished),quest-gating,3284,3213,0,2971,2968,0,UNIT_TEST,,,,,,useGnomeGliders=true,2,,,The Grand Tree=FINISHED
+Grand Tree quest gates gnome glider (not started),quest-gating,3284,3213,0,2971,2968,0,UNIT_TEST,,,,,,useGnomeGliders=true,,213,,The Grand Tree=NOT_STARTED

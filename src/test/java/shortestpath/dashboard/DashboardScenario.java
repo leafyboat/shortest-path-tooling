@@ -4,6 +4,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 
 /**
  * Immutable data bag representing one row from a dashboard CSV.
@@ -36,6 +38,8 @@ public final class DashboardScenario {
     private final Map<Integer, Integer> varbits;
     /** VarPlayer overrides: varPlayerId → value. */
     private final Map<Integer, Integer> varplayers;
+    /** Quest state overrides: quest → state (absent → FINISHED). */
+    private final Map<Quest, QuestState> questStates;
     /** Skill level overrides: Skill name (upper-case) → level. */
     private final Map<String, Integer> skillLevels;
     /** Per-scenario config overrides: setter name → string value. */
@@ -62,6 +66,7 @@ public final class DashboardScenario {
         this.bank = Collections.unmodifiableList(b.bank);
         this.varbits = Collections.unmodifiableMap(b.varbits);
         this.varplayers = Collections.unmodifiableMap(b.varplayers);
+        this.questStates = Collections.unmodifiableMap(b.questStates);
         this.skillLevels = Collections.unmodifiableMap(b.skillLevels);
         this.configOverrides = Collections.unmodifiableMap(b.configOverrides);
         this.expectedLength = b.expectedLength;
@@ -83,6 +88,7 @@ public final class DashboardScenario {
     public List<ItemQuantity> getBank() { return bank; }
     public Map<Integer, Integer> getVarbits() { return varbits; }
     public Map<Integer, Integer> getVarplayers() { return varplayers; }
+    public Map<Quest, QuestState> getQuestStates() { return questStates; }
     public Map<String, Integer> getSkillLevels() { return skillLevels; }
     public Map<String, String> getConfigOverrides() { return configOverrides; }
     public OptionalInt getExpectedLength() { return expectedLength; }
@@ -108,6 +114,7 @@ public final class DashboardScenario {
         private List<ItemQuantity> bank = new java.util.ArrayList<>();
         private Map<Integer, Integer> varbits = new java.util.LinkedHashMap<>();
         private Map<Integer, Integer> varplayers = new java.util.LinkedHashMap<>();
+        private Map<Quest, QuestState> questStates = new java.util.LinkedHashMap<>();
         private Map<String, Integer> skillLevels = new java.util.LinkedHashMap<>();
         private Map<String, String> configOverrides = new java.util.LinkedHashMap<>();
         private OptionalInt expectedLength = OptionalInt.empty();
@@ -126,6 +133,7 @@ public final class DashboardScenario {
         public Builder bank(List<ItemQuantity> bank) { this.bank = bank; return this; }
         public Builder varbits(Map<Integer, Integer> varbits) { this.varbits = varbits; return this; }
         public Builder varplayers(Map<Integer, Integer> varplayers) { this.varplayers = varplayers; return this; }
+        public Builder questStates(Map<Quest, QuestState> questStates) { this.questStates = questStates; return this; }
         public Builder skillLevels(Map<String, Integer> skillLevels) { this.skillLevels = skillLevels; return this; }
         public Builder configOverrides(Map<String, String> configOverrides) { this.configOverrides = configOverrides; return this; }
         public Builder expectedLength(int len) { this.expectedLength = OptionalInt.of(len); return this; }

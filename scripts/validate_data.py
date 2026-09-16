@@ -135,6 +135,12 @@ SCENARIO_CONFIG_KEYS = frozenset({
 SCENARIO_ITEMS_RE = re.compile(r"^\d+(:\d+)?(;\d+(:\d+)?)*$")
 SCENARIO_INT_MAP_RE = re.compile(r"^\d+=\d+(;\d+=\d+)*$")
 SCENARIO_SKILL_MAP_RE = re.compile(r"^[A-Z_]+=\d+(;[A-Z_]+=\d+)*$")
+# quests cells are `Quest Name=STATE` tokens — quest names carry spaces,
+# apostrophes, `&`, `-` and `.` but never `=`, `;` or `,` (the loader splits
+# on those), and STATE is a QuestState enum name.
+SCENARIO_QUEST_MAP_RE = re.compile(
+    r"^[^=;,]+=(NOT_STARTED|IN_PROGRESS|FINISHED)"
+    r"(;[^=;,]+=(NOT_STARTED|IN_PROGRESS|FINISHED))*$")
 SCENARIO_COLUMN_GRAMMARS = {
     "inventory": SCENARIO_ITEMS_RE,
     "equipment": SCENARIO_ITEMS_RE,
@@ -142,6 +148,7 @@ SCENARIO_COLUMN_GRAMMARS = {
     "varbits": SCENARIO_INT_MAP_RE,
     "varplayers": SCENARIO_INT_MAP_RE,
     "skill_levels": SCENARIO_SKILL_MAP_RE,
+    "quests": SCENARIO_QUEST_MAP_RE,
 }
 
 # Column names the dashboard scenario loader understands, across both
@@ -157,6 +164,7 @@ SCENARIO_KNOWN_COLUMNS = frozenset({
     "equipment", "bank", "varbits", "varplayers", "skill_levels",
     "config_overrides", "expected_length", "minimum_length",
     "expect_reachable", "clue_type", "source_file", "source_line",
+    "quests",
 })
 
 
