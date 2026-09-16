@@ -87,7 +87,10 @@ public class BankTileDumperTest {
             "build/bank-tiles/bank_tile_placements.tsv"));
         Pattern[] patterns = resolvePatterns();
 
-        Files.createDirectories(output.getParent());
+        Path outputParent = output.toAbsolutePath().getParent();
+        if (outputParent != null) {
+            Files.createDirectories(outputParent);
+        }
 
         XteaKeyManager xteaKeyManager = CacheUtils.loadXteaKeys(xteaPath);
 
