@@ -30,6 +30,13 @@ TRANSPORTS = os.path.join(
 def load_bboxes(path):
     """Returns list of (region, xMin, xMax, yMin, yMax) in file order.
 
+    Mirrors the generator grammar in
+    ``LeagueRegionDumperTest.loadSourceBoxes``: rows split on any
+    whitespace (not just tabs), need exactly five fields, and the
+    region name is upper-cased; wrong-arity and inverted boxes are
+    skipped with a stderr diagnostic rather than silently — a dropped
+    box makes the affected chunks classify NEUTRAL, which turns into
+    false "stale" findings in ``check_regions``/``check_bbox``.
     A missing/unreadable file or a malformed coordinate exits with a
     diagnostic — a raw traceback would propagate through
     ``maintenance.py seasonal`` as an opaque failure.
@@ -44,14 +51,22 @@ def load_bboxes(path):
             s = line.strip()
             if not s or s.startswith("#"):
                 continue
-            parts = s.split("\t")
+            parts = s.split()
             if len(parts) != 5:
+                print(f"{path}:{lineno}: skipping bbox row with "
+                      f"{len(parts)} fields (expected 5): {s!r}",
+                      file=sys.stderr)
                 continue
             r, x1, x2, y1, y2 = parts
             try:
-                out.append((r, int(x1), int(x2), int(y1), int(y2)))
+                x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
             except ValueError:
                 sys.exit(f"{path}:{lineno}: malformed bbox line: {s}")
+            if x1 > x2 or y1 > y2:
+                print(f"{path}:{lineno}: skipping inverted bbox: {s!r}",
+                      file=sys.stderr)
+                continue
+            out.append((r.upper(), x1, x2, y1, y2))
     return out
 
 

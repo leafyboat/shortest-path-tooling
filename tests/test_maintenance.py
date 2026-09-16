@@ -1159,6 +1159,25 @@ def test_vsr_load_bboxes_malformed_line_exits(tmp_path):
     assert "malformed bbox line" in str(exc.value)
 
 
+def test_vsr_load_bboxes_matches_generator_grammar(tmp_path, capsys):
+    # The Java dumper splits on any whitespace, upper-cases the region
+    # name, and logs the rows it skips — the Python reader must see the
+    # same box set or chunks classify NEUTRAL and downstream checks
+    # report false "stale" findings.
+    vsr = load_vsr()
+    tsv = tmp_path / "bboxes.tsv"
+    tsv.write_text(
+        "VARLAMORE 1 2 3 4\n"        # space-separated: accepted
+        "karamja\t5\t6\t7\t8\n"      # lower-case name: upper-cased
+        "DESERT\t9\n"                # wrong arity: skipped + diagnostic
+        "WILDERNESS\t5\t1\t0\t1\n")  # inverted box: skipped + diagnostic
+    assert vsr.load_bboxes(tsv) == [("VARLAMORE", 1, 2, 3, 4),
+                                    ("KARAMJA", 5, 6, 7, 8)]
+    err = capsys.readouterr().err
+    assert "expected 5" in err
+    assert "inverted" in err
+
+
 def test_seasonal_invokes_script(tmp_path, monkeypatch):
     repo, _ = redirect_repo(tmp_path, monkeypatch)
     calls = []
