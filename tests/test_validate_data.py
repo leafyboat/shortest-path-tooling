@@ -899,3 +899,139 @@ def test_walkability_committed_transports_clean():
 def test_bbox_committed_transports_clean():
     vd = load_vd()
     assert vd.CHECKS["bbox"]() == []
+
+
+# ---------- scenario-var-gating advisory check ----------
+
+
+def _var_gating_fixture(tmp_path, monkeypatch, *, transport_rows,
+                        scenario_rows, header=ROUTES_HEADER):
+    """Wire both git seams: a fake transports corpus under a scratch
+    plugin root and scenario CSVs under a scratch repo root.  Returns
+    (vd, scenario_rel)."""
+    vd = load_vd()
+    plugin = tmp_path / "sp"
+    repo = tmp_path / "repo"
+    trel = _write_tsv(
+        plugin, "src/main/resources/transports/transports.tsv",
+        # Deliberately non-transports.tsv column order — the check must
+        # index Varbits/VarPlayers from each file's own header.
+        ["Origin", "Destination", "Varbits", "VarPlayers"],
+        transport_rows)
+    srel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        header, scenario_rows)
+    _patch_leaf(vd, monkeypatch, plugin, ls_files=[trel])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[srel])
+    return vd, srel
+
+
+def test_var_gating_flags_dead_varbit_stub(tmp_path, monkeypatch):
+    # A varbits stub whose id appears in a transports Varbits
+    # requirement cell is a transport-gating stub — dead without
+    # bypassVarbitChecks=false.
+    vd, srel = _var_gating_fixture(
+        tmp_path, monkeypatch,
+        transport_rows=["1 2 0\t3 4 0\t4498=1\t"],
+        scenario_rows=[
+            "R1,cat,3222,3218,0,3222,3218,0,ALL,,,,4498=0,,,10,10"])
+    findings = vd.CHECKS["scenario-var-gating"]()
+    assert len(findings) == 1
+    assert findings[0].startswith(f"{srel}:2")
+    assert "varbits" in findings[0] and "4498" in findings[0]
+    assert "bypassVarbitChecks" in findings[0]
+    # The dual-use caveat tells the author the stub may still feed
+    # direct reads / destination requirements.
+    assert "direct client reads" in findings[0]
+
+
+def test_var_gating_silent_for_direct_read_stub(tmp_path, monkeypatch):
+    # A stubbed id absent from the transports corpus is a direct-read
+    # stub — correctly silent.  A destinations/ file carrying the same
+    # id must not enter the corpus either: bank-destination requirements
+    # are always enforced, so stubs feeding them are never dead.
+    vd, srel = _var_gating_fixture(
+        tmp_path, monkeypatch,
+        transport_rows=["1 2 0\t3 4 0\t4498=1\t"],
+        scenario_rows=[
+            "R1,cat,3222,3218,0,3222,3218,0,ALL,,,,2326=100,,,10,10"])
+    plugin = tmp_path / "sp"
+    drel = _write_tsv(
+        plugin, "src/main/resources/destinations/game_features/bank.tsv",
+        ["Destination", "Info", "Varbits"],
+        ["1000 1000 0\tBank\t2326=100"])
+    # Even if the seam hands back a destinations path, it cannot enter
+    # the corpus.
+    monkeypatch.setattr(
+        vd, "_git_ls_files",
+        lambda *ps: ["src/main/resources/transports/transports.tsv",
+                     drel])
+    assert vd.CHECKS["scenario-var-gating"]() == []
+
+
+def test_var_gating_silent_when_bypass_disabled(tmp_path, monkeypatch):
+    # bypassVarbitChecks=false makes the stub live, not dead.
+    vd, srel = _var_gating_fixture(
+        tmp_path, monkeypatch,
+        transport_rows=["1 2 0\t3 4 0\t4498=1\t"],
+        scenario_rows=[
+            "R1,cat,3222,3218,0,3222,3218,0,ALL,,,,4498=0,,"
+            "bypassVarbitChecks=false,10,10"])
+    assert vd.CHECKS["scenario-var-gating"]() == []
+
+
+def test_var_gating_varplayer_side_and_registry(tmp_path, monkeypatch,
+                                                capsys):
+    # Same rule on the varplayers side: 139 sits in a VarPlayers
+    # requirement cell (139>49), so an unpaired 139=50 stub is dead.
+    header = ROUTES_HEADER + ",varplayers"
+    vd, srel = _var_gating_fixture(
+        tmp_path, monkeypatch,
+        transport_rows=["1 2 0\t3 4 0\t\t139>49"],
+        header=header,
+        scenario_rows=[
+            "R1,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,139=50",
+            # The paired row is live — bypassVarPlayerChecks=false.
+            "R2,cat,3222,3218,0,3222,3218,0,ALL,,,,,"
+            "bypassVarPlayerChecks=false,10,10,139=50"])
+    findings = vd.CHECKS["scenario-var-gating"]()
+    assert len(findings) == 1
+    assert findings[0].startswith(f"{srel}:2")
+    assert "varplayers" in findings[0] and "139" in findings[0]
+    assert "bypassVarPlayerChecks" in findings[0]
+    # Registered as an advisory check: it reports under its own section
+    # and never moves the exit code.
+    assert "scenario-var-gating" in vd.CHECKS
+    assert "scenario-var-gating" in vd.ADVISORY_CHECKS
+    assert (vd.SECTION_TITLES["scenario-var-gating"]
+            == "Scenario var gating bypass")
+    rc = vd.main(["scenario-var-gating"])
+    assert rc == 0
+    assert "Scenario var gating bypass" in capsys.readouterr().out
+
+
+def test_var_gating_committed_corpus_flags_dual_use():
+    # On the real committed data the check must flag the known dead /
+    # dual-use stubs: varbit 4498 (Lumbridge diary elite — a direct
+    # read AND a diary-cape transport requirement) stubbed 4498=0 in
+    # unit-tests.csv, and the varplayers=139=50 rows in
+    # routing-issues.csv (varp 139 is LEGENDSQUEST progress — in the
+    # corpus via 139>49 gates).
+    vd = load_vd()
+    findings = vd.CHECKS["scenario-var-gating"]()
+    assert findings
+    assert any(
+        f.startswith("src/test/resources/dashboard/unit-tests.csv")
+        and "4498" in f for f in findings)
+    assert any(
+        f.startswith("src/test/resources/dashboard/routing-issues.csv")
+        and "139" in f for f in findings)
+    # Every finding names at least one stubbed id and carries the
+    # dual-use caveat.
+    assert all("stub ids" in f and "direct client reads" in f
+               for f in findings)
+    # Correctly-paired rows stay silent: the 7796/3637 stubs ride with
+    # bypassVarbitChecks=false, and the league varbits (10663+) are not
+    # in the transport corpus at all.
+    assert not any("7796" in f or "3637" in f or "1066" in f
+                   for f in findings)

@@ -2170,6 +2170,29 @@ def test_validate_region_override_skip_flag(tmp_path, monkeypatch,
     assert f"validate: {n}/{n} checks passed" in out
 
 
+def test_validate_scenario_var_gating_advisory(tmp_path, monkeypatch,
+                                               capsys):
+    # The dead var-stub lint runs under `validate` as an advisory leaf:
+    # its findings report under the section but can never move the
+    # exit code, and its skip flag removes it alone.
+    _, _, calls = prepare_validate(
+        tmp_path, monkeypatch,
+        check_stdout={"scenario-var-gating":
+                      "=== Scenario var gating bypass (1 findings) ===\n"
+                      "  x.csv:2: varbits stub ids [4498] are "
+                      "transport-requirement gated\n"})
+    assert "scenario-var-gating" in advisory_names()
+    rc = mm.main(["validate"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "ADVISORY scenario-var-gating" in out
+    assert "scenario-var-gating" in leaf_names(calls)
+    rc = mm.main(["validate", "--skip-scenario-var-gating"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "SKIP scenario-var-gating" in out
+
+
 def _write_tsv(root, rel, header_cells, rows):
     """Write a fixture TSV: ``#``-prefixed header + verbatim rows."""
     path = root / rel
