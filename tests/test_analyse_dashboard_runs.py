@@ -72,6 +72,51 @@ def test_index_titles_label_output(tmp_path, monkeypatch, capsys):
     assert "### `a`" not in out
 
 
+def test_per_route_deltas_flags_assertion_failures(tmp_path):
+    adr = load_adr()
+    base = [
+        {"name": "ok", "reached": True, "assertionPassed": True,
+         "stats": {"elapsedNanos": 1_000_000}},
+        # Reached on both sides but failed its length assertion —
+        # the reached-bit comparison alone would report nothing.
+        {"name": "len-fail", "reached": True, "assertionPassed": False,
+         "assertionMessage": "Expected minimum path length 100 but got 12",
+         "stats": {"elapsedNanos": 1_000_000}},
+        # Expected-unreachable row reached by *both* runs — an
+        # assertion failure on each side, not a reachability flip.
+        {"name": "expect-unreach", "reached": True,
+         "assertionPassed": False, "expectedReachable": False,
+         "assertionMessage": "Expected unreachable",
+         "stats": {"elapsedNanos": 1_000_000}},
+        # Expected-unreachable row correctly unreached — a pass, not a
+        # warning.
+        {"name": "correctly-unreached", "reached": False,
+         "assertionPassed": True, "expectedReachable": False,
+         "assertionMessage": "Expected unreachable",
+         "stats": {"elapsedNanos": 1_000_000}},
+    ]
+    cand = [
+        {"name": "ok", "reached": True, "assertionPassed": True,
+         "stats": {"elapsedNanos": 1_000_000}},
+        {"name": "len-fail", "reached": True, "assertionPassed": True,
+         "stats": {"elapsedNanos": 1_000_000}},
+        {"name": "expect-unreach", "reached": True,
+         "assertionPassed": False, "expectedReachable": False,
+         "assertionMessage": "Expected unreachable",
+         "stats": {"elapsedNanos": 1_000_000}},
+        {"name": "correctly-unreached", "reached": False,
+         "assertionPassed": True, "expectedReachable": False,
+         "assertionMessage": "Expected unreachable",
+         "stats": {"elapsedNanos": 1_000_000}},
+    ]
+    rows, warnings = adr.per_route_deltas(base, cand)
+    assert any("assertion failure: len-fail" in w for w in warnings)
+    assert any("assertion failure: expect-unreach" in w
+               for w in warnings)
+    assert not any("correctly-unreached" in w for w in warnings)
+    assert not any("ok" in w for w in warnings)
+
+
 def test_load_runs_missing_and_malformed(tmp_path):
     adr = load_adr()
     assert adr.load_runs(tmp_path / "nope" / "report.json") == []

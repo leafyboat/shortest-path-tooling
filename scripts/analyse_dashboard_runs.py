@@ -140,6 +140,20 @@ def per_route_deltas(baseline_runs: List[Dict], candidate_runs: List[Dict]) -> T
         c_reached = bool(cr.get("reached"))
         if b_reached != c_reached:
             warnings.append(f"reachability mismatch: {name} baseline={b_reached} candidate={c_reached}")
+        # assertionPassed covers expect_reachable, expected_length and
+        # minimum_length: a reached route can still be a failing
+        # regression, and an expected-unreachable row reached by both
+        # sides fails on both.  None means no assertion was configured.
+        b_assert = br.get("assertionPassed")
+        c_assert = cr.get("assertionPassed")
+        if b_assert is False or c_assert is False:
+            detail = next((m for m in (cr.get("assertionMessage"),
+                                       br.get("assertionMessage")) if m),
+                          "")
+            warnings.append(
+                f"assertion failure: {name} baseline={b_assert} "
+                f"candidate={c_assert}"
+                + (f" ({detail})" if detail else ""))
         bp = br.get("pathLength") or len(br.get("path") or [])
         cp = cr.get("pathLength") or len(cr.get("path") or [])
         if b_reached and c_reached and bp != cp:
