@@ -15,8 +15,8 @@ Keldagrim minecart (#324) GE trapdoor to station,routing-issue-324,3141,3504,0,2
 Entrana dungeon (#350) no wilderness exit until magic door mapped,routing-issue-350,2830,9765,0,3100,3950,0,UNIT_TEST,,,,,,,,,,false
 Heroes guild (#362) ladder reaches fountain basement,routing-issue-362,2906,3480,0,2900,9874,0,UNIT_TEST,,,,,,,,,20,
 Ibans temple (#522) unreachable until region mapped,routing-issue-522,2433,3312,0,2147,4648,0,UNIT_TEST,,,,,,,,,,false
-Kharazi jungle (#504) machete and axe chops through bush,routing-issue-504,2795,2945,0,2800,2900,0,UNIT_TEST,975:1;1359:1,,,,139=50,,,,30,
-Kharazi jungle (#504) no tools unreachable,routing-issue-504,2795,2945,0,2800,2900,0,UNIT_TEST,,,,,139=50,,,,,false
+Kharazi jungle (#504) machete and axe chops through bush,routing-issue-504,2795,2945,0,2800,2900,0,UNIT_TEST,975:1;1359:1,,,,139=50,,bypassVarPlayerChecks=false,,30,
+Kharazi jungle (#504) no tools unreachable,routing-issue-504,2795,2945,0,2800,2900,0,UNIT_TEST,,,,,139=50,,bypassVarPlayerChecks=false,,,false
 Camulet (#314) teleports to Enakhras temple,routing-issue-314,3000,3300,0,3105,9315,0,UNIT_TEST,6707:1,,,,,,useTeleportationItems=INVENTORY,,2,
 Mythical cape (#160) teleports to Myths Guild,routing-issue-160,2600,3200,0,2457,2850,0,UNIT_TEST,22114:1,,,,,,useTeleportationItems=INVENTORY,,2,
 Quetzal whistle (#537) works after Twilights Promise,routing-issue-537,3213,3428,0,1411,3361,0,UNIT_TEST,29271:1,,,,,,useQuetzals=true,83,,,Twilight's Promise=FINISHED
