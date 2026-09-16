@@ -531,6 +531,35 @@ def test_scenario_csv_unknown_header_cell(tmp_path, monkeypatch):
     assert any("expeced_length" in f for f in findings)
 
 
+def test_scenario_csv_map_column_grammar(tmp_path, monkeypatch):
+    # Map/item cells that violate the loader grammar abort the whole
+    # dataset run (IllegalArgumentException under ignoreFailures), so
+    # the lint must flag them before the dashboard ever runs.
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        ROUTES_HEADER,
+        [# varbits token without '=': parseIntMap would index past end
+         "R1,cat,3222,3218,0,3222,3218,0,ALL,,,,1234,,,10,10",
+         # skill_levels lowercase key: Skill.valueOf would throw
+         "R2,cat,3222,3218,0,3222,3218,0,ALL,,,,,agility=70,,10,10",
+         # inventory non-numeric id
+         "R3,cat,3222,3218,0,3222,3218,0,ALL,abc,,,,,,10,10",
+         # well-formed cells stay clean
+         "R4,cat,3222,3218,0,3222,3218,0,ALL,995:5;4151,,"
+         ",1234=1;2345=0,AGILITY=70,,10,10"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    findings = vd.CHECKS["scenario-csv"]()
+    assert any(f.startswith(f"{rel}:2") and "varbits" in f
+               for f in findings)
+    assert any(f.startswith(f"{rel}:3") and "skill_levels" in f
+               for f in findings)
+    assert any(f.startswith(f"{rel}:4") and "inventory" in f
+               for f in findings)
+    assert not any(f.startswith(f"{rel}:5") for f in findings)
+
+
 def test_scenario_csv_expect_reachable_column_known(tmp_path,
                                                   monkeypatch):
     vd = load_vd()

@@ -141,9 +141,9 @@ public final class DashboardScenarioLoader {
                 .inventory(parseItems(get(f, inventoryIdx, "")))
                 .equipment(parseItems(get(f, equipmentIdx, "")))
                 .bank(parseItems(get(f, bankIdx, "")))
-                .varbits(parseIntMap(get(f, varbitsIdx, "")))
-                .varplayers(parseIntMap(get(f, varplayersIdx, "")))
-                .skillLevels(parseStringIntMap(get(f, skillLevelsIdx, "")))
+                .varbits(parseIntMap("varbits", get(f, varbitsIdx, "")))
+                .varplayers(parseIntMap("varplayers", get(f, varplayersIdx, "")))
+                .skillLevels(parseStringIntMap("skill_levels", get(f, skillLevelsIdx, "")))
                 .configOverrides(parseStringStringMap(get(f, configOverridesIdx, "")));
 
             String expLen = get(f, expectedLengthIdx, "");
@@ -262,7 +262,7 @@ public final class DashboardScenarioLoader {
     }
 
     /** Parses {@code key=value;key=value} where both key and value are integers. */
-    private static Map<Integer, Integer> parseIntMap(String raw) {
+    private static Map<Integer, Integer> parseIntMap(String column, String raw) {
         Map<Integer, Integer> map = new LinkedHashMap<>();
         if (raw == null || raw.isBlank()) {
             return map;
@@ -273,13 +273,17 @@ public final class DashboardScenarioLoader {
                 continue;
             }
             String[] parts = token.split("=", 2);
+            if (parts.length != 2) {
+                throw new IllegalArgumentException(
+                    column + " entry '" + token + "' must be 'key=value'");
+            }
             map.put(Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()));
         }
         return map;
     }
 
     /** Parses {@code KEY=value;…} where keys are strings and values are integers. */
-    private static Map<String, Integer> parseStringIntMap(String raw) {
+    private static Map<String, Integer> parseStringIntMap(String column, String raw) {
         Map<String, Integer> map = new LinkedHashMap<>();
         if (raw == null || raw.isBlank()) {
             return map;
@@ -290,6 +294,10 @@ public final class DashboardScenarioLoader {
                 continue;
             }
             String[] parts = token.split("=", 2);
+            if (parts.length != 2) {
+                throw new IllegalArgumentException(
+                    column + " entry '" + token + "' must be 'key=value'");
+            }
             map.put(parts[0].trim(), Integer.parseInt(parts[1].trim()));
         }
         return map;

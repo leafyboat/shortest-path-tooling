@@ -125,6 +125,25 @@ SCENARIO_CONFIG_KEYS = frozenset({
     "costSeasonalTransports",
 })
 
+# Optional-column cell grammars — mirrors the loader's parseItems /
+# parseIntMap / parseStringIntMap shapes (DashboardScenarioLoader).
+# A malformed cell aborts the whole dataset run with
+# IllegalArgumentException under ignoreFailures = true — no report.json
+# and a bare "missing or unreadable report" — so the lint catches it up
+# front.  skill_levels keys must be Skill enum names
+# (DashboardScenarioRunner calls Skill.valueOf on each key).
+SCENARIO_ITEMS_RE = re.compile(r"^\d+(:\d+)?(;\d+(:\d+)?)*$")
+SCENARIO_INT_MAP_RE = re.compile(r"^\d+=\d+(;\d+=\d+)*$")
+SCENARIO_SKILL_MAP_RE = re.compile(r"^[A-Z_]+=\d+(;[A-Z_]+=\d+)*$")
+SCENARIO_COLUMN_GRAMMARS = {
+    "inventory": SCENARIO_ITEMS_RE,
+    "equipment": SCENARIO_ITEMS_RE,
+    "bank": SCENARIO_ITEMS_RE,
+    "varbits": SCENARIO_INT_MAP_RE,
+    "varplayers": SCENARIO_INT_MAP_RE,
+    "skill_levels": SCENARIO_SKILL_MAP_RE,
+}
+
 # Column names the dashboard scenario loader understands, across both
 # CSV grammars — mirrors the indexOf lookups in
 # DashboardScenarioLoader.parseRoutesCsv/parseClueCsv.  A column not
@@ -771,6 +790,14 @@ def check_scenario_csv():
                         findings.append(
                             f"{rel}:{lineno}: config_overrides "
                             f"key {key!r} has an empty value")
+            for col, grammar in SCENARIO_COLUMN_GRAMMARS.items():
+                i = idx.get(col, -1)
+                if 0 <= i < len(fields):
+                    cell = fields[i].strip()
+                    if cell and not grammar.match(cell):
+                        findings.append(
+                            f"{rel}:{lineno}: {col} value {cell!r} "
+                            f"does not match its grammar")
             i = idx.get("expect_reachable", -1)
             if 0 <= i < len(fields):
                 cell = fields[i].strip()
