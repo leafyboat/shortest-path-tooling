@@ -1,27 +1,27 @@
-name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,skill_levels,config_overrides,expected_length,minimum_length
-Civitas → Hunter Guild (Varlamore walk),walk,1735,3093,0,1542,3039,0,SEASONAL,,,,,,,,
-Civitas → Mor Ul Rek (Karamja free unlock),briefcase,1735,3093,0,2451,5179,0,SEASONAL,30361:1,,,10663=2,,,,
-Civitas → Mor Ul Rek (Karamja LOCKED — should fail),briefcase,1735,3093,0,2451,5179,0,SEASONAL,30361:1,,,,,,,
-Civitas → Falador East (Asgarnia pick),briefcase,1735,3093,0,3010,3354,0,SEASONAL,30361:1,,,10663=3;10664=4,,,,
-Civitas → Catherby (Kandarin pick),briefcase,1735,3093,0,2807,3442,0,SEASONAL,30361:1,,,10663=3;10664=4,,,,
-Civitas → Catherby (briefcase only in bank),briefcase,1735,3093,0,2807,3442,0,SEASONAL,,,30361:1,10663=3;10664=4,,useTeleportationItems=INVENTORY_AND_BANK;includeBankPath=true,175,
-Civitas → Kourend Castle (Kourend pick),briefcase,1735,3093,0,1610,3680,2,SEASONAL,30361:1,,,10663=3;10664=20,,,,
-Civitas → Prifddinas (Tirannwn pick),briefcase,1735,3093,0,3255,6104,0,SEASONAL,30361:1,,,10663=3;10664=7,,,,
-Civitas → Varrock (Misthalin best-effort detour),briefcase,1735,3093,0,3186,3438,0,SEASONAL,30361:1,,,10663=3;10664=4;10665=8,,,,
-Civitas → Mistrock (Varlamore briefcase deposit box),briefcase,1735,3093,0,1383,2869,0,SEASONAL,30361:1,,,,,,,
-Civitas → Lletya (Tirannwn LOCKED — should fail),briefcase,1735,3093,0,2350,3162,0,SEASONAL,30361:1,,,10663=3;10664=4;10665=8,,,,
-Maxed picks → Lletya (Tirannwn),briefcase,1735,3093,0,2350,3162,0,SEASONAL,30361:1,,,10663=3;10664=7;10665=8;10666=10,,,,
-Civitas → Volcanic Mine (Fossil Island always blocked),briefcase,1735,3093,0,3820,3808,0,SEASONAL,30361:1,,,10663=3;10664=7;10665=8;10666=10,,,,
-Civitas → Trollheim climb via Map of Alacrity (Asgarnia override),briefcase,1735,3093,0,2946,3678,0,SEASONAL,33233:1,,,10663=3,,,,
-Trollheim climb (Wilderness unlocked / Asgarnia LOCKED — should fail),briefcase,1735,3093,0,2946,3678,0,SEASONAL,33233:1,,,10663=11,,,,
-Civitas → Lighthouse via Fairy Mushroom (Fremennik chunk),briefcase,1735,3093,0,2503,3636,0,SEASONAL,25102:1,,,10663=8,,,,
-Lighthouse fairy mushroom (Fremennik LOCKED — should fail),briefcase,1735,3093,0,2503,3636,0,SEASONAL,25102:1,,,10663=4,,,,
-Civitas → Poison Waste via Fairy Mushroom (Kandarin override),briefcase,1735,3093,0,2213,3099,0,SEASONAL,25102:1,,,10663=4,,,,
-Poison Waste fairy mushroom (Kandarin LOCKED — reaches via Tirannwn walk),briefcase,1735,3093,0,2213,3099,0,SEASONAL,25102:1,,,10663=7,,,,
-Poison Waste fairy mushroom (Kandarin + Tirannwn LOCKED — should fail),briefcase,1735,3093,0,2213,3099,0,SEASONAL,25102:1,,,10663=8,,,,
-Civitas → Barbarian Outpost Basalt causeway via Map of Alacrity (Kandarin override),briefcase,1735,3093,0,2522,3595,0,SEASONAL,33233:1,,,10663=4,,,,
-Basalt causeway (Fremennik unlocked / Kandarin LOCKED — reaches via Fremennik walk),briefcase,1735,3093,0,2522,3595,0,SEASONAL,33233:1,,,10663=8,,,,
-Basalt causeway (Fremennik + Kandarin LOCKED — should fail),briefcase,1735,3093,0,2522,3595,0,SEASONAL,33233:1,,,10663=11,,,,
-Civitas → Sinclair Mansion Log balance via Map of Alacrity (Kandarin override),briefcase,1735,3093,0,2722,3592,0,SEASONAL,33233:1,,,10663=4,,,,
-Sinclair Mansion Log balance (Fremennik unlocked / Kandarin LOCKED — reaches via Fremennik walk),briefcase,1735,3093,0,2722,3592,0,SEASONAL,33233:1,,,10663=8,,,,
-Sinclair Mansion Log balance (Fremennik + Kandarin LOCKED — should fail),briefcase,1735,3093,0,2722,3592,0,SEASONAL,33233:1,,,10663=11,,,,
+name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,skill_levels,config_overrides,expected_length,minimum_length,expect_reachable
+Civitas → Hunter Guild (Varlamore walk),walk,1735,3093,0,1542,3039,0,SEASONAL,,,,,,,,,true
+Civitas → Mor Ul Rek (Karamja free unlock),briefcase,1735,3093,0,2451,5179,0,SEASONAL,30361:1,,,10663=2,,,,,true
+Civitas → Mor Ul Rek (Karamja LOCKED — should fail),briefcase,1735,3093,0,2451,5179,0,SEASONAL,30361:1,,,,,,,,false
+Civitas → Falador East (Asgarnia pick),briefcase,1735,3093,0,3010,3354,0,SEASONAL,30361:1,,,10663=3;10664=4,,,,,true
+Civitas → Catherby (Kandarin pick),briefcase,1735,3093,0,2807,3442,0,SEASONAL,30361:1,,,10663=3;10664=4,,,,,true
+Civitas → Catherby (briefcase only in bank),briefcase,1735,3093,0,2807,3442,0,SEASONAL,,,30361:1,10663=3;10664=4,,useTeleportationItems=INVENTORY_AND_BANK;includeBankPath=true,9,,true
+Civitas → Kourend Castle (Kourend pick),briefcase,1735,3093,0,1610,3680,2,SEASONAL,30361:1,,,10663=3;10664=20,,,,,true
+Civitas → Prifddinas (Tirannwn pick),briefcase,1735,3093,0,3255,6104,0,SEASONAL,30361:1,,,10663=3;10664=7,,,,,true
+Civitas → Varrock (Misthalin best-effort detour),briefcase,1735,3093,0,3186,3438,0,SEASONAL,30361:1,,,10663=3;10664=4;10665=8,,,,,true
+Civitas → Mistrock (Varlamore briefcase deposit box),briefcase,1735,3093,0,1383,2869,0,SEASONAL,30361:1,,,,,,,,true
+Civitas → Lletya (Tirannwn LOCKED — should fail),briefcase,1735,3093,0,2350,3162,0,SEASONAL,30361:1,,,10663=3;10664=4;10665=8,,,,,false
+Maxed picks → Lletya (Tirannwn),briefcase,1735,3093,0,2350,3162,0,SEASONAL,30361:1,,,10663=3;10664=7;10665=8;10666=10,,,,,true
+Civitas → Volcanic Mine (Fossil Island always blocked),briefcase,1735,3093,0,3820,3808,0,SEASONAL,30361:1,,,10663=3;10664=7;10665=8;10666=10,,,,,false
+Civitas → Trollheim climb via Map of Alacrity (Asgarnia override),briefcase,1735,3093,0,2946,3678,0,SEASONAL,33233:1,,,10663=3,,,,,true
+Trollheim climb (Wilderness unlocked / Asgarnia LOCKED — should fail),briefcase,1735,3093,0,2946,3678,0,SEASONAL,33233:1,,,10663=11,,,,,false
+Civitas → Lighthouse via Fairy Mushroom (Fremennik chunk),briefcase,1735,3093,0,2503,3636,0,SEASONAL,25102:1,,,10663=8,,,,,true
+Lighthouse fairy mushroom (Fremennik LOCKED — should fail),briefcase,1735,3093,0,2503,3636,0,SEASONAL,25102:1,,,10663=4,,,,,false
+Civitas → Poison Waste via Fairy Mushroom (Kandarin override),briefcase,1735,3093,0,2213,3099,0,SEASONAL,25102:1,,,10663=4,,,,,true
+Poison Waste fairy mushroom (Kandarin LOCKED — reaches via Tirannwn walk),briefcase,1735,3093,0,2213,3099,0,SEASONAL,25102:1,,,10663=7,,,,,true
+Poison Waste fairy mushroom (Kandarin + Tirannwn LOCKED — should fail),briefcase,1735,3093,0,2213,3099,0,SEASONAL,25102:1,,,10663=8,,,,,false
+Civitas → Barbarian Outpost Basalt causeway via Map of Alacrity (Kandarin override),briefcase,1735,3093,0,2522,3595,0,SEASONAL,33233:1,,,10663=4,,,,,true
+Basalt causeway (Fremennik unlocked / Kandarin LOCKED — reaches via Fremennik walk),briefcase,1735,3093,0,2522,3595,0,SEASONAL,33233:1,,,10663=8,,,,,true
+Basalt causeway (Fremennik + Kandarin LOCKED — should fail),briefcase,1735,3093,0,2522,3595,0,SEASONAL,33233:1,,,10663=11,,,,,false
+Civitas → Sinclair Mansion Log balance via Map of Alacrity (Kandarin override),briefcase,1735,3093,0,2722,3592,0,SEASONAL,33233:1,,,10663=4,,,,,true
+Sinclair Mansion Log balance (Fremennik unlocked / Kandarin LOCKED — reaches via Fremennik walk),briefcase,1735,3093,0,2722,3592,0,SEASONAL,33233:1,,,10663=8,,,,,true
+Sinclair Mansion Log balance (Fremennik + Kandarin LOCKED — should fail),briefcase,1735,3093,0,2722,3592,0,SEASONAL,33233:1,,,10663=11,,,,,false
