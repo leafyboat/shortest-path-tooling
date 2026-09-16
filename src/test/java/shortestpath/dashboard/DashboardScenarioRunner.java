@@ -32,7 +32,8 @@ import shortestpath.pathfinder.TestPathfinderConfig;
  *   <li>Apply per-scenario skill level overrides.</li>
  *   <li>Apply {@code config_overrides}.</li>
  *   <li>Create {@link DashboardQuestConfig} (carrying the scenario's per-quest
- *       states) and assign bank container.</li>
+ *       states plus the bypassVarbitChecks/bypassVarPlayerChecks flags from
+ *       step 8) and assign bank container.</li>
  *   <li>Call {@code refresh()} on the config.</li>
  * </ol>
  */
@@ -128,10 +129,11 @@ public final class DashboardScenarioRunner {
         // Step 9: build the pathfinder config. DashboardQuestConfig carries the
         // scenario's per-quest state map; it must exist before refresh() so the
         // questStates snapshot in refreshTransports sees the overrides.
-        // varPlayer parity: the literal true keeps varPlayerChecks bypassed for
-        // now — wiring config.isBypassVarPlayerChecks() is follow-up work.
+        // Both bypass flags come from config_overrides (default true) so a row
+        // can re-enable varbit/varplayer transport gating individually.
         TestPathfinderConfig pfConfig = new DashboardQuestConfig(client, config,
-            scenario.getQuestStates(), config.isBypassVarbitChecks(), true);
+            scenario.getQuestStates(), config.isBypassVarbitChecks(),
+            config.isBypassVarPlayerChecks());
 
         // Assign bank container
         boolean isBankPreset = "BANK".equalsIgnoreCase(scenario.getPreset());
@@ -203,6 +205,7 @@ public final class DashboardScenarioRunner {
                 case "useSeasonalTransports": config.setUseSeasonalTransports(parseBoolean(value)); break;
                 case "includeBankPath": config.setIncludeBankPath(parseBoolean(value)); break;
                 case "bypassVarbitChecks": config.setBypassVarbitChecks(parseBoolean(value)); break;
+                case "bypassVarPlayerChecks": config.setBypassVarPlayerChecks(parseBoolean(value)); break;
                 case "currencyThreshold": config.setCurrencyThreshold(Integer.parseInt(value)); break;
                 case "calculationCutoff": config.setCalculationCutoff(Integer.parseInt(value)); break;
                 case "usePoh": config.setUsePoh(parseBoolean(value)); break;
