@@ -45,7 +45,12 @@ def planes(b: bytes) -> int:
     if not b:
         return 0
     bits = len(b) * 8
-    return bits // (REGION * REGION * 2)
+    # Ceiling, matching SplitFlagMap and collision_zip.py: BitSet's
+    # toByteArray() trims trailing zero bytes, so a region whose highest
+    # set bit sits on its top plane serializes to a non-plane-aligned
+    # length — floor division would drop that partial plane and every
+    # edge on it would go uncompared.
+    return (bits + REGION * REGION * 2 - 1) // (REGION * REGION * 2)
 
 
 def get_bit(b: bytes, index: int) -> bool:
