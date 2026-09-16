@@ -1,4 +1,4 @@
-name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,varplayers,skill_levels,config_overrides,expected_length,minimum_length,expect_reachable
+name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,varplayers,skill_levels,config_overrides,expected_length,minimum_length,expect_reachable,quests
 GE centre walk (routing control),routing-control,3160,3486,0,3170,3492,0,UNIT_TEST,,,,,,,,,,
 Digsite gate (#139) kudos 153+ crosses gate,routing-issue-139,3293,3428,0,3350,3415,0,UNIT_TEST,,,,3637=153,,,bypassVarbitChecks=false,,40,
 Digsite gate (#139) no kudos walks around fence,routing-issue-139,3293,3428,0,3350,3415,0,UNIT_TEST,,,,3637=0,,,bypassVarbitChecks=false,,100,
@@ -19,3 +19,5 @@ Kharazi jungle (#504) machete and axe chops through bush,routing-issue-504,2795,
 Kharazi jungle (#504) no tools unreachable,routing-issue-504,2795,2945,0,2800,2900,0,UNIT_TEST,,,,,139=50,,,,,false
 Camulet (#314) teleports to Enakhras temple,routing-issue-314,3000,3300,0,3105,9315,0,UNIT_TEST,6707:1,,,,,,useTeleportationItems=INVENTORY,,2,
 Mythical cape (#160) teleports to Myths Guild,routing-issue-160,2600,3200,0,2457,2850,0,UNIT_TEST,22114:1,,,,,,useTeleportationItems=INVENTORY,,2,
+Quetzal whistle (#537) works after Twilights Promise,routing-issue-537,3213,3428,0,1411,3361,0,UNIT_TEST,29271:1,,,,,,useQuetzals=true,83,,,Twilight's Promise=FINISHED
+Quetzal whistle (#537) locked before Twilights Promise,routing-issue-537,3213,3428,0,1411,3361,0,UNIT_TEST,29271:1,,,,,,useQuetzals=true,,450,,Twilight's Promise=NOT_STARTED
