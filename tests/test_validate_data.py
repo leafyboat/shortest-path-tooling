@@ -612,6 +612,48 @@ def test_scenario_csv_committed_datasets_clean():
     assert vd.CHECKS["scenario-csv"]() == []
 
 
+def test_scenario_csv_quests_column_known(tmp_path, monkeypatch):
+    # `quests` is a whitelisted column whose `Name=STATE` cells pass the
+    # grammar — including apostrophe names and `;`-joined multi-quest cells.
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        ROUTES_HEADER + ",quests",
+        ["R1,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,"
+         "The Grand Tree=NOT_STARTED",
+         "R2,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,"
+         "Twilight's Promise=IN_PROGRESS",
+         "R3,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,"
+         "The Grand Tree=NOT_STARTED;Monkey Madness II=FINISHED"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    assert vd.CHECKS["scenario-csv"]() == []
+
+
+def test_scenario_csv_quests_grammar_rejects(tmp_path, monkeypatch):
+    # Malformed quests cells abort the loader with
+    # IllegalArgumentException, so the lint must flag them first:
+    # bare name (no =STATE), unknown state, and int-map shapes that
+    # belong in varbits.
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/routes.csv",
+        ROUTES_HEADER + ",quests",
+        ["R1,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,The Grand Tree",
+         "R2,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,"
+         "The Grand Tree=DONE",
+         "R3,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,65=10"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    findings = vd.CHECKS["scenario-csv"]()
+    assert any(f.startswith(f"{rel}:2") and "quests" in f
+               and "The Grand Tree" in f for f in findings)
+    assert any(f.startswith(f"{rel}:3") and "quests" in f
+               and "DONE" in f for f in findings)
+    assert any(f.startswith(f"{rel}:4") and "quests" in f
+               and "65=10" in f for f in findings)
+
+
 # ---------- region-override check ----------
 
 
