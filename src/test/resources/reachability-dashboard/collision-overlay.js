@@ -80,7 +80,6 @@
       zipPromise = Promise.reject(new Error("JSZip unavailable"));
       return zipPromise;
     }
-    const base = (typeof window.currentBundleBase === "string" ? window.currentBundleBase : "");
     // collision-map.zip is published at the dashboard root (not per-bundle).
     const url = "collision-map.zip";
     zipPromise = fetch(url)
