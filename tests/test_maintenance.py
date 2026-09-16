@@ -148,6 +148,7 @@ def test_cache_invokes_download_with_repo_cwd(tmp_path, monkeypatch):
         calls.append((cmd, cwd, timeout))
         # The script drops ./cache and ./keys.json into its cwd.
         (repo / "cache").mkdir(exist_ok=True)
+        (repo / "cache" / "main_file_cache.idx255").write_bytes(b"idx")
         (repo / "keys.json").write_text(
             (FIXTURES / "keys_raw.json").read_text())
         return cp(cmd)
@@ -180,6 +181,25 @@ def test_cache_missing_keys_json_fails(tmp_path, monkeypatch, capsys):
     rc = mm.main(["cache"])
     assert rc != 0
     assert "keys.json" in capsys.readouterr().err
+
+
+def test_cache_empty_dir_fails(tmp_path, monkeypatch, capsys):
+    # A partial/failed unzip can leave cache/ existing but empty — that
+    # must fail the step rather than report green and let every Gradle
+    # dumper die inside the JVM later.
+    repo, _ = redirect_repo(tmp_path, monkeypatch)
+
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+        (repo / "cache").mkdir(exist_ok=True)
+        (repo / "keys.json").write_text(
+            (FIXTURES / "keys_raw.json").read_text())
+        return cp(cmd)
+
+    monkeypatch.setattr(mm, "run", fake_run)
+    monkeypatch.setattr(mm, "check_tools", lambda names: None)
+    rc = mm.main(["cache"])
+    assert rc == 1
+    assert "empty" in capsys.readouterr().err
 
 
 def test_cache_download_failure_returns_1(tmp_path, monkeypatch, capsys):
@@ -453,6 +473,8 @@ def make_local_run(repo, calls, *, branch="maint-x",
             return cp(cmd, status_out)
         if kind == "download":
             (repo / "cache").mkdir(exist_ok=True)
+            (repo / "cache" / "main_file_cache.idx255").write_bytes(
+                b"idx")
             (repo / "keys.json").write_text(
                 (FIXTURES / "keys_raw.json").read_text())
             return cp(cmd, rc=download_rc)

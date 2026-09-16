@@ -160,6 +160,13 @@ def do_cache() -> int:
               file=sys.stderr)
         return 1
     entries = sum(1 for _ in cache_dir.iterdir())
+    if entries == 0:
+        # A partial/failed unzip can leave an empty cache/ — reporting
+        # green here would push every downstream Gradle dumper into an
+        # opaque in-JVM failure instead of naming the real problem.
+        print(f"download finished but {cache_dir} is empty — the "
+              f"unzip likely failed", file=sys.stderr)
+        return 1
     print(f"cache/: {entries} entries, keys.json: {renamed} fields "
           f"renamed")
     return 0
