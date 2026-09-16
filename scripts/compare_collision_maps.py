@@ -98,7 +98,6 @@ def probe(maps: Dict[str, Dict[Tuple[int, int], bytes]], wx: int, wy: int, p: in
             continue
         n = edge(b, lx, ly, p, 0)
         e = edge(b, lx, ly, p, 1)
-        bs = regions.get((rx, ry - 0), b"")
         # south edge = north edge of (lx, ly-1) in same region, or southern region if ly==0
         if ly > 0:
             s = edge(b, lx, ly - 1, p, 0)
