@@ -1,0 +1,21 @@
+name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,varplayers,skill_levels,config_overrides,expected_length,minimum_length,expect_reachable
+GE centre walk (routing control),routing-control,3160,3486,0,3170,3492,0,UNIT_TEST,,,,,,,,,,
+Digsite gate (#139) kudos 153+ crosses gate,routing-issue-139,3293,3428,0,3350,3415,0,UNIT_TEST,,,,3637=153,,,bypassVarbitChecks=false,,40,
+Digsite gate (#139) no kudos walks around fence,routing-issue-139,3293,3428,0,3350,3415,0,UNIT_TEST,,,,3637=0,,,bypassVarbitChecks=false,,100,
+Piscatoris colony (#148) enters through fence hole,routing-issue-148,2344,3645,0,2344,3670,0,UNIT_TEST,,,,,,,,,15,
+Civitas to Auburnvale (#171) walks around Mons Gratia,routing-issue-171,1697,3140,0,1411,3361,0,UNIT_TEST,,,,,,,,,300,
+SW Ape Atoll (#261) unreachable until collision fix,routing-issue-261,2760,2780,0,2650,2740,0,UNIT_TEST,,,,,,,,,,false
+RFD dining room (#288) cannot enter until door mapped,routing-issue-288,3213,3221,0,1866,5323,0,UNIT_TEST,,,,,,,,,,false
+Taverley dungeon (#291) dusty key opens gate to dragons,routing-issue-291,2925,9803,0,2872,9795,0,UNIT_TEST,1590:1,,,,,,useAgilityShortcuts=false,,70,
+Taverley dungeon (#291) agility pipe reaches dragons,routing-issue-291,2925,9803,0,2872,9795,0,UNIT_TEST,,,,,,AGILITY=70,useAgilityShortcuts=true,,140,
+Taverley dungeon (#291) no key no shortcut unreachable,routing-issue-291,2925,9803,0,2872,9795,0,UNIT_TEST,,,,,,,useAgilityShortcuts=false,,,false
+Great Conch (#319) fairy ring CJQ reaches island,routing-issue-319,2996,3108,0,3180,2420,0,UNIT_TEST,772:1,,,,,,useFairyRings=true,,60,
+Great Conch (#319) unreachable without fairy ring,routing-issue-319,2996,3108,0,3180,2420,0,UNIT_TEST,,,,,,,,,,false
+Keldagrim minecart (#324) GE trapdoor to station,routing-issue-324,3141,3504,0,2909,10174,0,UNIT_TEST,,,,,,,useMinecarts=true,,2,
+Entrana dungeon (#350) no wilderness exit until magic door mapped,routing-issue-350,2830,9765,0,3100,3950,0,UNIT_TEST,,,,,,,,,,false
+Heroes guild (#362) ladder reaches fountain basement,routing-issue-362,2906,3480,0,2900,9874,0,UNIT_TEST,,,,,,,,,20,
+Ibans temple (#522) unreachable until region mapped,routing-issue-522,2433,3312,0,2147,4648,0,UNIT_TEST,,,,,,,,,,false
+Kharazi jungle (#504) machete and axe chops through bush,routing-issue-504,2795,2945,0,2800,2900,0,UNIT_TEST,975:1;1359:1,,,,139=50,,,,30,
+Kharazi jungle (#504) no tools unreachable,routing-issue-504,2795,2945,0,2800,2900,0,UNIT_TEST,,,,,139=50,,,,,false
+Camulet (#314) teleports to Enakhras temple,routing-issue-314,3000,3300,0,3105,9315,0,UNIT_TEST,6707:1,,,,,,useTeleportationItems=INVENTORY,,2,
+Mythical cape (#160) teleports to Myths Guild,routing-issue-160,2600,3200,0,2457,2850,0,UNIT_TEST,22114:1,,,,,,useTeleportationItems=INVENTORY,,2,
