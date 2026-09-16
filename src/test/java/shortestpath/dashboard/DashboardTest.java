@@ -342,7 +342,10 @@ public class DashboardTest {
             String line = lines.get(i);
             String[] cols = line.split(",", -1);
             if (nameIdx < cols.length) {
-                Integer length = lengths.get(cols[nameIdx]);
+                // The scenario loader trims names; the raw CSV cell must
+                // be trimmed too or a whitespace-padded name silently
+                // misses the write-back lookup.
+                Integer length = lengths.get(cols[nameIdx].trim());
                 if (length != null) {
                     String[] expanded = cols.length > expectedLengthIdx
                             ? cols
