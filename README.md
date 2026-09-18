@@ -4,6 +4,8 @@ Developer dashboards and OSRS cache dumpers for the [shortest-path](https://gith
 
 This repo carries `shortest-path` as a git submodule and uses a Gradle [composite build](https://docs.gradle.org/current/userguide/composite_builds.html) to consume the plugin's sources — so the dashboard and cache-dumper code never pollutes plugin PRs.
 
+New here? [docs/system-overview.md](docs/system-overview.md) explains how the pieces fit together and the workflows they support.
+
 ## Quick start
 
 ```bash
