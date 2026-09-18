@@ -435,9 +435,9 @@ def main() -> int:
 
     out_lines = [
         "# Destination\tInfo\tSkills\tQuests\tVarbits\tVarPlayers",
-        "# Sailing island chests that require construction (exact Varbits TBD):"
-        " Onyx Crest, Charred Island, Sunbleak, Buccaneers Haven, Deepfin Mine"
-        " (E/W when build-gated)\t\t\t\t\t",
+        "# Sailing island construction-built bank chests: varbit == 1 once the"
+        " chest is built. Object IDs 58627..58632 multi-loc transforms between"
+        " 58662 (space) and 58663 (built chest).\t\t\t\t\t",
     ]
     for (x, y, p, name) in sorted_keys:
         s, q, vb, vp = name_reqs.get(name, ("", "", "", ""))
