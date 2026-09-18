@@ -203,6 +203,7 @@ public final class DashboardScenarioRunner {
                 case "useTeleportationLevers": config.setUseTeleportationLevers(parseBoolean(value)); break;
                 case "useTeleportationPortals": config.setUseTeleportationPortals(parseBoolean(value)); break;
                 case "useTeleportationSpells": config.setUseTeleportationSpells(parseBoolean(value)); break;
+                case "useTeleportationSpellsHome": config.setUseTeleportationSpellsHome(parseBoolean(value)); break;
                 case "useTeleportationMinigames": config.setUseTeleportationMinigames(parseBoolean(value)); break;
                 case "useWildernessObelisks": config.setUseWildernessObelisks(parseBoolean(value)); break;
                 case "useSeasonalTransports": config.setUseSeasonalTransports(parseBoolean(value)); break;
@@ -236,6 +237,7 @@ public final class DashboardScenarioRunner {
                 case "costTeleportationLevers": config.setCostTeleportationLevers(Integer.parseInt(value)); break;
                 case "costTeleportationPortals": config.setCostTeleportationPortals(Integer.parseInt(value)); break;
                 case "costTeleportationSpells": config.setCostTeleportationSpells(Integer.parseInt(value)); break;
+                case "costTeleportationSpellsHome": config.setCostTeleportationSpellsHome(Integer.parseInt(value)); break;
                 case "costTeleportationMinigames": config.setCostTeleportationMinigames(Integer.parseInt(value)); break;
                 case "costWildernessObelisks": config.setCostWildernessObelisks(Integer.parseInt(value)); break;
                 case "costSeasonalTransports": config.setCostSeasonalTransports(Integer.parseInt(value)); break;

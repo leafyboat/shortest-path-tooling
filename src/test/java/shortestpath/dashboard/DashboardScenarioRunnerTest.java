@@ -142,7 +142,7 @@ public class DashboardScenarioRunnerTest {
             .build();
         DashboardScenarioRunner.ApplyResult applied = DashboardScenarioRunner.apply(
             bypassed, client, clientBaseline, universalBankContainer);
-        assertFalse(applied.pathfinderConfig.varPlayerChecks(varpReqTransport));
+        assertFalse(applied.pathfinderConfig.varPlayerChecks(varpReqTransport, 0));
 
         // bypassVarPlayerChecks=false + a satisfying stub: 50 > 49 passes,
         // so the requirement does not reject the transport.
@@ -154,7 +154,7 @@ public class DashboardScenarioRunnerTest {
             .build();
         applied = DashboardScenarioRunner.apply(
             satisfied, client, clientBaseline, universalBankContainer);
-        assertFalse(applied.pathfinderConfig.varPlayerChecks(varpReqTransport));
+        assertFalse(applied.pathfinderConfig.varPlayerChecks(varpReqTransport, 0));
 
         // bypassVarPlayerChecks=false with no varp-139 stub: Mockito's
         // default 0 fails 139>49, so the transport is rejected — the flag
@@ -166,6 +166,6 @@ public class DashboardScenarioRunnerTest {
             .build();
         applied = DashboardScenarioRunner.apply(
             unstubbed, client, clientBaseline, universalBankContainer);
-        assertTrue(applied.pathfinderConfig.varPlayerChecks(varpReqTransport));
+        assertTrue(applied.pathfinderConfig.varPlayerChecks(varpReqTransport, 0));
     }
 }

@@ -107,7 +107,8 @@ SCENARIO_CONFIG_KEYS = frozenset({
     "useMagicCarpets", "useMagicMushtrees", "useMinecarts",
     "useQuetzals", "useSpiritTrees", "useTeleportationItems",
     "useTeleportationLevers", "useTeleportationPortals",
-    "useTeleportationSpells", "useTeleportationMinigames",
+    "useTeleportationSpells", "useTeleportationSpellsHome",
+    "useTeleportationMinigames",
     "useWildernessObelisks", "useSeasonalTransports",
     "includeBankPath", "bypassVarbitChecks", "bypassVarPlayerChecks",
     "currencyThreshold",
@@ -122,6 +123,7 @@ SCENARIO_CONFIG_KEYS = frozenset({
     "costMagicMushtrees", "costMinecarts", "costQuetzals",
     "costSpiritTrees", "costTeleportationLevers",
     "costTeleportationPortals", "costTeleportationSpells",
+    "costTeleportationSpellsHome",
     "costTeleportationMinigames", "costWildernessObelisks",
     "costSeasonalTransports",
 })

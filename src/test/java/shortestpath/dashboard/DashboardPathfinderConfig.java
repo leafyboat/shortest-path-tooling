@@ -49,6 +49,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private boolean useTeleportationLevers = true;
     private boolean useTeleportationPortals = true;
     private boolean useTeleportationSpells = true;
+    private boolean useTeleportationSpellsHome = true;
     private boolean useTeleportationMinigames = true;
     private boolean useWildernessObelisks = true;
     private boolean useSeasonalTransports = false;
@@ -103,6 +104,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private int costTeleportationLevers = 0;
     private int costTeleportationPortals = 0;
     private int costTeleportationSpells = 0;
+    private int costTeleportationSpellsHome = 0;
     private int costTeleportationMinigames = 0;
     private int costWildernessObelisks = 0;
     private int costSeasonalTransports = 0;
@@ -130,6 +132,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public boolean useTeleportationLevers() { return useTeleportationLevers; }
     @Override public boolean useTeleportationPortals() { return useTeleportationPortals; }
     @Override public boolean useTeleportationSpells() { return useTeleportationSpells; }
+    @Override public boolean useTeleportationSpellsHome() { return useTeleportationSpellsHome; }
     @Override public boolean useTeleportationMinigames() { return useTeleportationMinigames; }
     @Override public boolean useWildernessObelisks() { return useWildernessObelisks; }
     @Override public boolean useSeasonalTransports() { return useSeasonalTransports; }
@@ -170,6 +173,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int costTeleportationLevers() { return costTeleportationLevers; }
     @Override public int costTeleportationPortals() { return costTeleportationPortals; }
     @Override public int costTeleportationSpells() { return costTeleportationSpells; }
+    @Override public int costTeleportationSpellsHome() { return costTeleportationSpellsHome; }
     @Override public int costTeleportationMinigames() { return costTeleportationMinigames; }
     @Override public int costWildernessObelisks() { return costWildernessObelisks; }
     @Override public int costSeasonalTransports() { return costSeasonalTransports; }
@@ -211,6 +215,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setUseTeleportationLevers(boolean v) { useTeleportationLevers = v; }
     public void setUseTeleportationPortals(boolean v) { useTeleportationPortals = v; }
     public void setUseTeleportationSpells(boolean v) { useTeleportationSpells = v; }
+    public void setUseTeleportationSpellsHome(boolean v) { useTeleportationSpellsHome = v; }
     public void setUseTeleportationMinigames(boolean v) { useTeleportationMinigames = v; }
     public void setUseWildernessObelisks(boolean v) { useWildernessObelisks = v; }
     public void setUseSeasonalTransports(boolean v) { useSeasonalTransports = v; }
@@ -252,6 +257,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setCostTeleportationLevers(int v) { costTeleportationLevers = v; }
     public void setCostTeleportationPortals(int v) { costTeleportationPortals = v; }
     public void setCostTeleportationSpells(int v) { costTeleportationSpells = v; }
+    public void setCostTeleportationSpellsHome(int v) { costTeleportationSpellsHome = v; }
     public void setCostTeleportationMinigames(int v) { costTeleportationMinigames = v; }
     public void setCostWildernessObelisks(int v) { costWildernessObelisks = v; }
     public void setCostSeasonalTransports(int v) { costSeasonalTransports = v; }
