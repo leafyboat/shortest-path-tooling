@@ -1417,6 +1417,23 @@ def test_probes_names_file_resolved_for_gradle(tmp_path, monkeypatch):
                 assert a.endswith(str(names))
 
 
+def test_probes_names_file_relative_to_repo_not_cwd(tmp_path, monkeypatch):
+    # A relative --names-file resolves against the repo root, not the
+    # process CWD — running the CLI from elsewhere must still find it.
+    repo, calls = prepare_probes_repo(tmp_path, monkeypatch)
+    names = repo / "names.txt"
+    names.write_text("Varrock\n")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    rc = mm.main(["probes", "--names-file", "names.txt"])
+    assert rc == 0
+    for c, _, _ in calls:
+        for a in c:
+            if "NamesFile=" in a:
+                assert a.endswith(str(names))
+
+
 def test_probes_names_file_must_exist(tmp_path, monkeypatch):
     repo, calls = prepare_probes_repo(tmp_path, monkeypatch)
     rc = mm.main(["probes", "--names-file",

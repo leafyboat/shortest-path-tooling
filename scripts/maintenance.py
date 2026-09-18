@@ -525,10 +525,15 @@ def do_probes(args: argparse.Namespace) -> int:
 
     tasks = list(PROBE_TASKS)
     if args.names_file is not None:
-        # Resolve against the process CWD once — the -P...File= string
-        # handed to Gradle would otherwise resolve a relative path
-        # against the project dir and miss the file just checked.
-        args.names_file = args.names_file.resolve()
+        # A relative --names-file is repo-relative, like every other
+        # path this CLI handles — resolving against the process CWD
+        # would break invocations from any other directory.  The
+        # -P...File= string handed to Gradle must be absolute either
+        # way: it re-resolves relative paths against the project dir.
+        if not args.names_file.is_absolute():
+            args.names_file = (REPO / args.names_file).resolve()
+        else:
+            args.names_file = args.names_file.resolve()
         if not args.names_file.exists():
             print(f"--names-file {args.names_file} does not exist",
                   file=sys.stderr)
