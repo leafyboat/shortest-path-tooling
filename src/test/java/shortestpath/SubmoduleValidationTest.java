@@ -2,10 +2,14 @@ package shortestpath;
 
 import org.junit.Test;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.*;
 
@@ -106,21 +110,16 @@ public class SubmoduleValidationTest
 	@Test
 	public void testBuildOutputExists()
 	{
-		// V-10: Build output directories must exist
+		// V-10: Build output directories must exist.
+		// Under the Gradle test task both always exist: test results land in
+		// build/, and :shortest-path:jar is a dependency of compileTestJava.
 		File mainBuildDir = new File("build");
 		File submoduleBuildDir = new File("shortest-path/build");
-		
-		// Note: These may not exist if tests run before build, but structure should be verifiable
-		// This test primarily validates the structure when build has been run
-		if (mainBuildDir.exists())
-		{
-			assertTrue("Main build directory must be a directory", mainBuildDir.isDirectory());
-		}
-		
-		if (submoduleBuildDir.exists())
-		{
-			assertTrue("Submodule build directory must be a directory", submoduleBuildDir.isDirectory());
-		}
+
+		assertTrue("Main build directory must exist", mainBuildDir.exists());
+		assertTrue("Main build path must be a directory", mainBuildDir.isDirectory());
+		assertTrue("Submodule build directory must exist", submoduleBuildDir.exists());
+		assertTrue("Submodule build path must be a directory", submoduleBuildDir.isDirectory());
 	}
 
 	@Test
@@ -184,5 +183,116 @@ public class SubmoduleValidationTest
 		assertTrue("Gradle wrapper must exist", gradlew.exists());
 		assertTrue("settings.gradle must exist", settingsGradle.exists());
 		assertTrue("build.gradle must exist", buildGradle.exists());
+	}
+
+	@Test
+	public void testSubmoduleRemoteConfiguration()
+	{
+		// V-03 / V-09: Submodule remotes must follow the repo convention:
+		// 'upstream' = Skretzo/shortest-path, 'origin' = the user's fork.
+		File config = new File(".git/modules/shortest-path/config");
+
+		assertTrue("Submodule git config must exist", config.exists());
+		assertTrue("Submodule git config must be a file", config.isFile());
+
+		Map<String, String> remoteUrls = new HashMap<>();
+
+		try
+		{
+			List<String> lines = Files.readAllLines(config.toPath());
+			String currentRemote = null;
+
+			for (String line : lines)
+			{
+				String trimmed = line.trim();
+
+				if (trimmed.startsWith("[remote \"") && trimmed.endsWith("\"]"))
+				{
+					currentRemote = trimmed.substring(9, trimmed.length() - 2);
+				}
+				else if (trimmed.startsWith("["))
+				{
+					currentRemote = null;
+				}
+				else if (currentRemote != null && trimmed.startsWith("url"))
+				{
+					String url = trimmed.substring(trimmed.indexOf('=') + 1).trim();
+					remoteUrls.put(currentRemote, url);
+				}
+			}
+		}
+		catch (IOException e)
+		{
+			fail("Failed to read submodule git config: " + e.getMessage());
+		}
+
+		// 'upstream' remote must exist and point to the canonical plugin repo
+		assertTrue("Submodule must have an 'upstream' remote", remoteUrls.containsKey("upstream"));
+		assertEquals("'upstream' must point to Skretzo/shortest-path",
+			"https://github.com/Skretzo/shortest-path.git", remoteUrls.get("upstream"));
+
+		// 'origin' remote must exist and point to a fork (not the upstream repo)
+		assertTrue("Submodule must have an 'origin' remote", remoteUrls.containsKey("origin"));
+		String originUrl = remoteUrls.get("origin");
+		assertTrue("'origin' must be a shortest-path repository, got: " + originUrl,
+			originUrl.endsWith("/shortest-path.git"));
+		assertFalse("'origin' must be a fork, not the Skretzo upstream repo",
+			"https://github.com/Skretzo/shortest-path.git".equals(originUrl));
+	}
+
+	@Test
+	public void testDependencySubstitutionConfigured()
+	{
+		// V-05: settings.gradle must configure dependency substitution so the
+		// 'shortestpath:shortest-path' module resolves to the included build.
+		File settingsGradle = new File("settings.gradle");
+
+		assertTrue("settings.gradle file must exist", settingsGradle.exists());
+		assertTrue("settings.gradle must be a file", settingsGradle.isFile());
+
+		try
+		{
+			List<String> content = Files.readAllLines(settingsGradle.toPath());
+			String contentString = String.join("\n", content);
+
+			assertTrue("settings.gradle must include the shortest-path build",
+				contentString.contains("includeBuild") && contentString.contains("shortest-path"));
+			assertTrue("settings.gradle must configure dependency substitution",
+				contentString.contains("dependencySubstitution") || contentString.contains("substitute"));
+			assertTrue("Dependency substitution must reference the shortest-path module",
+				contentString.contains("shortestpath:shortest-path"));
+		}
+		catch (IOException e)
+		{
+			fail("Failed to read settings.gradle file: " + e.getMessage());
+		}
+	}
+
+	@Test
+	public void testSubmodulePinnedAtValidCommit() throws IOException, InterruptedException
+	{
+		// V-07: Submodule must be checked out at the pinned commit.
+		// 'git submodule status' output prefix: ' ' = clean pinned checkout,
+		// '+' = HEAD drifted from recorded commit, '-' = uninitialized.
+		ProcessBuilder processBuilder = new ProcessBuilder("git", "submodule", "status", "shortest-path");
+		processBuilder.redirectErrorStream(true);
+		Process process = processBuilder.start();
+
+		StringBuilder output = new StringBuilder();
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream())))
+		{
+			String line;
+			while ((line = reader.readLine()) != null)
+			{
+				output.append(line).append('\n');
+			}
+		}
+
+		int exitCode = process.waitFor();
+		assertEquals("git submodule status must succeed. Output: " + output, 0, exitCode);
+
+		String statusLine = output.toString().split("\n")[0];
+		assertTrue("Submodule must be at the pinned commit (leading space, 40-char hash). Got: " + statusLine,
+			statusLine.matches(" [0-9a-f]{40} shortest-path.*"));
 	}
 }
