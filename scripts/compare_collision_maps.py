@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 """Compare two collision-map.zip artifacts at the edge-flag level.
 
-For each region present in either zip:
-  - decode the per-tile-per-plane (north, east) flag pairs as raw bits
-    using Java BitSet semantics (little-endian byte order, LSB-first bit order)
-  - count edges that flipped open->blocked, blocked->open, or are unique
-    to one side (region added/removed)
-
-Region entry name is "<regionX>_<regionY>". Bit index for a tile at
-(x, y, plane) inside a region is:
-    ((plane * 64 * 64) + (y * 64) + x) * 2 + flag   (flag 0 = N, flag 1 = E)
-where (x, y) are local 0..63.
+For each region present in either zip, count edges that flipped
+open->blocked, blocked->open, or are unique to one side (region
+added/removed). Flag decoding is shared with ``collision_zip.py``.
 
 Optionally, ``--probe x y plane`` prints the four-edge state at that world
 coordinate in both maps.
@@ -19,67 +12,41 @@ coordinate in both maps.
 from __future__ import annotations
 
 import argparse
-import io
 import sys
-import zipfile
 from collections import Counter
-from typing import Dict, Optional, Tuple
+from pathlib import Path
+from typing import Dict, Tuple
 
-REGION = 64
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from collision_zip import (  # noqa: E402
+    CollisionMap,
+    FLAG_E,
+    FLAG_N,
+    REGION_SIZE,
+)
 
-
-def read_zip(path: str) -> Dict[Tuple[int, int], bytes]:
-    out: Dict[Tuple[int, int], bytes] = {}
-    with zipfile.ZipFile(path) as zf:
-        for name in zf.namelist():
-            try:
-                rx_s, ry_s = name.split("_")
-                rx, ry = int(rx_s), int(ry_s)
-            except ValueError:
-                continue
-            out[(rx, ry)] = zf.read(name)
-    return out
+FLAGS = (FLAG_N, FLAG_E)
 
 
-def planes(b: bytes) -> int:
-    if not b:
-        return 0
-    bits = len(b) * 8
-    # Ceiling, matching SplitFlagMap and collision_zip.py: BitSet's
-    # toByteArray() trims trailing zero bytes, so a region whose highest
-    # set bit sits on its top plane serializes to a non-plane-aligned
-    # length — floor division would drop that partial plane and every
-    # edge on it would go uncompared.
-    return (bits + REGION * REGION * 2 - 1) // (REGION * REGION * 2)
+def region_planes(m: CollisionMap, key: Tuple[int, int]) -> int:
+    region = m.regions.get(key)
+    return region[1] if region else 0
 
 
-def get_bit(b: bytes, index: int) -> bool:
-    byte = index >> 3
-    if byte >= len(b):
-        return False
-    return bool(b[byte] & (1 << (index & 7)))
-
-
-def edge(b: bytes, lx: int, ly: int, p: int, flag: int) -> bool:
-    idx = ((p * REGION * REGION) + (ly * REGION) + lx) * 2 + flag
-    return get_bit(b, idx)
-
-
-def compare_region(old: bytes, new: bytes) -> Dict[str, int]:
-    po, pn = planes(old or b""), planes(new or b"")
-    pmax = max(po, pn)
+def compare_region(old: CollisionMap, new: CollisionMap,
+                   key: Tuple[int, int]) -> Dict[str, int]:
+    rx, ry = key
+    pmax = max(region_planes(old, key), region_planes(new, key))
     stats = Counter()
     for p in range(pmax):
-        for ly in range(REGION):
-            for lx in range(REGION):
-                for flag in range(2):
-                    o = edge(old, lx, ly, p, flag) if p < po else False
-                    n = edge(new, lx, ly, p, flag) if p < pn else False
+        for ly in range(REGION_SIZE):
+            for lx in range(REGION_SIZE):
+                wx, wy = rx * REGION_SIZE + lx, ry * REGION_SIZE + ly
+                for flag in FLAGS:
+                    o = old.flag(wx, wy, p, flag)
+                    n = new.flag(wx, wy, p, flag)
                     if o == n:
-                        if o:
-                            stats["both_open"] += 1
-                        else:
-                            stats["both_blocked"] += 1
+                        stats["both_open" if o else "both_blocked"] += 1
                     elif o and not n:
                         stats["opened_to_blocked"] += 1
                     else:
@@ -87,31 +54,11 @@ def compare_region(old: bytes, new: bytes) -> Dict[str, int]:
     return stats
 
 
-def probe(maps: Dict[str, Dict[Tuple[int, int], bytes]], wx: int, wy: int, p: int) -> None:
-    rx, ry = wx // REGION, wy // REGION
-    lx, ly = wx - rx * REGION, wy - ry * REGION
-    for label, regions in maps.items():
-        b = regions.get((rx, ry), b"")
-        pc = planes(b)
-        if p >= pc:
-            print(f"{label}: region ({rx},{ry}) has only {pc} planes")
-            continue
-        n = edge(b, lx, ly, p, 0)
-        e = edge(b, lx, ly, p, 1)
-        # south edge = north edge of (lx, ly-1) in same region, or southern region if ly==0
-        if ly > 0:
-            s = edge(b, lx, ly - 1, p, 0)
-        else:
-            sb = regions.get((rx, ry - 1), b"")
-            spc = planes(sb)
-            s = edge(sb, lx, REGION - 1, p, 0) if p < spc else False
-        if lx > 0:
-            w = edge(b, lx - 1, ly, p, 1)
-        else:
-            wb = regions.get((rx - 1, ry), b"")
-            wpc = planes(wb)
-            w = edge(wb, REGION - 1, ly, p, 1) if p < wpc else False
-        print(f"{label} ({wx},{wy},{p}): N={int(n)} E={int(e)} S={int(s)} W={int(w)}")
+def probe(maps: Dict[str, CollisionMap], wx: int, wy: int, p: int) -> None:
+    for label, m in maps.items():
+        print(f"{label} ({wx},{wy},{p}): N={int(m.n(wx, wy, p))} "
+              f"E={int(m.e(wx, wy, p))} S={int(m.s(wx, wy, p))} "
+              f"W={int(m.w(wx, wy, p))}")
 
 
 def main() -> int:
@@ -124,25 +71,25 @@ def main() -> int:
                     help="Show top-N regions with most changes")
     args = ap.parse_args()
 
-    old = read_zip(args.old)
-    new = read_zip(args.new)
+    old = CollisionMap(Path(args.old))
+    new = CollisionMap(Path(args.new))
 
     totals = Counter()
     per_region = []
-    keys = set(old) | set(new)
+    keys = set(old.regions) | set(new.regions)
     for k in keys:
-        s = compare_region(old.get(k, b""), new.get(k, b""))
+        s = compare_region(old, new, k)
         totals.update(s)
         changes = s.get("opened_to_blocked", 0) + s.get("blocked_to_opened", 0)
         if changes:
             per_region.append((k, changes, s.get("opened_to_blocked", 0),
                                s.get("blocked_to_opened", 0)))
 
-    only_old = sorted(set(old) - set(new))
-    only_new = sorted(set(new) - set(old))
+    only_old = sorted(set(old.regions) - set(new.regions))
+    only_new = sorted(set(new.regions) - set(old.regions))
 
     print("=" * 60)
-    print(f"Regions in old: {len(old)}  new: {len(new)}")
+    print(f"Regions in old: {len(old.regions)}  new: {len(new.regions)}")
     if only_old:
         print(f"Removed regions ({len(only_old)}): {only_old[:8]}{'...' if len(only_old)>8 else ''}")
     if only_new:
@@ -160,7 +107,7 @@ def main() -> int:
     per_region.sort(key=lambda r: -r[1])
     print(f"Top {args.top} most-changed regions (region_x, region_y):")
     for (rx, ry), c, o2b, b2o in per_region[: args.top]:
-        bx, by = rx * REGION, ry * REGION
+        bx, by = rx * REGION_SIZE, ry * REGION_SIZE
         print(f"  ({rx:>2},{ry:>2}) world ~({bx},{by})  changed={c:>6}  "
               f"+blocked={o2b:>6}  -blocked={b2o:>6}")
 

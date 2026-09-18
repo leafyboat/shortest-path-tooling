@@ -28,6 +28,18 @@ FLAG_N = 0
 FLAG_E = 1
 
 
+def plane_count(data: bytes) -> int:
+    """Planes covered by a region blob.
+
+    ``BitSet.toByteArray()`` trims trailing zero bytes, so a region whose
+    highest set bit sits on its top plane serializes to a non-plane-aligned
+    length — floor division would drop that partial plane. Ceiling matches
+    ``SplitFlagMap``: readers treat out-of-range bits as unset.
+    """
+    scale = REGION_SIZE * REGION_SIZE * 2
+    return (len(data) * 8 + scale - 1) // scale
+
+
 class CollisionMap:
     """Minimal Python port of FlagMap/SplitFlagMap needed for walkability."""
 
@@ -39,9 +51,7 @@ class CollisionMap:
                     continue
                 rx, ry = (int(n) for n in name.split("_"))
                 data = z.read(name)
-                scale = REGION_SIZE * REGION_SIZE * 2
-                plane_count = (len(data) * 8 + scale - 1) // scale
-                self.regions[(rx, ry)] = (data, plane_count)
+                self.regions[(rx, ry)] = (data, plane_count(data))
 
     def _bit(self, data: bytes, index: int) -> bool:
         byte = data[index >> 3]
