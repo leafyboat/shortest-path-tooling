@@ -1,4 +1,4 @@
-name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,skill_levels,config_overrides,expected_length,minimum_length,expect_reachable
+name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,bank,varbits,skill_levels,config_overrides,expected_length,minimum_length,expect_reachable,varplayers
 Lumbridge → Draynor Village,walk,3222,3218,0,3105,3251,0,UNIT_TEST,,,,,,useAgilityShortcuts=true,133,
 Varrock → Barbarian Village,walk,3213,3428,0,3082,3420,0,UNIT_TEST,,,,,,useAgilityShortcuts=true,92,
 Falador → Rimmington,walk,2964,3378,0,2957,3214,0,UNIT_TEST,,,,,,useAgilityShortcuts=true,165,
@@ -16,7 +16,8 @@ Lumbridge → Edgeville,canoe,3222,3218,0,3087,3496,0,UNIT_TEST,1351:1,,,,,useCa
 Shantay Pass → Pollnivneach,magic-carpet,3304,3124,0,3360,2970,0,UNIT_TEST,995:200,,,,,useMagicCarpets=true,53,
 GE → Keldagrim,minecart,3165,3487,0,2909,10174,0,UNIT_TEST,995:1000,,,,,useMinecarts=true,27,
 Varrock → Civitas illa Fortis,quetzal,3213,3428,0,1700,3141,0,UNIT_TEST,,,,,,useQuetzals=true,79,
-Edgeville → Mage Arena (inner courtyard sealed — upstream data gap),wilderness,3087,3496,0,3105,3951,0,UNIT_TEST,,,,,,avoidWilderness=false,,,false
+Edgeville → Mage Arena,wilderness,3087,3496,0,3105,3951,0,UNIT_TEST,946:1,,,,,avoidWilderness=false;bypassVarPlayerChecks=false,544,,true,267=1
+Edgeville → Mage Arena (miniquest not started),wilderness,3087,3496,0,3105,3951,0,UNIT_TEST,946:1,,,,,avoidWilderness=false;bypassVarPlayerChecks=false,,,false,267=0
 Deep Wilderness → GE,wilderness,3340,3828,0,3158,3509,0,UNIT_TEST,11978:1,,,,,avoidWilderness=false;useAgilityShortcuts=true;useTeleportationItems=INVENTORY,139,
 Falador → White Knight 2F,multi-plane,2964,3378,0,2961,3339,2,UNIT_TEST,,,,,,,59,
 Castle Wars → GE,cross-map,2442,3096,0,3162,3489,0,UNIT_TEST,772:1,,,,,useFairyRings=true,149,
