@@ -169,9 +169,12 @@ intentional) or fix the data, never to silence the check.
   bundle is one dataset's rendered output under
   `build/reports/pathfinder-dashboard/bundles/`, including its
   `report.json` evidence file.
-- **Drift detector** — `transportAnchorDrift`, a cache-backed scan that
-  reports anchors whose object vanished, moved, or changed menu options
-  since the TSV was written.
+- **Drift detector** — two cache-backed scans run by `validate --drift`:
+  `transportAnchorDrift` reports anchors whose object vanished, moved,
+  or changed menu options; `destinationDrift` reports destination rows
+  with no interaction-capable object near their tile (the
+  deleted-destination check — a removed anvil leaves the floor
+  walkable, so committed-data checks can't see it).
 
 ## Where to go next
 

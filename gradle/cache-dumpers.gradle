@@ -245,6 +245,26 @@ def cacheDumperSpecs = [
         sysPropKeys: [cacheDir: 'transport.drift.cacheDir',
                       xtea: 'transport.drift.xteaPath'],
     ],
+    // Scans committed destination rows against the live cache for
+    // deleted/moved objects — a destination has no object anchor, so
+    // rows are matched on menu actions near the tile (advisory).
+    [
+        name: 'destinationDrift',
+        description: 'Scans committed destinations against the live cache for deleted/moved objects (advisory). ' +
+                'Required: -PdestinationDriftCacheDir=<cache dir>, -PdestinationDriftXteaPath=<keys.json>.',
+        testClass: 'shortestpath/dump/DestinationDriftTest.class',
+        cachePrefix: 'destinationDrift',
+        xteaPrefix: 'destinationDrift',
+        sysProps: [
+            'destination.drift.scan': 'true',
+            'destination.drift.tsvDir': "${rootDir}/shortest-path/src/main/resources".toString(),
+            'destination.drift.outPath': layout.buildDirectory
+                    .file('destination-drift.txt').get().asFile.absolutePath,
+            'destination.drift.exceptions': "${rootDir}/src/test/resources/destination_drift_exceptions.tsv".toString(),
+        ],
+        sysPropKeys: [cacheDir: 'destination.drift.cacheDir',
+                      xtea: 'destination.drift.xteaPath'],
+    ],
     // Scans all enums for overlap with a canonical destination-name
     // list (one per line).
     [

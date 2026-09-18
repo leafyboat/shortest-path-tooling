@@ -1,0 +1,48 @@
+# Destination drift exceptions — curated suppression list for the
+# destinationDrift cache scan (shortestpath.dump.DestinationDriftTest).
+#
+# The scan flags every destination TSV row whose tile has no
+# interaction-capable object within 3 tiles in a live OSRS cache. Some
+# destinations are unverifiable by an object scan by design:
+# NPC-serviced banks and shops (a banker is an NPC, not an object),
+# instanced interiors the cache stores at other coordinates, and
+# objects spawned server-side that never appear in map placements.
+# Listing a tile here suppresses the finding for exactly that tile.
+#
+# Row contract: "X Y Z<TAB>reason" — the coordinate in the same
+# space-separated three-part form the Destination column uses, then a
+# human reason explaining why the row is by-design unverifiable. A row
+# without both parts aborts the scan (a suppression that might be a
+# typo must not silently pass).
+#
+# Curate entries as findings are triaged.
+
+# NPC-serviced banks — the banker is an NPC, not an object.
+2330 3690 0	Piscatoris bank is a roaming banker NPC
+2417 3801 0	Jatizso bank is a banker NPC — no interactable bank counter
+3013 5625 0	Ourania (ZMI) bank is the Eniola banker NPC
+
+# Instanced interiors — the cache stores the content at other
+# coordinates, so no placement can sit near the listed tile.
+1745 5476 0	Clan Hall is instanced per clan — bank chests live in the template region
+1746 5476 0	Clan Hall is instanced per clan — bank chests live in the template region
+1747 5476 0	Clan Hall is instanced per clan — bank chests live in the template region
+1748 5476 0	Clan Hall is instanced per clan — bank chests live in the template region
+1774 5467 0	Clan Hall is instanced per clan — altar lives in the template region
+3374 11493 0	Giants' Foundry is instanced — bank chest lives in the template region
+1514 2995 0	sealed smithing-room interior — content stored at other coordinates
+1516 2995 0	sealed smithing-room interior — content stored at other coordinates
+
+# Server-spawned booths — the map placements at these tiles are
+# name=null floor objects; the interactive booths are spawned by the
+# server and never appear in cache region placements.
+3512 3478 0	Canifis bank booths are server-spawned — no object in map placements
+3512 3479 0	Canifis bank booths are server-spawned — no object in map placements
+3512 3480 0	Canifis bank booths are server-spawned — no object in map placements
+3512 3481 0	Canifis bank booths are server-spawned — no object in map placements
+3512 3482 0	Canifis bank booths are server-spawned — no object in map placements
+3512 3483 0	Canifis bank booths are server-spawned — no object in map placements
+3162 3489 0	Grand Exchange booths are server-spawned — no object in map placements
+3167 3489 0	Grand Exchange booths are server-spawned — no object in map placements
+3162 3490 0	Grand Exchange booths are server-spawned — no object in map placements
+3167 3490 0	Grand Exchange booths are server-spawned — no object in map placements

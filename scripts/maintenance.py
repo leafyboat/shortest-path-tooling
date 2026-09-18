@@ -1169,17 +1169,25 @@ def _run_drift(args: argparse.Namespace) -> Tuple[str, str]:
         return ("advisory",
                 "skipped — cache/ and keys.json required (run "
                 "maintenance.py cache)")
-    proc = run(["./gradlew", "transportAnchorDrift",
-                f"-PtransportDriftCacheDir={REPO / 'cache'}",
-                f"-PtransportDriftXteaPath={REPO / 'keys.json'}"],
-               cwd=REPO, timeout=GRADLE_TIMEOUT_SECONDS)
-    _print_stdout(proc)
-    if proc.returncode != 0:
-        tail = _stderr_tail(proc)
-        if tail:
-            print(tail, file=sys.stderr)
-        return ("advisory", f"detector error rc={proc.returncode}")
-    return ("advisory", "report at build/transport-drift.txt")
+    reports = []
+    for task, cache_prop, xtea_prop, report in (
+            ("transportAnchorDrift", "transportDriftCacheDir",
+             "transportDriftXteaPath", "build/transport-drift.txt"),
+            ("destinationDrift", "destinationDriftCacheDir",
+             "destinationDriftXteaPath", "build/destination-drift.txt")):
+        proc = run(["./gradlew", task,
+                    f"-P{cache_prop}={REPO / 'cache'}",
+                    f"-P{xtea_prop}={REPO / 'keys.json'}"],
+                   cwd=REPO, timeout=GRADLE_TIMEOUT_SECONDS)
+        _print_stdout(proc)
+        if proc.returncode != 0:
+            tail = _stderr_tail(proc)
+            if tail:
+                print(tail, file=sys.stderr)
+            return ("advisory",
+                    f"{task} detector error rc={proc.returncode}")
+        reports.append(report)
+    return ("advisory", "reports at " + " and ".join(reports))
 
 
 def _season_label() -> Optional[str]:

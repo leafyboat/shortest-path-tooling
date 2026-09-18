@@ -1965,6 +1965,8 @@ def make_validate_run(repo, calls, *, check_rc=None, check_stdout=None,
             return cp(cmd, out, rc=curl_rc)
         if cmd[:2] == ["./gradlew", "transportAnchorDrift"]:
             return cp(cmd, drift_stdout, rc=drift_rc)
+        if cmd[:2] == ["./gradlew", "destinationDrift"]:
+            return cp(cmd, drift_stdout, rc=drift_rc)
         if cmd[:2] == ["./gradlew", "leagueAreaStructDump"]:
             return cp(cmd, "area struct dump\n", rc=probe_rc)
         if cmd[:2] == ["./gradlew", "leagueScriptScan"]:
@@ -2382,8 +2384,14 @@ def test_drift_advisory(tmp_path, monkeypatch, capsys):
     assert argv == ["./gradlew", "transportAnchorDrift",
                     f"-PtransportDriftCacheDir={repo / 'cache'}",
                     f"-PtransportDriftXteaPath={repo / 'keys.json'}"]
+    argv = next(c for c, _ in calls
+                if c[:2] == ["./gradlew", "destinationDrift"])
+    assert argv == ["./gradlew", "destinationDrift",
+                    f"-PdestinationDriftCacheDir={repo / 'cache'}",
+                    f"-PdestinationDriftXteaPath={repo / 'keys.json'}"]
     assert "ADVISORY drift" in out
     assert "build/transport-drift.txt" in out
+    assert "build/destination-drift.txt" in out
 
 
 def test_drift_advisory_detector_error_never_counts(

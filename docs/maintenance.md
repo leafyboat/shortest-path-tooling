@@ -190,7 +190,7 @@ flag (`--skip-tsv-structure`, `--skip-collision-zip`,
 | `regions` | hard | generated `leagues/regions.tsv` consistent with the zip surface and the curated-bbox classifier |
 | `freshness` | hard | the collision map is current: newest live `caches.json` timestamp vs upstream's last `Update collision map` auto-commit, plus the submodule pin vs `upstream/master` |
 | `destinations` | advisory | destination TSV targets blocked on the committed zip, minus the curated exceptions |
-| `drift` | advisory | TSV object/menu anchors still exist in a live cache (`--drift` only) |
+| `drift` | advisory | TSV object/menu anchors still exist in a live cache, and destination rows still have an interaction-capable object nearby (`--drift` only) |
 | `season` | advisory | league-season wiki cross-check + probes (`--season-active` or the marker file) |
 
 The routine checks are cache-free and read-only against committed data,
@@ -202,13 +202,23 @@ the last auto-commit), or the pin lag (collision-map commits on
 `upstream/master` the submodule HEAD lacks); any input it cannot resolve
 fails the check closed rather than passing silently.
 
-`--drift` runs the `transportAnchorDrift` cache scan and reports
-`ADVISORY drift` with the grouped report at `build/transport-drift.txt`.
-It needs a prepared `cache/` + `keys.json` (`python3
-scripts/maintenance.py cache`) and never downloads one itself — with no
-cache the tier prints an advisory skip carrying that hint. Findings mean
-upstream objects moved or menu actions were renamed — triage the TSV
-rows named.
+`--drift` runs two cache scans and reports `ADVISORY drift`:
+`transportAnchorDrift` (grouped report at
+`build/transport-drift.txt`) checks every transport anchor's object
+and menu action, and `destinationDrift` (report at
+`build/destination-drift.txt`) checks that every destination row has
+an object exposing the category's menu action within 3 tiles — the
+deleted-destination currency check the committed-data walkability
+tier cannot see (a deleted anvil leaves the floor walkable). Both
+need a prepared `cache/` + `keys.json` (`python3
+scripts/maintenance.py cache`) and never download one themselves —
+with no cache the tier prints an advisory skip carrying that hint.
+Findings mean upstream objects moved, were deleted, or menu actions
+were renamed — triage the rows named. Rows a live cache can never
+verify (NPC-serviced banks like the roaming Piscatoris banker,
+instanced interiors, server-spawned objects like the GE booths) are
+curated in `src/test/resources/destination_drift_exceptions.tsv` —
+same `X Y Z<tab>reason` contract as the walkability exceptions.
 
 `--season-active` (or the committed `src/test/resources/season_active`
 marker) enables the league-season tier: the

@@ -48,6 +48,7 @@ EXPECTED_TASKS = frozenset({
     "leagueAreaStructDump",
     "leagueScriptScan",
     "transportAnchorDrift",
+    "destinationDrift",
     "briefcaseDestOverlapScan",
     "briefcaseStructHunt",
     "briefcaseParamScriptScan",
@@ -84,6 +85,12 @@ EXPECTED_SYSPROPS = {
                              "transport.drift.xteaPath",
                              "transport.drift.tsvDir",
                              "transport.drift.outPath"},
+    "destinationDrift": {"destination.drift.scan",
+                         "destination.drift.cacheDir",
+                         "destination.drift.xteaPath",
+                         "destination.drift.tsvDir",
+                         "destination.drift.outPath",
+                         "destination.drift.exceptions"},
     "briefcaseDestOverlapScan": {"briefcase.dest.scan",
                                  "briefcase.dest.cacheDir",
                                  "briefcase.dest.xteaPath",
@@ -168,7 +175,7 @@ def _specs():
     return specs
 
 
-def test_all_15_task_names_in_spec():
+def test_all_16_task_names_in_spec():
     assert frozenset(_specs()) == EXPECTED_TASKS
 
 
