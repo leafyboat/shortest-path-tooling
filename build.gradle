@@ -48,6 +48,15 @@ tasks.withType(Checkstyle).configureEach {
 // test JVM the same heap the dedicated `dashboard` task provides.
 test {
     jvmArgs = ['-Xms1g', '-Xmx8g']
+    // Opt-in cache probes run via `test --tests ... -D<key>=...` — Gradle
+    // does not forward -D to the forked test JVM, so pass the probe keys
+    // through explicitly.
+    ['tile.probe', 'tile.probe.boxes', 'tile.probe.plane',
+     'tile.probe.cacheDir', 'tile.probe.xteaPath'].each { k ->
+        if (System.getProperty(k) != null) {
+            systemProperty k, System.getProperty(k)
+        }
+    }
 }
 
 // Pull in the plugin's test helpers that the dashboard/dump code depends on.

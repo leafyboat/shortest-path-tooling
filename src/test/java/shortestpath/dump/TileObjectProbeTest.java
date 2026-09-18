@@ -1,5 +1,6 @@
 package shortestpath.dump;
 
+import net.runelite.cache.EntityOpsDefinition;
 import net.runelite.cache.ObjectManager;
 import net.runelite.cache.definitions.ObjectDefinition;
 import net.runelite.cache.fs.Store;
@@ -26,12 +27,26 @@ public class TileObjectProbeTest {
         String xteaPath = System.getProperty("tile.probe.xteaPath", "keys.json");
 
         // Boxes: Mage Arena compound (pocket, wall band, inner ring) and the
-        // bank cave region the entrance lever teleports into.
-        int[][] boxes = {
-            {3085, 3135, 3935, 3970},
-            {2510, 2570, 4680, 4740},
-        };
-        int plane = 0;
+        // bank cave region the entrance lever teleports into. Override with
+        // -Dtile.probe.boxes="x1 x2 y1 y2;x1 x2 y1 y2" (x1..x2, y1..y2).
+        String boxSpec = System.getProperty("tile.probe.boxes");
+        int[][] boxes;
+        if (boxSpec != null && !boxSpec.isEmpty()) {
+            String[] parts = boxSpec.split(";");
+            boxes = new int[parts.length][4];
+            for (int i = 0; i < parts.length; i++) {
+                String[] nums = parts[i].trim().split("\\s+");
+                for (int j = 0; j < 4; j++) {
+                    boxes[i][j] = Integer.parseInt(nums[j]);
+                }
+            }
+        } else {
+            boxes = new int[][]{
+                {3085, 3135, 3935, 3970},
+                {2510, 2570, 4680, 4740},
+            };
+        }
+        int plane = Integer.getInteger("tile.probe.plane", 0);
 
         XteaKeyManager xtea = CacheUtils.loadXteaKeys(xteaPath);
         try (Store store = CacheUtils.openStore(cacheDir)) {
@@ -52,8 +67,41 @@ public class TileObjectProbeTest {
                     if (!inBox) continue;
                     ObjectDefinition def = objectManager.getObject(loc.getId());
                     String name = def != null ? def.getName() : "?";
-                    System.out.printf("%d %d %d\tid=%d\ttype=%d\tname=%s%n",
-                        x, y, z, loc.getId(), loc.getType(), name);
+                    StringBuilder extra = new StringBuilder();
+                    if (def != null) {
+                        if (def.getVarbitID() != -1 || def.getVarpID() != -1) {
+                            extra.append("\tvarbit=").append(def.getVarbitID())
+                                .append(" varp=").append(def.getVarpID());
+                        }
+                        if (def.getConfigChangeDest() != null) {
+                            extra.append("\tchildren=")
+                                .append(java.util.Arrays.toString(
+                                    def.getConfigChangeDest()));
+                            for (int c : def.getConfigChangeDest()) {
+                                ObjectDefinition cd = objectManager.getObject(c);
+                                if (cd != null && cd.getOps() != null
+                                        && cd.getOps().ops != null) {
+                                    extra.append(" [").append(c).append(":");
+                                    for (EntityOpsDefinition.Op op : cd.getOps().ops) {
+                                        if (op != null && op.text != null) {
+                                            extra.append(' ').append(op.text);
+                                        }
+                                    }
+                                    extra.append(']');
+                                }
+                            }
+                        }
+                        if (def.getOps() != null && def.getOps().ops != null) {
+                            extra.append("\tops=");
+                            for (EntityOpsDefinition.Op op : def.getOps().ops) {
+                                if (op != null && op.text != null) {
+                                    extra.append(' ').append(op.text);
+                                }
+                            }
+                        }
+                    }
+                    System.out.printf("%d %d %d\tid=%d\ttype=%d\tname=%s%s%n",
+                        x, y, z, loc.getId(), loc.getType(), name, extra);
                 }
             }
         }
