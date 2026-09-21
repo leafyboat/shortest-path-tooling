@@ -582,6 +582,10 @@ public class CollisionMapDumper
 
 		BRIMHAVEN_DUNGEON_EXIT_20878(20878),
 
+		BURGH_DE_ROTT_GATE_12816(12816),
+		BURGH_DE_ROTT_GATE_12817(12817),
+		BURGH_DE_ROTT_LOW_FENCE_12776(12776),
+
 		CELL_DOOR_9562(9562),
 
 		COOKING_GUILD_DOOR_10045(10045),
@@ -672,6 +676,8 @@ public class CollisionMapDumper
 
 		// MEMBERS_GATE_1727(1727), // Taverley, Falador, Brimhaven, Wilderness, Edgeville Dungeon
 		// MEMBERS_GATE_1728(1728), // Taverley, Falador, Brimhaven, Wilderness, Edgeville Dungeon
+
+		MORYTANIA_BROKEN_FENCE_18411(18411),
 
 		OLD_SCHOOL_MUSEUM_CURTAIN_31885(31885), // type = 9 is full blocked diagonal, type = 0 is wall
 
