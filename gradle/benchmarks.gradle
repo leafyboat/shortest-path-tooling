@@ -47,3 +47,19 @@ tasks.register('benchmarkCanonical', JavaExec) {
         systemProperty 'benchmark.shortestPathDirty', dirtyOf(plugin).toString()
     }
 }
+
+// Runs one canonical route for one account profile and prints the selected path.
+tasks.register('route', JavaExec) {
+    group = 'verification'
+    description = 'Runs one canonical route query and prints its selected path.'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'shortestpath.benchmark.canonical.CanonicalRouteCli'
+    def routeArgs = providers.gradleProperty('routeArgs')
+    doFirst {
+        if (!routeArgs.isPresent()) {
+            throw new GradleException('route requires -ProuteArgs="--corpus DIR PROFILE START_X START_Y START_PLANE TARGET_X TARGET_Y TARGET_PLANE"')
+        }
+        args routeArgs.get().trim().split(/\s+/) as List
+    }
+}

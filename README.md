@@ -64,6 +64,18 @@ The default remains the `./shortest-path` Git submodule.
 | `./gradlew routingCuts -PkahipNodeSeparator=<path>` | Generate the exact pathfinder's `routing-cuts.bin` with KaHIP (see below) |
 | `./gradlew routingCutsReport` | Report how many committed cuts still apply to the current collision map |
 | `./gradlew benchmarkCanonical --args="..."` | Run a resolved benchmark manifest (used by shortest-path-benchmarks) |
+| `./gradlew route -ProuteArgs="..."` | Query one canonical route and print its selected path |
+
+The route query uses the same canonical account compiler and adapter as
+`benchmarkCanonical`. Pass the corpus checkout with `--corpus`; add
+`--algorithm exact`, `--json` or `--counters` as needed. Routes can be given by
+corpus ID (`--route ID --profile PROFILE`) or by coordinates:
+
+```bash
+./gradlew \
+  -ProuteArgs='--corpus ../shortest-path-corpus maxed 2411 4434 0 2995 3114 0 --json' \
+  route
+```
 
 ## Exact routing cuts
 
@@ -111,7 +123,8 @@ For the datasets and when to use each, see [docs/dashboard-design.md](docs/dashb
 
 The canonical corpus (routes and account profiles) lives in the
 [shortest-path-corpus](https://github.com/osrs-pathfinding/shortest-path-corpus)
-repository. `benchmarkCanonical` takes the checkout as an explicit `--corpus` argument. Tests that use it read `-PcorpusDir` (default
+repository. The commands that use it take the checkout as an explicit `--corpus`
+argument. Tests that use it read `-PcorpusDir` (default
 `../shortest-path-corpus`); nothing else needs it.
 
 `benchmarkCanonical` is the integration point for the
