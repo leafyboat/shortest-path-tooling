@@ -63,6 +63,7 @@ The default remains the `./shortest-path` Git submodule.
 | `./gradlew sailingAmenityVarbitDump -PsailingAmenityCacheDir=<dir> -PsailingAmenityXteaPath=<keys.json>` | Dump Sailing island amenity varbits from an OSRS cache |
 | `./gradlew routingCuts -PkahipNodeSeparator=<path>` | Generate the exact pathfinder's `routing-cuts.bin` with KaHIP (see below) |
 | `./gradlew routingCutsReport` | Report how many committed cuts still apply to the current collision map |
+| `./gradlew benchmarkCanonical --args="..."` | Run a resolved benchmark manifest (used by shortest-path-benchmarks) |
 
 ## Exact routing cuts
 
@@ -105,6 +106,34 @@ All options are passed via `-P`:
 | `dashboardProfile` | `true` | Whether to enable the profiler |
 
 For the datasets and when to use each, see [docs/dashboard-design.md](docs/dashboard-design.md).
+
+## Canonical corpus benchmark
+
+The canonical corpus (routes and account profiles) lives in the
+[shortest-path-corpus](https://github.com/osrs-pathfinding/shortest-path-corpus)
+repository. `benchmarkCanonical` takes the checkout as an explicit `--corpus` argument. Tests that use it read `-PcorpusDir` (default
+`../shortest-path-corpus`); nothing else needs it.
+
+`benchmarkCanonical` is the integration point for the
+[shortest-path-benchmarks](https://github.com/osrs-pathfinding/shortest-path-benchmarks)
+harness. It runs exactly the route/profile/repetition cases of a resolved
+manifest in one JVM, for the legacy or exact backend:
+
+```bash
+./gradlew benchmarkCanonical \
+  --args="--manifest /path/to/resolved-experiment.json \
+          --corpus ../shortest-path-corpus \
+          --output build/benchmarks/java-adapter.json"
+```
+
+The output is one protocol-v1 JSON envelope with execution metadata, the Java
+VM identity, dependency Git identities, the synthetic benchmark clock, and v2
+observations. Expected reachability comes from each route's curated
+`negativeProfiles`; there is no expected cost.
+
+Accounts are compiled from the corpus profiles into a plugin configuration
+(`CanonicalAccountCompiler`). The rune pouch is flattened into carried
+inventory, and selected POH mounted items and nexus portals are passed through.
 
 ## Keeping up with the plugin
 
