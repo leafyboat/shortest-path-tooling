@@ -203,8 +203,17 @@ def test_shadow_schema_fields(tmp_path, monkeypatch):
         "upstream", "url", "title", "upstream_state",
         "upstream_state_reason", "labels", "author", "created_at",
         "updated_at", "synced_at", "status", "phase", "fix_candidates",
-        "scenario_rows", "verification", "history",
+        "scenario_rows", "triage", "verification", "history",
     }
+    t = fm["triage"]
+    assert isinstance(t, dict)
+    assert set(t.keys()) == {
+        "verdict", "expressible", "blocked_on", "unblock_conditions",
+        "feature_size", "evidence", "triaged_at", "triaged_by",
+    }
+    # The skeleton ships verdict: null so a freshly synced open issue
+    # fails the coverage gate until it is classified.
+    assert t["verdict"] is None
     v = fm["verification"]
     assert isinstance(v, dict)
     assert set(v.keys()) == {
@@ -292,6 +301,16 @@ def make_shadow(tmp_path, number, status="reported", fm_extra=None,
         "phase": None,
         "fix_candidates": [],
         "scenario_rows": [],
+        "triage": {
+            "verdict": "invalid",
+            "expressible": None,
+            "blocked_on": None,
+            "unblock_conditions": ["fixture unblock condition"],
+            "feature_size": None,
+            "evidence": {"pin_sha": "fixturepin", "report": None},
+            "triaged_at": None,
+            "triaged_by": None,
+        },
         "verification": {
             "command": None, "dataset_rows": [], "report": None,
             "fix_commit": None, "fix_pr": None, "verifier": None,
@@ -442,6 +461,27 @@ def run_check(tmp_path):
     return ii.main(["check", "--output-dir", str(tmp_path)])
 
 
+def triage_block(**overrides):
+    """A lint-clean ``triage:`` block (prose-only ``invalid`` verdict).
+
+    ``verdict: invalid`` is not row-backed, so the fixture needs no
+    scenario rows; ``unblock_conditions`` and ``evidence.pin_sha`` are
+    populated so the block satisfies every non-coverage verdict rule.
+    """
+    block = {
+        "verdict": "invalid",
+        "expressible": None,
+        "blocked_on": None,
+        "unblock_conditions": ["fixture unblock condition"],
+        "feature_size": None,
+        "evidence": {"pin_sha": "fixturepin", "report": None},
+        "triaged_at": None,
+        "triaged_by": None,
+    }
+    block.update(overrides)
+    return block
+
+
 def test_check_clean_store_passes(tmp_path, capsys):
     make_shadow(tmp_path, 1, status="triaged", body_text=PRD_BODY)
     make_scenarios_csv(tmp_path, [scenario_row()])
@@ -586,6 +626,111 @@ def test_lint_rejects_malformed_quests(tmp_path, capsys):
     rc = run_check(tmp_path)
     assert rc != 0
     assert "does not match its grammar" in capsys.readouterr().out
+
+
+# --- triage verdict gate: coverage + evidence-shape rules ---------------
+
+def test_check_open_issue_without_verdict_fails_coverage(tmp_path, capsys):
+    # Every upstream-open file must carry a six-way verdict — a missing
+    # or null verdict is a coverage error, not a silent pass.
+    make_shadow(tmp_path, 50, status="reported",
+                fm_extra={"triage": None})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    assert "lacks a valid triage.verdict" in capsys.readouterr().out
+
+
+def test_check_open_issue_null_verdict_fails_coverage(tmp_path, capsys):
+    # A skeleton `triage:` block with verdict: null (what a fresh sync
+    # emits) must fail coverage exactly like a missing block.
+    make_shadow(tmp_path, 59, status="reported",
+                fm_extra={"triage": triage_block(verdict=None)})
+    assert run_check(tmp_path) != 0
+    assert "lacks a valid triage.verdict" in capsys.readouterr().out
+
+
+def test_check_verdict_must_be_known_enum(tmp_path, capsys):
+    make_shadow(tmp_path, 51, status="reported",
+                fm_extra={"triage": triage_block(verdict="bogus")})
+    assert run_check(tmp_path) != 0
+    assert "lacks a valid triage.verdict" in capsys.readouterr().out
+
+
+def test_check_non_fixed_verdict_requires_unblock_conditions(tmp_path,
+                                                           capsys):
+    make_shadow(tmp_path, 52, status="reported",
+                fm_extra={"triage": triage_block(
+                    verdict="data-gap", expressible=False,
+                    blocked_on="f2p-harness", unblock_conditions=[])})
+    assert run_check(tmp_path) != 0
+    assert "unblock_conditions" in capsys.readouterr().out
+
+
+def test_check_row_backed_verdict_requires_rows_or_unexpressible(
+        tmp_path, capsys):
+    # `fixed` needs no unblock_conditions but is row-backed: without
+    # scenario_rows it must declare expressible: false.
+    make_shadow(tmp_path, 53, status="reported",
+                fm_extra={"triage": triage_block(verdict="fixed",
+                                               unblock_conditions=[])})
+    assert run_check(tmp_path) != 0
+    out = capsys.readouterr().out
+    assert "scenario_rows" in out or "expressible" in out
+
+
+def test_check_unexpressible_requires_blocked_on(tmp_path, capsys):
+    make_shadow(tmp_path, 54, status="reported",
+                fm_extra={"triage": triage_block(
+                    verdict="data-gap", expressible=False,
+                    blocked_on=None)})
+    assert run_check(tmp_path) != 0
+    assert "blocked_on" in capsys.readouterr().out
+
+
+def test_check_unexpressible_row_backed_verdict_clean(tmp_path, capsys):
+    # expressible: false + blocked_on is the lint escape for a
+    # row-backed verdict with no scenario rows.
+    make_shadow(tmp_path, 55, status="reported",
+                fm_extra={"triage": triage_block(
+                    verdict="data-gap", expressible=False,
+                    blocked_on="f2p-harness")})
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "check: clean" in capsys.readouterr().out
+
+
+def test_check_feature_verdict_requires_feature_size(tmp_path, capsys):
+    make_shadow(tmp_path, 56, status="reported",
+                fm_extra={"triage": triage_block(verdict="feature")})
+    assert run_check(tmp_path) != 0
+    assert "feature_size" in capsys.readouterr().out
+
+    sub = tmp_path / "sized"
+    sub.mkdir()
+    make_shadow(sub, 56, status="reported",
+                fm_extra={"triage": triage_block(
+                    verdict="feature", feature_size="small")})
+    assert run_check(sub) == 0
+
+
+def test_check_verdict_requires_evidence_pin_sha(tmp_path, capsys):
+    # Presence gate only — the pin is recorded at verdict time and may
+    # legitimately move afterwards, so it is never compared to live HEAD.
+    make_shadow(tmp_path, 57, status="reported",
+                fm_extra={"triage": triage_block(
+                    evidence={"pin_sha": None, "report": None})})
+    assert run_check(tmp_path) != 0
+    assert "pin_sha" in capsys.readouterr().out
+
+
+def test_check_closed_upstream_skips_verdict_coverage(tmp_path, capsys):
+    # Closed-upstream files are exempt from the coverage gate — once
+    # upstream closes an issue it leaves the ratchet.
+    make_shadow(tmp_path, 58, status="reported",
+                fm_extra={"triage": None, "upstream_state": "closed"})
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "triage" not in capsys.readouterr().out
 
 
 # --------------------------------------------------------------------------
