@@ -751,6 +751,41 @@ def test_check_closed_upstream_skips_verdict_coverage(tmp_path, capsys):
     assert "triage" not in capsys.readouterr().out
 
 
+def test_check_fixed_verdict_with_rows_clean(tmp_path, capsys):
+    # `fixed` is the only verdict exempt from unblock_conditions — the
+    # upstream fix already landed; the paired scenario rows are the
+    # evidence it stays fixed.
+    make_shadow(tmp_path, 60, status="reported",
+                fm_extra={
+                    "scenario_rows": ["alpha scenario"],
+                    "triage": triage_block(verdict="fixed",
+                                           unblock_conditions=[])})
+    make_scenarios_csv(tmp_path, [scenario_row(category="routing-issue-60")])
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "check: clean" in capsys.readouterr().out
+
+
+def test_check_plugin_bug_with_rows_clean(tmp_path, capsys):
+    make_shadow(tmp_path, 61, status="reported",
+                fm_extra={
+                    "scenario_rows": ["alpha scenario"],
+                    "triage": triage_block(verdict="plugin-bug")})
+    make_scenarios_csv(tmp_path, [scenario_row(category="routing-issue-61")])
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "check: clean" in capsys.readouterr().out
+
+
+def test_check_feature_size_large_clean(tmp_path, capsys):
+    make_shadow(tmp_path, 62, status="reported",
+                fm_extra={"triage": triage_block(
+                    verdict="feature", feature_size="large")})
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "check: clean" in capsys.readouterr().out
+
+
 # --------------------------------------------------------------------------
 # re-sync preservation, upstream-state mapping, STATE.md digest
 # --------------------------------------------------------------------------
@@ -798,6 +833,28 @@ def test_resync_updates_upstream_preserves_maintainer(tmp_path, monkeypatch):
                             ("Acceptance Criteria", "- it works"),
                             ("Canonical References", "- file.java")):
         assert marker in upstream[section]
+
+
+def test_resync_preserves_triage(tmp_path, monkeypatch):
+    # A recorded verdict must survive re-sync verbatim — `triage` sits in
+    # the carry-over tuple alongside the other maintainer-owned fields.
+    issues = load_fixture("gh_issue_list_all.json")
+    run_sync(tmp_path, monkeypatch, issues, extra_args=["--no-digest"])
+    path = tmp_path / "ISSUE-549.md"
+    fm, _body = frontmatter_and_body(path)
+    fm["triage"] = triage_block(
+        verdict="plugin-bug", expressible=True,
+        unblock_conditions=["ship the fix upstream"],
+        evidence={"pin_sha": "abc1234",
+                  "report": "build/reports/x/report.json"},
+        triaged_at="2026-09-20T00:00:00Z", triaged_by="tester")
+    path.write_text("---\n" + yaml.safe_dump(fm, sort_keys=False)
+                    + "---\n\n## Triage Notes\n\nnote\n")
+    changed = dict(fixture_issue("gh_issue_list_all.json", 549))
+    changed["title"] = "Retitled upstream report"
+    run_sync(tmp_path, monkeypatch, [changed], extra_args=["--no-digest"])
+    fm2, _body = frontmatter_and_body(path)
+    assert fm2["triage"] == fm["triage"]
 
 
 def test_resync_state_reason_suggestions(tmp_path, monkeypatch, capsys):
