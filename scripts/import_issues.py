@@ -668,11 +668,17 @@ def update_state_digest(state_path: Path,
         title = title.replace("|", "\\|")
         status = fm.get("status") or "unknown"
         phase = fm.get("phase") or "—"
+        # Maintainer-authored enum, not untrusted text — the title's
+        # sanitization above already covers the injectable field.  A
+        # malformed (non-dict) triage block degrades to the placeholder.
+        triage = fm.get("triage")
+        verdict = (triage.get("verdict")
+                   if isinstance(triage, dict) else None) or "-"
         rows.append(f"| {UPSTREAM_REPO}#{number} | {title}"
-                    f" | {status} | {phase} |")
+                    f" | {status} | {phase} | {verdict} |")
     table = (UNTRUSTED_MARKER + "\n\n"
-             "| Upstream | Title | Status | Phase |\n"
-             "|----------|-------|--------|-------|")
+             "| Upstream | Title | Status | Phase | Verdict |\n"
+             "|----------|-------|--------|-------|---------|")
     if rows:
         table += "\n" + "\n".join(rows)
     text = state_path.read_text()
@@ -827,7 +833,10 @@ def lint_shadow(path: Path, fm: Dict, body: str) -> List[str]:
             errors.append(f"status {status} requires populated "
                           f"verification.command and verification.report")
     if (fm.get("upstream_state") or "").lower() == "open":
-        triage = fm.get("triage") or {}
+        # Malformed triage (non-dict) degrades to the coverage error,
+        # never a crash — shadow frontmatter is not a trusted schema.
+        triage = fm.get("triage")
+        triage = triage if isinstance(triage, dict) else {}
         verdict = triage.get("verdict")
         if verdict not in VERDICT_ENUM:
             errors.append(
@@ -856,7 +865,10 @@ def lint_shadow(path: Path, fm: Dict, body: str) -> List[str]:
                     "'small' or 'large'")
             # Presence gate only: the pin is recorded at verdict time and
             # may legitimately move afterwards — never compare to HEAD.
-            if not (triage.get("evidence") or {}).get("pin_sha"):
+            evidence = triage.get("evidence")
+            if not isinstance(evidence, dict):
+                evidence = {}
+            if not evidence.get("pin_sha"):
                 errors.append(
                     f"triage.verdict {verdict!r} requires "
                     f"triage.evidence.pin_sha")
@@ -1113,7 +1125,11 @@ def cmd_list(args: argparse.Namespace) -> int:
         status = fm.get("status") or "unknown"
         if args.status and status != args.status:
             continue
-        rows.append(f"{path.stem}  {status}  {fm.get('title') or ''}")
+        triage = fm.get("triage")
+        verdict = (triage.get("verdict")
+                   if isinstance(triage, dict) else None) or "-"
+        rows.append(f"{path.stem}  {status}  {verdict}  "
+                    f"{fm.get('title') or ''}")
     for row in rows:
         print(row)
     return 0

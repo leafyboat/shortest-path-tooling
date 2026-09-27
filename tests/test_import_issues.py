@@ -279,6 +279,24 @@ def test_list_outputs_status_lines(tmp_path, monkeypatch, capsys):
                for l in lines)
 
 
+def test_list_outputs_verdict_column(tmp_path, capsys):
+    # The verdict column sits between status and title; a file without a
+    # triage block renders "-", a verdicted one renders the enum token.
+    make_shadow(tmp_path, 1, status="reported", fm_extra={"triage": None})
+    make_shadow(tmp_path, 2, status="reported",
+                fm_extra={"triage": {"verdict": "data-gap"}})
+    rc = ii.main(["list", "--output-dir", str(tmp_path)])
+    assert rc == 0
+    lines = [l for l in capsys.readouterr().out.splitlines() if l.strip()]
+    by_stem = {l.split()[0]: l for l in lines}
+    parts = by_stem["ISSUE-1"].split()
+    assert parts[0] == "ISSUE-1" and parts[1] == "reported"
+    assert parts[2] == "-"
+    parts = by_stem["ISSUE-2"].split()
+    assert parts[0] == "ISSUE-2" and parts[1] == "reported"
+    assert parts[2] == "data-gap"
+
+
 # --------------------------------------------------------------------------
 # status subcommand — lifecycle transitions
 # --------------------------------------------------------------------------
@@ -1021,6 +1039,32 @@ def test_digest_lists_only_upstream_open(tmp_path):
     assert "#2" not in text and "closed one" not in text
     assert text.index("#1") < text.index("#3")  # sorted by issue number
     assert "phases/x" in text
+
+
+def test_digest_includes_verdict_column(tmp_path):
+    # The digest gains a trailing Verdict column: a verdicted file shows
+    # the enum token, a verdictless one the "-" placeholder — including
+    # when the triage key is absent or malformed.
+    state = tmp_path / "STATE.md"
+    state.write_text("# S\n\n<!-- issues:digest:start -->\nold\n"
+                     "<!-- issues:digest:end -->\n")
+    files = [(1, {"upstream_state": "open", "title": "one",
+                  "status": "reported", "phase": None,
+                  "triage": {"verdict": "data-gap"}}),
+             (2, {"upstream_state": "open", "title": "two",
+                  "status": "reported", "phase": None}),
+             (3, {"upstream_state": "open", "title": "three",
+                  "status": "reported", "phase": None,
+                  "triage": "not-a-dict"})]
+    ii.update_state_digest(state, files)
+    text = state.read_text()
+    assert "| Verdict |" in text
+    row1 = next(l for l in text.splitlines() if "#1" in l)
+    row2 = next(l for l in text.splitlines() if "#2" in l)
+    row3 = next(l for l in text.splitlines() if "#3" in l)
+    assert row1.rstrip().endswith("| data-gap |")
+    assert row2.rstrip().endswith("| - |")
+    assert row3.rstrip().endswith("| - |")
 
 
 def test_sync_writes_digest_to_derived_state_file(tmp_path, monkeypatch):
