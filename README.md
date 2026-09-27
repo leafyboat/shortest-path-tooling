@@ -61,6 +61,28 @@ The default remains the `./shortest-path` Git submodule.
 | `./gradlew captureExpectedLengths` | Write actual path lengths back into the source CSV as `expected_length` |
 | `./gradlew bankTileDump -PbankTileCacheDir=<dir> -PbankTileXteaPath=<keys.json>` | Dump bank-object placements from an OSRS cache to TSV |
 | `./gradlew sailingAmenityVarbitDump -PsailingAmenityCacheDir=<dir> -PsailingAmenityXteaPath=<keys.json>` | Dump Sailing island amenity varbits from an OSRS cache |
+| `./gradlew routingCuts -PkahipNodeSeparator=<path>` | Generate the exact pathfinder's `routing-cuts.bin` with KaHIP (see below) |
+| `./gradlew routingCutsReport` | Report how many committed cuts still apply to the current collision map |
+
+## Exact routing cuts
+
+The plugin's exact pathfinder derives its routing data from `collision-map.zip`
+at runtime, using a small list of separator cut edges (`routing-cuts.bin`) to
+split large walking areas. `routingCuts` regenerates that file with KaHIP's
+`node_separator`, using the plugin's own walking graph:
+
+```bash
+./gradlew routingCuts \
+  -PshortestPathDir=../shortest-path \
+  -PkahipNodeSeparator=$(command -v node_separator) \
+  -ProutingCutsOutput=../shortest-path/src/main/resources/routing-cuts.bin
+```
+
+KaHIP is not a Gradle dependency. Use `nix-shell -p kahip` or build KaHIP with
+CMake (`-DNOMPI=On`) and pass the binary path. The plugin's weekly
+`ExtractCollisionMap` workflow runs this task after dumping a new collision map
+and commits both files together. Stale cuts only slow preparation down; they
+never make exact routes wrong.
 
 ## Maintenance
 

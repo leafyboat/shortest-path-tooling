@@ -75,3 +75,4 @@ compileTestJava.source fileTree(
 
 apply from: 'gradle/dashboards.gradle'
 apply from: 'gradle/cache-dumpers.gradle'
+apply from: 'gradle/routing-cuts.gradle'
