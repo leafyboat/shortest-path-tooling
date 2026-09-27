@@ -82,6 +82,22 @@ def cacheDumperSpecs = [
         sysPropKeys: [cacheDir: 'sailing.amenity.cacheDir',
                       xtea: 'sailing.amenity.xteaPath'],
     ],
+    // Probes how sailing water tiles are represented in the cache:
+    // tileSetting/overlay/underlay signatures per region, SailingSea
+    // DBTable centres, and objects placed on ocean tiles. Decides
+    // whether a "sailable" mask can be dumped next to collision-map.zip.
+    // No output file — prints to the task log.
+    [
+        name: 'sailingWaterProbe',
+        description: 'Probes water-tile signatures (blocked+overlay) in ocean regions. ' +
+                'Required: -PsailingWaterCacheDir=<cache dir>, -PsailingWaterXteaPath=<keys.json>.',
+        testClass: 'shortestpath/dump/SailingWaterProbeTest.class',
+        cachePrefix: 'sailingWater',
+        xteaPrefix: 'sailingWater',
+        sysProps: ['sailing.water.probe': 'true'],
+        sysPropKeys: [cacheDir: 'sailing.water.cacheDir',
+                      xtea: 'sailing.water.xteaPath'],
+    ],
     // Generates the regionId -> LeagueRegion mapping consumed by the
     // runtime LeagueRegionChecker. Reads the curated bounding-box
     // source-of-truth at src/test/resources/leagues_regions.tsv, walks
