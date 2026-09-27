@@ -46,6 +46,16 @@ STATUS_ENUM = frozenset({
     "blocked", "duplicate", "wontfix", "reopened",
 })
 
+# Triage verdict vocabulary — a separate axis from the `status` lifecycle:
+# `verdict: fixed` means "upstream already fixed it", while `status: fixed`
+# means "we landed a fix".  Row-backed verdicts need dashboard evidence
+# (scenario rows) or an explicit expressible: false escape.
+VERDICT_ENUM = frozenset({
+    "fixed", "data-gap", "plugin-bug",
+    "grammar-gap", "invalid", "feature",
+})
+ROW_BACKED_VERDICTS = frozenset({"fixed", "plugin-bug", "data-gap"})
+
 # Lifecycle transition map: every key is a source status, every value the
 # set of statuses `status` may move it to.  The `verified` targets below
 # are exercised only by the evidence-recording `verify` subcommand —
@@ -254,9 +264,9 @@ def build_frontmatter(issue: Dict, fix_candidates: List[Dict],
 
     Upstream-owned fields (title, state, labels, fix candidates) are
     rebuilt from the fetched issue on every sync.  Maintainer-owned
-    fields (status, phase, scenario rows, verification evidence, and the
-    history log) are carried over from the existing file so a re-sync
-    never clobbers triage work.
+    fields (status, phase, scenario rows, the triage verdict block,
+    verification evidence, and the history log) are carried over from
+    the existing file so a re-sync never clobbers triage work.
     """
     number = int(issue["number"])
     fm: Dict = {
@@ -275,6 +285,16 @@ def build_frontmatter(issue: Dict, fix_candidates: List[Dict],
         "phase": None,
         "fix_candidates": fix_candidates or [],
         "scenario_rows": [],
+        "triage": {
+            "verdict": None,
+            "expressible": None,
+            "blocked_on": None,
+            "unblock_conditions": [],
+            "feature_size": None,
+            "evidence": {"pin_sha": None, "report": None},
+            "triaged_at": None,
+            "triaged_by": None,
+        },
         "verification": {
             "command": None,
             "dataset_rows": [],
@@ -287,7 +307,8 @@ def build_frontmatter(issue: Dict, fix_candidates: List[Dict],
         "history": [{"at": now, "event": "imported", "by": "import_issues.py"}],
     }
     if existing:
-        for key in ("status", "phase", "scenario_rows", "verification"):
+        for key in ("status", "phase", "scenario_rows", "triage",
+                    "verification"):
             if key in existing:
                 fm[key] = existing[key]
         history = list(existing.get("history") or [])
@@ -805,6 +826,40 @@ def lint_shadow(path: Path, fm: Dict, body: str) -> List[str]:
         if not (ver.get("command") and ver.get("report")):
             errors.append(f"status {status} requires populated "
                           f"verification.command and verification.report")
+    if (fm.get("upstream_state") or "").lower() == "open":
+        triage = fm.get("triage") or {}
+        verdict = triage.get("verdict")
+        if verdict not in VERDICT_ENUM:
+            errors.append(
+                "open issue lacks a valid triage.verdict (one of: "
+                + ", ".join(sorted(VERDICT_ENUM)) + ")")
+        else:
+            if verdict != "fixed" and not triage.get("unblock_conditions"):
+                errors.append(
+                    f"triage.verdict {verdict!r} requires non-empty "
+                    f"triage.unblock_conditions")
+            if (verdict in ROW_BACKED_VERDICTS
+                    and not fm.get("scenario_rows")
+                    and triage.get("expressible") is not False):
+                errors.append(
+                    f"triage.verdict {verdict!r} requires non-empty "
+                    f"scenario_rows or triage.expressible: false")
+            if (triage.get("expressible") is False
+                    and not triage.get("blocked_on")):
+                errors.append(
+                    "triage.expressible: false requires non-empty "
+                    "triage.blocked_on")
+            if (verdict == "feature"
+                    and triage.get("feature_size") not in ("small", "large")):
+                errors.append(
+                    "triage.verdict 'feature' requires triage.feature_size "
+                    "'small' or 'large'")
+            # Presence gate only: the pin is recorded at verdict time and
+            # may legitimately move afterwards — never compare to HEAD.
+            if not (triage.get("evidence") or {}).get("pin_sha"):
+                errors.append(
+                    f"triage.verdict {verdict!r} requires "
+                    f"triage.evidence.pin_sha")
     return errors
 
 
