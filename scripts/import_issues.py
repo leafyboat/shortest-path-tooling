@@ -1228,7 +1228,7 @@ def cmd_plan_close(args: argparse.Namespace) -> int:
     pins: set = set()
     commands: set = set()
     reports: set = set()
-    for number, fm in scan_shadows(args.output_dir):
+    for number, fm in sorted(scan_shadows(args.output_dir)):
         if (fm.get("upstream_state") or "").lower() != "open":
             continue
         triage = fm.get("triage")
