@@ -2029,6 +2029,50 @@ def test_close_executes_and_records(tmp_path, monkeypatch):
     assert events.count("upstream-close: executed (gh)") == 1
 
 
+def test_close_refuses_malformed_plans(tmp_path, monkeypatch, capsys):
+    # The plan file is untrusted input: a malformed top level or any
+    # malformed entry must fail the run BEFORE a single gh call — one
+    # bad entry poisons the whole plan, nothing partial executes.
+    make_shadow(tmp_path, 504)
+    gh_calls = []
+    monkeypatch.setattr(
+        ii, "gh_json", lambda args: gh_calls.append(list(args)))
+    monkeypatch.setattr(
+        ii, "gh_run", lambda args: gh_calls.append(list(args)))
+    bad_plans = [
+        "not a dict at all",
+        {"entries": "not a list"},
+        {"entries": ["a bare string is not an entry"]},
+        {"entries": [{"issue": "oops", "comment": "c"}]},
+        {"entries": [{"issue": 504}]},                    # no comment
+        {"entries": [{"issue": 504, "comment": ""}]},
+        {"entries": [{"issue": 504, "comment": "   "}]},
+        {"entries": [{"issue": 504, "comment": 12}]},
+        {"entries": [{"issue": 504, "comment": "ok"},
+                     {"issue": "bad", "comment": "x"}]},  # one bad poisons all
+    ]
+    for i, bad in enumerate(bad_plans):
+        path = tmp_path / f"bad-{i}.json"
+        path.write_text(json.dumps(bad))
+        assert run_close(tmp_path, path) != 0, f"plan {i} accepted"
+    assert gh_calls == []
+    assert "ERROR" in capsys.readouterr().err
+
+
+def test_close_empty_plan_is_clean_noop(tmp_path, monkeypatch, capsys):
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps({"entries": []}))
+    calls = []
+    monkeypatch.setattr(
+        ii, "gh_json", lambda args: calls.append(list(args)))
+    monkeypatch.setattr(
+        ii, "gh_run", lambda args: calls.append(list(args)))
+    rc = run_close(tmp_path, plan_path)
+    assert rc == 0
+    assert calls == []
+    assert "nothing" in capsys.readouterr().out
+
+
 def test_close_flags_unconfirmed_reason(tmp_path, monkeypatch, capsys):
     # A bare CLOSED with a non-COMPLETED reason means the close took an
     # unexpected path — flag it for maintainer review and write nothing.
