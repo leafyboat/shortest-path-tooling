@@ -2032,3 +2032,114 @@ def test_close_flags_unconfirmed_reason(tmp_path, monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "ISSUE-504" in err
     assert path.read_text() == before
+
+
+# --------------------------------------------------------------------------
+# sweep-report — per-issue verdict × outcome tally over a bundle report
+# --------------------------------------------------------------------------
+
+def make_runs_report(tmp_path, runs, filename="report.json"):
+    """Write a report.json carrying the given run records verbatim."""
+    path = tmp_path / filename
+    path.write_text(json.dumps({"runs": runs}))
+    return path
+
+
+def run_sweep_report(tmp_path, report_path, *argv):
+    return ii.main(["sweep-report", "--output-dir", str(tmp_path),
+                    str(report_path), *argv])
+
+
+def test_sweep_report_tallies_per_issue(tmp_path, capsys):
+    make_shadow(tmp_path, 1, fm_extra={
+        "scenario_rows": ["alpha green", "beta tripwire"],
+        "triage": triage_block(verdict="fixed", unblock_conditions=[])})
+    make_shadow(tmp_path, 2, fm_extra={
+        "scenario_rows": ["gamma red"],
+        "triage": triage_block(verdict="plugin-bug")})
+    report = make_runs_report(tmp_path, [
+        {"name": "alpha green", "reached": True, "assertionPassed": True},
+        {"name": "beta tripwire", "reached": False,
+         "expectedReachable": False, "assertionPassed": True},
+        {"name": "gamma red", "reached": False, "assertionPassed": True},
+    ])
+    rc = run_sweep_report(tmp_path, report)
+    assert rc == 0
+    out = capsys.readouterr().out
+    line1 = next(l for l in out.splitlines() if l.startswith("ISSUE-1 "))
+    assert "verdict=fixed" in line1
+    assert "rows=2" in line1 and "green=2" in line1
+    assert "red=0" in line1 and "missing=0" in line1
+    assert "GREEN" in line1
+    line2 = next(l for l in out.splitlines() if l.startswith("ISSUE-2 "))
+    assert "verdict=plugin-bug" in line2
+    assert "rows=1" in line2 and "red=1" in line2
+    assert "gamma red" in line2        # offending row named inline
+    assert "GREEN" not in line2
+    assert "issues=2 fully-green=1 has-red=1 has-missing=0" in out
+
+
+def test_sweep_report_missing_run_record(tmp_path, capsys):
+    # A scenario_rows name with no run in the report surfaces as missing
+    # — never silently skipped.
+    make_shadow(tmp_path, 3, fm_extra={
+        "scenario_rows": ["alpha green", "staged but absent"],
+        "triage": triage_block(verdict="fixed", unblock_conditions=[])})
+    report = make_runs_report(tmp_path, [
+        {"name": "alpha green", "reached": True}])
+    rc = run_sweep_report(tmp_path, report)
+    assert rc == 0
+    out = capsys.readouterr().out
+    line = next(l for l in out.splitlines() if l.startswith("ISSUE-3 "))
+    assert "missing=1" in line and "staged but absent" in line
+    assert "has-missing=1" in out
+
+
+def test_sweep_report_rowless_issue_shows_zero_rows(tmp_path, capsys):
+    # expressible: false files have no rows — the line still prints so
+    # the table is a full census, but rows=0 must never read GREEN.
+    make_shadow(tmp_path, 520, fm_extra={
+        "scenario_rows": [],
+        "triage": triage_block(verdict="fixed", expressible=False,
+                               blocked_on="ui-teleport-highlight",
+                               unblock_conditions=[])})
+    report = make_runs_report(tmp_path, [])
+    rc = run_sweep_report(tmp_path, report)
+    assert rc == 0
+    out = capsys.readouterr().out
+    line = next(l for l in out.splitlines() if l.startswith("ISSUE-520 "))
+    assert "rows=0" in line and "GREEN" not in line
+
+
+def test_sweep_report_zero_runs_marks_all_missing(tmp_path, capsys):
+    # A report with zero runs is not a green sweep — every staged row
+    # counts as missing.
+    make_shadow(tmp_path, 5, fm_extra={
+        "scenario_rows": ["staged row"],
+        "triage": triage_block(verdict="fixed", unblock_conditions=[])})
+    report = make_runs_report(tmp_path, [])
+    rc = run_sweep_report(tmp_path, report)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "missing=1" in out and "has-missing=1" in out
+
+
+def test_sweep_report_malformed_report_fails(tmp_path, capsys):
+    make_shadow(tmp_path, 1)
+    bad = tmp_path / "report.json"
+    bad.write_text("{ not json")
+    assert run_sweep_report(tmp_path, bad) != 0
+    assert "cannot parse" in capsys.readouterr().err
+
+
+def test_sweep_report_writes_nothing(tmp_path, capsys):
+    # Read tool: shadow files stay byte-identical.
+    path = make_shadow(tmp_path, 4, fm_extra={
+        "scenario_rows": ["alpha green"],
+        "triage": triage_block(verdict="fixed", unblock_conditions=[])})
+    before = path.read_text()
+    report = make_runs_report(tmp_path, [
+        {"name": "alpha green", "reached": True}])
+    rc = run_sweep_report(tmp_path, report)
+    assert rc == 0
+    assert path.read_text() == before
