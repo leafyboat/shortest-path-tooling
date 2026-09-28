@@ -1824,6 +1824,13 @@ def run_plan_close(tmp_path, *argv):
     return ii.main(["plan-close", "--output-dir", str(tmp_path), *argv])
 
 
+def green_report(tmp_path, *names, filename="report.json"):
+    """A bundle report where every named run reached with no failures."""
+    return make_runs_report(tmp_path, [
+        {"name": n, "reached": True, "assertionPassed": True}
+        for n in names], filename=filename)
+
+
 def replay_entry(issue=504, comment=None):
     return {
         "issue": issue,
@@ -1861,7 +1868,8 @@ def run_close(tmp_path, plan_path, *argv):
 
 def test_plan_close_emits_replay_entry(tmp_path):
     fixed_shadow(tmp_path, 504)
-    rc = run_plan_close(tmp_path)
+    report = green_report(tmp_path, "alpha scenario")
+    rc = run_plan_close(tmp_path, "--report", str(report))
     assert rc == 0
     plan_path = tmp_path / "closure-plan.json"
     assert plan_path.is_file()
@@ -1886,7 +1894,8 @@ def test_plan_close_emits_replay_entry(tmp_path):
 
 def test_plan_close_dry_run_writes_nothing(tmp_path, capsys):
     fixed_shadow(tmp_path, 504)
-    rc = run_plan_close(tmp_path, "--dry-run")
+    report = green_report(tmp_path, "alpha scenario")
+    rc = run_plan_close(tmp_path, "--report", str(report), "--dry-run")
     assert rc == 0
     assert not (tmp_path / "closure-plan.json").exists()
     out = capsys.readouterr().out
@@ -1894,15 +1903,20 @@ def test_plan_close_dry_run_writes_nothing(tmp_path, capsys):
     assert "Skretzo/shortest-path#539" in out
 
 
-def test_plan_close_skips_missing_fix_pr(tmp_path, capsys):
+def test_plan_close_skips_missing_fix_pr(tmp_path, monkeypatch, capsys):
     # verdict fixed but attribution not yet populated — the entry is
-    # skipped and the empty plan writes nothing.
+    # skipped with the merged-PR candidates listed as a hint, and the
+    # empty plan writes nothing.
     make_shadow(tmp_path, 504, fm_extra={
         "scenario_rows": ["alpha scenario"],
         "triage": triage_block(verdict="fixed", unblock_conditions=[])})
+    monkeypatch.setattr(
+        ii, "gh_json", lambda args: load_fixture("gh_pr_list_merged.json"))
     rc = run_plan_close(tmp_path)
     assert rc != 0
-    assert "SKIP ISSUE-504" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "SKIP ISSUE-504" in out
+    assert "#539" in out        # heuristic merged-PR hint names the fix
     assert not (tmp_path / "closure-plan.json").exists()
 
 
@@ -1924,9 +1938,11 @@ def test_plan_close_skips_non_fixed_and_closed(tmp_path, capsys):
 
 def test_plan_close_explicit_plan_path(tmp_path):
     fixed_shadow(tmp_path, 504)
+    report = green_report(tmp_path, "alpha scenario")
     plan_path = tmp_path / "nested" / "plan.json"
     plan_path.parent.mkdir()
-    rc = run_plan_close(tmp_path, "--plan", str(plan_path))
+    rc = run_plan_close(tmp_path, "--plan", str(plan_path),
+                        "--report", str(report))
     assert rc == 0
     assert plan_path.is_file()
 
@@ -2143,3 +2159,194 @@ def test_sweep_report_writes_nothing(tmp_path, capsys):
     rc = run_sweep_report(tmp_path, report)
     assert rc == 0
     assert path.read_text() == before
+
+
+# --------------------------------------------------------------------------
+# plan-close hardening — green gate, fallback, manual kind, pin uniformity
+# --------------------------------------------------------------------------
+
+def test_plan_close_green_gate_skips_red_row(tmp_path, capsys):
+    # A red evidence row must never produce a close entry — the green
+    # gate is per-row and fail-closed.
+    fixed_shadow(tmp_path, 504)
+    report = make_runs_report(tmp_path, [
+        {"name": "alpha scenario", "reached": False,
+         "assertionPassed": True}])
+    rc = run_plan_close(tmp_path, "--report", str(report))
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert "SKIP ISSUE-504" in out
+    assert "rows not green" in out
+    assert "alpha scenario" in out
+    assert not (tmp_path / "closure-plan.json").exists()
+
+
+def test_plan_close_green_gate_skips_missing_run(tmp_path, capsys):
+    # A row name with no run record fails the gate exactly like a red
+    # row — silent omission would launder unverified evidence.
+    fixed_shadow(tmp_path, 504)
+    report = make_runs_report(tmp_path, [
+        {"name": "unrelated run", "reached": True}])
+    rc = run_plan_close(tmp_path, "--report", str(report))
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert "SKIP ISSUE-504" in out
+    assert "rows not green" in out
+
+
+def test_plan_close_requires_report_for_row_backed(tmp_path, capsys):
+    # An attributed replay candidate without --report cannot be
+    # green-gated, so it is refused rather than emitted unverified.
+    fixed_shadow(tmp_path, 504)
+    rc = run_plan_close(tmp_path)
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert "SKIP ISSUE-504" in out
+    assert "--report" in out
+    assert not (tmp_path / "closure-plan.json").exists()
+
+
+def test_plan_close_unparseable_report_fails(tmp_path, capsys):
+    fixed_shadow(tmp_path, 504)
+    bad = tmp_path / "report.json"
+    bad.write_text("{ nope")
+    rc = run_plan_close(tmp_path, "--report", str(bad))
+    assert rc != 0
+    assert "cannot parse" in capsys.readouterr().err
+
+
+def test_plan_close_fallback_emits_without_fix_pr(tmp_path, capsys):
+    # --fallback is the explicit opt-in for "no fixing PR identified" —
+    # the entry emits with fix_pr: null and the documented wording.
+    make_shadow(tmp_path, 504, fm_extra={
+        "scenario_rows": ["alpha scenario"],
+        "triage": triage_block(verdict="fixed", unblock_conditions=[])})
+    report = green_report(tmp_path, "alpha scenario")
+    rc = run_plan_close(tmp_path, "--report", str(report),
+                        "--fallback", "504")
+    assert rc == 0
+    plan = json.loads((tmp_path / "closure-plan.json").read_text())
+    entry = plan["entries"][0]
+    assert entry["issue"] == 504
+    assert entry["kind"] == "replay"
+    assert entry["fix_pr"] is None
+    # "fixturepin"[:7] — the shadow's evidence pin, first 7 chars.
+    assert entry["comment"] == (
+        "verified fixed on upstream/master @ fixture via dashboard "
+        "replay; no fixing PR identified")
+
+
+def test_plan_close_manual_kind_for_unexpressible(tmp_path, capsys):
+    # expressible: false + no rows = the manual-verification lane: a
+    # `manual` kind entry, still fix_pr-gated, citing pin and blocked_on.
+    make_shadow(tmp_path, 520, fm_extra={
+        "scenario_rows": [],
+        "triage": triage_block(verdict="fixed", expressible=False,
+                               blocked_on="ui-teleport-highlight",
+                               unblock_conditions=[]),
+        "verification": {
+            "command": "manual UI check",
+            "dataset_rows": [], "report": None,
+            "fix_commit": "abc1234",
+            "fix_pr": "https://github.com/Skretzo/shortest-path/pull/462",
+            "verifier": "tester", "verified_at": "2026-09-28T00:00:00Z",
+        }})
+    rc = run_plan_close(tmp_path)
+    assert rc == 0
+    plan = json.loads((tmp_path / "closure-plan.json").read_text())
+    entry = plan["entries"][0]
+    assert entry["kind"] == "manual"
+    assert entry["evidence_rows"] == []
+    assert entry["fix_pr"].endswith("/pull/462")
+    assert entry["comment"] == (
+        "Fixed by Skretzo/shortest-path#462 — verified on "
+        "upstream/master @ fixture; outside scenario coverage "
+        "(ui-teleport-highlight)")
+
+
+def test_plan_close_expressible_without_rows_is_error(tmp_path, capsys):
+    # expressible: true but zero scenario_rows is a data bug — skip with
+    # a named error, never a silent manual entry.
+    make_shadow(tmp_path, 55, fm_extra={
+        "scenario_rows": [],
+        "triage": triage_block(verdict="fixed", expressible=True,
+                               unblock_conditions=[]),
+        "verification": {
+            "command": "c", "dataset_rows": [], "report": "r",
+            "fix_commit": "x",
+            "fix_pr": "https://example.invalid/pull/55",
+            "verifier": "t", "verified_at": "t"}})
+    rc = run_plan_close(tmp_path)
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert "SKIP ISSUE-55" in out
+    assert "expressible" in out
+    assert not (tmp_path / "closure-plan.json").exists()
+
+
+def test_plan_close_refuses_mixed_pins(tmp_path, capsys):
+    # Emitted entries spanning different evidence pins would produce a
+    # plan citing the wrong replay baseline — refuse, name the divergence.
+    for n, pin in ((503, "pin-aaa"), (504, "pin-bbb")):
+        make_shadow(tmp_path, n, fm_extra={
+            "scenario_rows": ["alpha scenario"],
+            "triage": triage_block(
+                verdict="fixed", unblock_conditions=[],
+                evidence={"pin_sha": pin, "report": None}),
+            "verification": {
+                "command": "c", "dataset_rows": ["alpha scenario"],
+                "report": "r", "fix_commit": "x",
+                "fix_pr": f"https://example.invalid/pull/{n}",
+                "verifier": "t", "verified_at": "t"}})
+    report = green_report(tmp_path, "alpha scenario")
+    rc = run_plan_close(tmp_path, "--report", str(report))
+    assert rc != 0
+    err = capsys.readouterr().err
+    assert "pin" in err.lower()
+    assert "ISSUE-503" in err and "ISSUE-504" in err
+    assert not (tmp_path / "closure-plan.json").exists()
+
+
+def test_plan_close_multirow_comment(tmp_path):
+    fixed_shadow(tmp_path, 504,
+                 scenario_rows=["alpha scenario", "beta scenario"])
+    report = green_report(tmp_path, "alpha scenario", "beta scenario")
+    rc = run_plan_close(tmp_path, "--report", str(report))
+    assert rc == 0
+    plan = json.loads((tmp_path / "closure-plan.json").read_text())
+    entry = plan["entries"][0]
+    assert entry["evidence_rows"] == ["alpha scenario", "beta scenario"]
+    assert entry["comment"] == (
+        "Fixed by Skretzo/shortest-path#539 — verified via 2 dashboard "
+        "scenarios incl. 'alpha scenario', now covered in "
+        "routing-issues.csv")
+
+
+def test_plan_close_command_and_report_recorded(tmp_path):
+    # --command carries the verbatim replay command into the plan so
+    # `close` can propagate it into verification.command; the top-level
+    # report is the path exactly as passed.
+    fixed_shadow(tmp_path, 504)
+    report = green_report(tmp_path, "alpha scenario")
+    rc = run_plan_close(tmp_path, "--report", str(report),
+                        "--command", "the exact replay command")
+    assert rc == 0
+    plan = json.loads((tmp_path / "closure-plan.json").read_text())
+    assert plan["command"] == "the exact replay command"
+    assert plan["report"] == str(report)
+    assert plan["pin_sha"] == "fixturepin"
+
+
+def test_plan_close_closed_upstream_never_emitted(tmp_path, capsys):
+    # upstream_state: closed at plan time means reconcile, not close —
+    # even with fix_pr, rows, and --fallback the issue stays out.
+    make_shadow(tmp_path, 504, fm_extra={
+        "upstream_state": "closed",
+        "upstream_state_reason": "COMPLETED",
+        "scenario_rows": ["alpha scenario"],
+        "triage": triage_block(verdict="fixed", unblock_conditions=[])})
+    report = green_report(tmp_path, "alpha scenario")
+    rc = run_plan_close(tmp_path, "--report", str(report),
+                        "--fallback", "504")
+    assert rc != 0          # write-mode empty plan still refuses
+    assert not (tmp_path / "closure-plan.json").exists()
