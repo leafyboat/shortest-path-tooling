@@ -665,6 +665,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     pc.add_argument("--plan", type=Path, default=None,
                     help="Plan file to write "
                          "(default: <output-dir>/closure-plan.json)")
+    pc.add_argument("--report", type=Path, default=None,
+                    help="Bundle report.json green-gating replay "
+                         "entries (required when any emittable issue "
+                         "carries scenario_rows)")
+    pc.add_argument("--command", default=None,
+                    help="Replay command recorded verbatim into the "
+                         "plan's top-level command field")
+    pc.add_argument("--fallback", type=int, action="append",
+                    default=None, metavar="ISSUE",
+                    help="Emit this issue with the no-PR fallback "
+                         "comment (repeatable)")
     pc.add_argument("--dry-run", action="store_true")
 
     cl = sub.add_parser(
@@ -1227,14 +1238,42 @@ def cmd_plan_close(args: argparse.Namespace) -> int:
     """Emit the closure plan for verified-fixed, still-open issues.
 
     Scans the shadow store for ``upstream_state: open`` +
-    ``triage.verdict: fixed`` files and renders one ``replay`` plan
-    entry per issue whose ``verification.fix_pr`` is populated — the
-    required comment source for the upstream close.  Entries emit in
-    ascending issue-number order so an unchanged store produces a
-    stable plan diff for the approval gate.
+    ``triage.verdict: fixed`` files and renders one plan entry per
+    eligible issue in ascending issue-number order, so an unchanged
+    store produces a stable plan diff for the approval gate.
+
+    Entry kinds and their gates:
+
+    * ``replay`` — every ``scenario_rows`` name must have a green run
+      in ``--report`` (per ``run_green_failure``); a red or missing run
+      skips the entry.  Without ``--report`` the green gate cannot run,
+      so replay candidates are refused rather than emitted unverified.
+    * ``manual`` — ``expressible: false`` with no rows; the fix-PR is
+      still required (or ``--fallback``) and the comment cites the
+      evidence pin plus ``blocked_on`` when set.
+    * ``expressible: true`` with empty rows is a data bug — skipped
+      with a named error, never silently reclassified.
+
+    Attribution: ``verification.fix_pr`` supplies the cited PR; without
+    it the entry is skipped with the merged-PR candidate list as a
+    hint, unless ``--fallback <N>`` explicitly opts the issue into the
+    "no fixing PR identified" wording.  All emitted entries must share
+    one ``evidence.pin_sha`` — mixed pins refuse outright.
     """
+    fallbacks = set(args.fallback or [])
+    runs = None
+    if args.report is not None:
+        try:
+            runs = load_report_runs(args.report)
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"ERROR {args.report}: cannot parse report: {e}",
+                  file=sys.stderr)
+            return 1
+    by_name = ({r.get("name"): r for r in runs if isinstance(r, dict)}
+               if runs is not None else {})
+    merged_map: Optional[Dict[int, List[Dict]]] = None
     entries: List[Dict] = []
-    pins: set = set()
+    entry_pins: List[Tuple[int, Any]] = []
     commands: set = set()
     reports: set = set()
     for number, fm in sorted(scan_shadows(args.output_dir)):
@@ -1244,65 +1283,128 @@ def cmd_plan_close(args: argparse.Namespace) -> int:
         triage = triage if isinstance(triage, dict) else {}
         if triage.get("verdict") != "fixed":
             continue
+        rows = fm.get("scenario_rows")
+        rows = list(rows) if isinstance(rows, list) else []
+        expressible = triage.get("expressible")
+        evidence = triage.get("evidence")
+        evidence = evidence if isinstance(evidence, dict) else {}
+        pin_sha = evidence.get("pin_sha")
         ver = fm.get("verification")
         ver = ver if isinstance(ver, dict) else {}
         fix_pr = ver.get("fix_pr")
-        if not fix_pr:
-            print(f"SKIP ISSUE-{number}: verification.fix_pr unset — "
-                  "run attribution first")
+        if not rows and expressible is not False:
+            print(f"SKIP ISSUE-{number}: expressible is not false but "
+                  "scenario_rows is empty — data bug")
             continue
-        pr_number = str(fix_pr).rstrip("/").rsplit("/", 1)[-1]
-        if not pr_number.isdigit():
-            print(f"SKIP ISSUE-{number}: verification.fix_pr "
-                  f"{fix_pr!r} does not end in a PR number")
+        kind = "manual" if not rows else "replay"
+        if not fix_pr and number not in fallbacks:
+            if merged_map is None:
+                merged_map = fetch_fix_candidates(state="merged")
+            hints = ",".join(f"#{e['pr']}"
+                             for e in merged_map.get(number, [])) or "none"
+            print(f"SKIP ISSUE-{number}: no fix_pr — merged candidates: "
+                  f"{hints}")
             continue
-        rows = fm.get("scenario_rows")
-        rows = list(rows) if isinstance(rows, list) else []
-        if not rows:
-            print(f"SKIP ISSUE-{number}: no scenario_rows — a replay "
-                  "comment needs a scenario name")
-            continue
-        evidence = triage.get("evidence")
-        evidence = evidence if isinstance(evidence, dict) else {}
-        if evidence.get("pin_sha"):
-            pins.add(evidence["pin_sha"])
-        if ver.get("command"):
-            commands.add(ver["command"])
-        report = ver.get("report") or evidence.get("report")
-        if report:
-            reports.add(report)
+        pr_number = None
+        if fix_pr:
+            pr_number = str(fix_pr).rstrip("/").rsplit("/", 1)[-1]
+            if not pr_number.isdigit():
+                print(f"SKIP ISSUE-{number}: verification.fix_pr "
+                      f"{fix_pr!r} does not end in a PR number")
+                continue
+        if kind == "manual":
+            # Both manual comment shapes cite the pin — it is the whole
+            # evidence anchor once no scenario rows exist.
+            if not pin_sha:
+                print(f"SKIP ISSUE-{number}: no evidence.pin_sha — the "
+                      "manual comment cannot cite the pin")
+                continue
+            if pr_number:
+                comment = (f"Fixed by {UPSTREAM_REPO}#{pr_number} — "
+                           f"verified on upstream/master @ "
+                           f"{str(pin_sha)[:7]}; outside scenario "
+                           "coverage")
+                blocked_on = triage.get("blocked_on")
+                if blocked_on:
+                    comment += f" ({blocked_on})"
+            else:
+                comment = (f"verified fixed on upstream/master @ "
+                           f"{str(pin_sha)[:7]} by manual verification; "
+                           "no fixing PR identified")
+        else:
+            if runs is None:
+                print(f"SKIP ISSUE-{number}: --report <path> required "
+                      "to green-gate scenario rows")
+                continue
+            bad = [row for row in rows
+                   if by_name.get(row) is None
+                   or run_green_failure(by_name[row]) is not None]
+            if bad:
+                print(f"SKIP ISSUE-{number}: rows not green "
+                      f"[{','.join(bad)}]")
+                continue
+            if pr_number:
+                # The comment interpolates only trusted local fields —
+                # the PR number and scenario row names — never upstream
+                # title/body text.
+                if len(rows) == 1:
+                    comment = (f"Fixed by {UPSTREAM_REPO}#{pr_number} — "
+                               f"verified via scenario '{rows[0]}', now "
+                               "covered in routing-issues.csv")
+                else:
+                    comment = (f"Fixed by {UPSTREAM_REPO}#{pr_number} — "
+                               f"verified via {len(rows)} dashboard "
+                               f"scenarios incl. '{rows[0]}', now "
+                               "covered in routing-issues.csv")
+            else:
+                if not pin_sha:
+                    print(f"SKIP ISSUE-{number}: no evidence.pin_sha — "
+                          "the fallback comment cannot cite the pin")
+                    continue
+                comment = (f"verified fixed on upstream/master @ "
+                           f"{str(pin_sha)[:7]} via dashboard replay; "
+                           "no fixing PR identified")
         entries.append({
             "issue": number,
-            "kind": "replay",
-            # The comment interpolates only trusted local fields — the
-            # PR number and the scenario row name — never upstream
-            # title/body text.
-            "comment": (f"Fixed by {UPSTREAM_REPO}#{pr_number} — "
-                        f"verified via scenario '{rows[0]}', now "
-                        "covered in routing-issues.csv"),
-            "fix_pr": fix_pr,
+            "kind": kind,
+            "comment": comment,
+            "fix_pr": fix_pr or None,
             "fix_commit": ver.get("fix_commit"),
-            "evidence_rows": rows,
+            "evidence_rows": rows if kind == "replay" else [],
             "upstream_state_at_plan": "open",
             "reason": "completed",
         })
+        entry_pins.append((number, pin_sha))
+        if ver.get("command"):
+            commands.add(ver["command"])
+        report_ref = ver.get("report") or evidence.get("report")
+        if report_ref:
+            reports.add(report_ref)
     entries.sort(key=lambda e: e["issue"])
     if not entries:
         print("WARNING: no eligible issues — no closure plan emitted",
               file=sys.stderr)
         return 0 if args.dry_run else 1
+    pin_values = {pin for _n, pin in entry_pins}
+    if len(pin_values) > 1:
+        detail = ", ".join(f"ISSUE-{n}@{p or 'unset'}"
+                           for n, p in entry_pins)
+        print(f"ERROR: emitted entries carry divergent evidence "
+              f"pin_sha — {detail}", file=sys.stderr)
+        return 1
     if args.dry_run:
         for e in entries:
             print(f"would close ISSUE-{e['issue']}: {e['comment']}")
         return 0
     plan = {
         "generated_at": utc_now_iso(),
-        # Entries may span verdicts recorded on different pins; the
-        # sorted pick keeps the emitted plan deterministic rather than
-        # dependent on store scan order.
-        "pin_sha": sorted(pins)[0] if pins else None,
-        "command": next(iter(commands)) if len(commands) == 1 else None,
-        "report": next(iter(reports)) if len(reports) == 1 else None,
+        "pin_sha": next(iter(pin_values)) if pin_values else None,
+        "command": (args.command if args.command
+                    else (next(iter(commands)) if len(commands) == 1
+                          else None)),
+        "report": (str(args.report) if args.report is not None
+                   else (next(iter(reports)) if len(reports) == 1
+                         else None)),
         "entries": entries,
     }
     plan_path = args.plan or (args.output_dir / "closure-plan.json")
