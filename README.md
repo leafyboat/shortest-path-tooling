@@ -26,6 +26,7 @@ The published dashboard is also available on GitHub Pages:
 | `./gradlew dashboard` | Build the pathfinder dashboard from the default routes dataset |
 | `./gradlew dashboard -PdashboardDataset=/dashboard/clue_locations_full.csv` | Build dashboard from a specific dataset |
 | `./gradlew captureExpectedLengths` | Write actual path lengths back into the source CSV as `expected_length` |
+| `./gradlew sailingBenchmark -PpluginDir=../shortest-path` | Time the experimental sailing search against the existing search on routes at sea (needs a plugin checkout with the sailing search) |
 | `./gradlew bankTileDump -PbankTileCacheDir=<dir> -PbankTileXteaPath=<keys.json>` | Dump bank-object placements from an OSRS cache to TSV |
 | `./gradlew sailingAmenityVarbitDump -PsailingAmenityCacheDir=<dir> -PsailingAmenityXteaPath=<keys.json>` | Dump Sailing island amenity varbits from an OSRS cache |
 
@@ -36,6 +37,11 @@ The published dashboard is also available on GitHub Pages:
 `probes`, and `verify` subcommands wrap the cache download, Gradle
 dumpers, and verification tiers in one entry point. See
 [docs/maintenance.md](docs/maintenance.md) for the runbook.
+
+Any task can run against another checkout of the plugin instead of the submodule with
+`-PpluginDir=<path>` (relative to this directory), e.g. `-PpluginDir=../shortest-path` to try a branch
+you're working on. The sailing tools in `src/sailing/java` are only compiled when that checkout has the
+experimental sailing search.
 
 ## Dashboard options
 

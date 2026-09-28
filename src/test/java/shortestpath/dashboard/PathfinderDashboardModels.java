@@ -82,6 +82,44 @@ public final class PathfinderDashboardModels {
         public TileHeatmap tileHeatmap;
         /** Relative path to a separate heatmap JSON file (set when heatmap is externalised) */
         public String heatmapFile;
+
+        /** The route searched again with the experimental sailing search (null unless the row has a speed). */
+        public SailingRun sailing;
+    }
+
+    /**
+     * A route searched with the experimental sailing search: the game's 16 boat headings at the boat's speed,
+     * keeping the boat's hull clear when the row names a boat. Coordinates are in tiles, with each tile's
+     * centre on whole numbers.
+     */
+    public static class SailingRun {
+        public double speed;
+        /** {@code raft}, {@code skiff}, {@code sloop}, or empty when only the boat's centre is kept clear. */
+        public String boat;
+        public boolean reached;
+        public String terminationReason;
+        public int nodesChecked;
+        public long elapsedNanos;
+        /** Ticks the path takes at the boat's speed. */
+        public int ticks;
+        /** Straight legs in the path: runs of the same heading. */
+        public int legs;
+        /** The path's length in tiles. */
+        public double distance;
+        /** The normal search's path for the same route, up to where it gets as close to the target as this path
+         *  stops: its length in tiles, straight legs, and about how many ticks the boat takes to sail it at this
+         *  speed, holding the straight or diagonal heading of each step. */
+        public double normalDistance;
+        public int normalLegs;
+        public double normalTicks;
+        /** Steps of that part of the normal path that would run the boat's hull over a blocked tile. */
+        public int normalCollisions;
+        /** Where the path turns (and starts and ends). */
+        public List<WorldPointJson> path;
+        /** The heading (0 south, 4 west, 8 north, 12 east) of the leg leaving each point; the last point keeps the leg arriving at it. */
+        public List<Integer> headings;
+        /** The hull's corners facing each point's heading, in order round it, relative to the point: {x0, y0, ...}. */
+        public List<double[]> outlines;
     }
 
     public static class Stats {

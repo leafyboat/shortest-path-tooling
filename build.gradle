@@ -50,10 +50,20 @@ test {
     jvmArgs = ['-Xms1g', '-Xmx8g']
 }
 
+// The plugin checkout the build uses (see settings.gradle)
+def pluginDir = findProperty('pluginDir') ?: 'shortest-path'
+
+// The sailing tools (src/sailing/java) need a plugin with the experimental sailing search, so they're only
+// compiled when the plugin checkout has it, e.g. with -PpluginDir=../shortest-path on a sailing branch
+ext.pluginHasSailing = file("${pluginDir}/src/main/java/shortestpath/pathfinder/SailingMoves.java").exists()
+if (pluginHasSailing) {
+    sourceSets.test.java.srcDir 'src/sailing/java'
+}
+
 // Pull in the plugin's test helpers that the dashboard/dump code depends on.
-// These files stay in shortest-path/src/test/java (no changes to the plugin build).
+// These files stay in the plugin's src/test/java (no changes to the plugin build).
 compileTestJava.source fileTree(
-    dir: 'shortest-path/src/test/java',
+    dir: "${pluginDir}/src/test/java",
     includes: [
         'shortestpath/pathfinder/TestPathfinderConfig.java',
         'shortestpath/TestShortestPathConfig.java',

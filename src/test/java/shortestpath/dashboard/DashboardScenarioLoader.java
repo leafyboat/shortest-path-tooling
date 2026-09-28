@@ -35,6 +35,8 @@ import shortestpath.WorldPointUtil;
  * config_overrides             : settingName=value;…
  * expected_length              : integer
  * minimum_length               : integer
+ * speed                        : boat speed in tiles per tick, e.g. 1.5 (makes the row a sailing route)
+ * boat                         : raft | skiff | sloop, the hull a sailing route must fit (empty: just the centre)
  * </pre>
  */
 public final class DashboardScenarioLoader {
@@ -106,6 +108,8 @@ public final class DashboardScenarioLoader {
         int configOverridesIdx  = indexOf(headers, "config_overrides");
         int expectedLengthIdx   = indexOf(headers, "expected_length");
         int minimumLengthIdx    = indexOf(headers, "minimum_length");
+        int speedIdx            = indexOf(headers, "speed");
+        int boatIdx             = indexOf(headers, "boat");
 
         if (xIdx < 0 || yIdx < 0 || planeIdx < 0) {
             throw new IOException("Routes CSV missing x/y/plane columns in " + source);
@@ -151,6 +155,11 @@ public final class DashboardScenarioLoader {
             if (!minLen.isEmpty()) {
                 b.minimumLength(Integer.parseInt(minLen.trim()));
             }
+            String speed = get(f, speedIdx, "");
+            if (!speed.isEmpty()) {
+                b.sailingSpeed(Double.parseDouble(speed.trim()));
+            }
+            b.boat(get(f, boatIdx, ""));
 
             result.add(b.build());
         }

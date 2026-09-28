@@ -3,6 +3,7 @@ package shortestpath.dashboard;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
 /**
@@ -44,6 +45,10 @@ public final class DashboardScenario {
     private final OptionalInt expectedLength;
     /** Minimum expected path length (absent → no assertion). */
     private final OptionalInt minimumLength;
+    /** Boat speed in tiles per tick for a sailing route (absent → not a sailing route). */
+    private final OptionalDouble sailingSpeed;
+    /** Boat whose hull a sailing route must fit ({@code raft}, {@code skiff}, {@code sloop}); empty → just the boat's centre. */
+    private final String boat;
 
     private DashboardScenario(Builder b) {
         this.name = b.name;
@@ -60,6 +65,8 @@ public final class DashboardScenario {
         this.configOverrides = Collections.unmodifiableMap(b.configOverrides);
         this.expectedLength = b.expectedLength;
         this.minimumLength = b.minimumLength;
+        this.sailingSpeed = b.sailingSpeed;
+        this.boat = b.boat;
     }
 
     // -------------------------------------------------------------------------
@@ -80,6 +87,8 @@ public final class DashboardScenario {
     public Map<String, String> getConfigOverrides() { return configOverrides; }
     public OptionalInt getExpectedLength() { return expectedLength; }
     public OptionalInt getMinimumLength() { return minimumLength; }
+    public OptionalDouble getSailingSpeed() { return sailingSpeed; }
+    public String getBoat() { return boat; }
 
     // -------------------------------------------------------------------------
     // Builder
@@ -104,6 +113,8 @@ public final class DashboardScenario {
         private Map<String, String> configOverrides = new java.util.LinkedHashMap<>();
         private OptionalInt expectedLength = OptionalInt.empty();
         private OptionalInt minimumLength = OptionalInt.empty();
+        private OptionalDouble sailingSpeed = OptionalDouble.empty();
+        private String boat = "";
 
         private Builder() {}
 
@@ -121,6 +132,8 @@ public final class DashboardScenario {
         public Builder configOverrides(Map<String, String> configOverrides) { this.configOverrides = configOverrides; return this; }
         public Builder expectedLength(int len) { this.expectedLength = OptionalInt.of(len); return this; }
         public Builder minimumLength(int len) { this.minimumLength = OptionalInt.of(len); return this; }
+        public Builder sailingSpeed(double speed) { this.sailingSpeed = OptionalDouble.of(speed); return this; }
+        public Builder boat(String boat) { this.boat = boat != null ? boat.trim().toLowerCase() : ""; return this; }
 
         public DashboardScenario build() {
             return new DashboardScenario(this);

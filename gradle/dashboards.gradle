@@ -68,6 +68,41 @@ tasks.register('dashboard', Test) {
     doLast { logDashboardLocation('dashboard') }
 }
 
+tasks.register('sailingBenchmark', Test) {
+    doNotTrackState('The benchmark always re-runs.')
+    group = 'verification'
+    description = 'Times the experimental sailing search against the existing search on routes at sea. ' +
+            'Needs a plugin with the sailing search, e.g. -PpluginDir=../shortest-path. ' +
+            'Options (all via -P): sailingBenchmarkDataset (default: /dashboard/sailing_routes.csv), ' +
+            'sailingBenchmarkSpeeds (default: 1.5,3.0), sailingBenchmarkBoats (default: none,raft,skiff,sloop), ' +
+            'sailingBenchmarkWarmup (default: 2), sailingBenchmarkRounds (default: 5). ' +
+            'Writes build/reports/sailing-benchmark/<dataset>.md and .json.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnit()
+    include 'shortestpath/dashboard/SailingBenchmarkTest.class'
+    reports {
+        junitXml.required = false
+        html.required = false
+    }
+    jvmArgs = ['-Xms1g', '-Xmx8g']
+    testLogging.showStandardStreams = true
+    systemProperty 'sailingBenchmark.run', 'true'
+    systemProperty 'sailingBenchmark.outputDir', layout.buildDirectory.dir('reports/sailing-benchmark').get().asFile.absolutePath
+    ['dataset', 'speeds', 'boats', 'warmup', 'rounds'].each { option ->
+        def value = providers.gradleProperty('sailingBenchmark' + option.capitalize())
+        if (value.isPresent()) {
+            systemProperty 'sailingBenchmark.' + option, value.get()
+        }
+    }
+    doFirst {
+        if (!pluginHasSailing) {
+            throw new GradleException('The plugin checkout has no sailing search; point -PpluginDir at one that does, ' +
+                    'e.g. -PpluginDir=../shortest-path')
+        }
+    }
+}
+
 tasks.register('captureExpectedLengths', Test) {
     doNotTrackState('Capture always re-runs to write updated expected lengths.')
     group = 'verification'

@@ -84,6 +84,8 @@ public class DashboardTest {
     private final ProfilerReportWriter profilerReportWriter = new ProfilerReportWriter();
     private final PathfinderDashboardReportWriter reportWriter = new PathfinderDashboardReportWriter();
     private final DashboardBundlePublisher bundlePublisher = new DashboardBundlePublisher();
+    /** Null unless the plugin checkout has the experimental sailing search (see SailingRouteRunner). */
+    private final SailingRouteRunner sailingRunner = SailingRouteRunner.find();
 
     private Client client;
     private ItemContainer universalBankContainer;
@@ -224,15 +226,29 @@ public class DashboardTest {
             if (profileData != null) {
                 profilerReportWriter.populateProfilerData(run, profileData);
             }
+            // Rows with a speed also run the sailing search, drawn next to the normal path
+            String sailingSummary = "";
+            if (scenario.getSailingSpeed().isPresent()) {
+                if (sailingRunner != null) {
+                    run.sailing = sailingRunner.run(applied.pathfinderConfig, scenario, result.getPathSteps());
+                    sailingSummary = String.format("  | sailing %s %s: %s %d ticks, %d legs, %.0fms",
+                        run.sailing.speed, run.sailing.boat.isEmpty() ? "(centre only)" : run.sailing.boat,
+                        run.sailing.reached ? "\u2714" : "\u2716", run.sailing.ticks, run.sailing.legs,
+                        run.sailing.elapsedNanos / 1_000_000.0);
+                } else {
+                    sailingSummary = "  | sailing skipped: the plugin checkout has no sailing search (-PpluginDir)";
+                }
+            }
             bundlePublisher.externalizeRunHeatmap(bundleName, runs.size(), run);
             runs.add(run);
 
-            System.out.printf("[%2d/%-2d] %s %s  %.0fms  %d steps%n",
+            System.out.printf("[%2d/%-2d] %s %s  %.0fms  %d steps%s%n",
                 scenarioIndex, scenarios.size(),
                 reached ? "\u2714" : "\u2716",
                 scenario.getName(),
                 result.getElapsedNanos() / 1_000_000.0,
-                pathLength);
+                pathLength,
+                sailingSummary);
 
         }
 

@@ -1,6 +1,10 @@
 rootProject.name = 'shortest-path-tooling'
 
-includeBuild('shortest-path') {
+// The plugin build to use: the shortest-path submodule, or another checkout of the plugin with
+// -PpluginDir=<path> (relative to this directory), e.g. -PpluginDir=../shortest-path to run a branch
+// without moving the submodule
+def pluginDir = startParameter.projectProperties.getOrDefault('pluginDir', 'shortest-path')
+includeBuild(pluginDir) {
     dependencySubstitution {
         substitute module('shortestpath:shortest-path') using project(':')
     }

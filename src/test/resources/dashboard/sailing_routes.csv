@@ -1,0 +1,20 @@
+name,category,start_x,start_y,start_plane,x,y,plane,preset,speed,boat
+# Sailing routes: each row also runs the experimental sailing search at the row's speed, keeping the named
+# boat's hull clear (raft, skiff or sloop; empty for just the boat's centre). Needs -PpluginDir pointing at a
+# plugin with the sailing search. The sailingBenchmark task runs every route with every boat and speed; rows
+# with the same start and target are one route there.
+# Long routes between ports
+Port Sarim to the Pandemonium (sloop),sailing,3048,3184,0,3069,2983,0,UNIT_TEST,1.5,sloop
+Port Sarim to Catherby (sloop),sailing,3050,3190,0,2800,3420,0,UNIT_TEST,1.5,sloop
+Musa Point to Corsair Cove (sloop),sailing,2961,3150,0,2584,2848,0,UNIT_TEST,1.5,sloop
+Ardougne to Port Tyras (sloop),sailing,2663,3259,0,2147,3117,0,UNIT_TEST,1.5,sloop
+# Tight spots
+Past the rocks off Mudskipper Point (raft),sailing-tight,2948,3074,0,3069,2983,0,UNIT_TEST,3.0,raft
+Past the rocks off Mudskipper Point (sloop),sailing-tight,2948,3074,0,3069,2983,0,UNIT_TEST,3.0,sloop
+Through the gate south of Pest Control (raft),sailing-tight,2632,2538,0,2632,2556,0,UNIT_TEST,1.5,raft
+Through the gate south of Pest Control (sloop),sailing-tight,2632,2538,0,2632,2556,0,UNIT_TEST,1.5,sloop
+# Rocky seas
+Through the Storm Tempor rocks past Tempoross Cove (raft),sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5,raft
+Through the Storm Tempor rocks past Tempoross Cove (sloop),sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5,sloop
+North of Charred Island to south of Wyrmscraig (raft),sailing-rocky,2672,2452,0,2515,2160,0,UNIT_TEST,1.5,raft
+North of Charred Island to south of Wyrmscraig (sloop),sailing-rocky,2672,2452,0,2515,2160,0,UNIT_TEST,1.5,sloop
