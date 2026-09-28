@@ -1078,6 +1078,27 @@ def load_report_runs(path: Path) -> List[Dict]:
     return runs if isinstance(runs, list) else []
 
 
+def run_green_failure(run: Dict) -> Optional[str]:
+    """Failure detail for one dashboard run record, or None when green.
+
+    A literal ``expectedReachable: false`` marks an intentional-failure
+    (tripwire) row: green there means ``reached`` stayed falsy, and a
+    reached tripwire is a polarity violation — the guard broke.  Absent,
+    null, or truthy ``expectedReachable`` keeps the fail-closed default
+    so a missing field can never mask a regression.  A literal
+    ``assertionPassed: false`` fails on either polarity; absent/null is
+    accepted (no length assertion was configured).
+    """
+    if run.get("expectedReachable") is False:
+        if run.get("reached"):
+            return "expected unreachable but a path was found"
+    elif run.get("reached") is not True:
+        return "run did not reach target"
+    if run.get("assertionPassed") is False:
+        return run.get("assertionMessage") or "assertion failed"
+    return None
+
+
 def record_verification(path: Path, *, command: str,
                         report: Optional[str] = None,
                         manual: bool = False,
@@ -1091,11 +1112,13 @@ def record_verification(path: Path, *, command: str,
 
     Replay path (``--report``): every name in the file's ``scenario_rows``
     (or a ``--dataset-rows`` override, which is written into
-    ``scenario_rows``) must have a run record in the report with
-    ``reached`` true and no failed assertion.  ``assertionPassed`` absent
-    or null is accepted — no length assertion was configured.  The Gradle
-    exit code is never consulted: ``ignoreFailures = true`` makes it
-    meaningless, so the run records are the only evidence.
+    ``scenario_rows``) must have a green run record in the report —
+    ``reached`` matching the row's expected polarity (a literal
+    ``expectedReachable: false`` means green = unreached) and no failed
+    assertion.  ``assertionPassed`` absent or null is accepted — no
+    length assertion was configured.  The Gradle exit code is never
+    consulted: ``ignoreFailures = true`` makes it meaningless, so the
+    run records are the only evidence.
 
     Manual path (``--manual --evidence``): skips report parsing entirely —
     the escape hatch for game states the dashboard cannot express; the
@@ -1140,11 +1163,8 @@ def record_verification(path: Path, *, command: str,
             if run is None:
                 return False, (f"ERROR {path.name}: {row} — no run "
                                f"record in report")
-            if run.get("reached") is not True:
-                return False, (f"ERROR {path.name}: {row} — run did "
-                               f"not reach target")
-            if run.get("assertionPassed") is False:
-                detail = run.get("assertionMessage") or "assertion failed"
+            detail = run_green_failure(run)
+            if detail is not None:
                 return False, f"ERROR {path.name}: {row} — {detail}"
         report_ref = report
     now = now or utc_now_iso()
