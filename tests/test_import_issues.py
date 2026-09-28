@@ -1423,3 +1423,226 @@ def test_verification_dataset_rows_override(tmp_path):
     fm, _body = frontmatter_and_body(tmp_path / "ISSUE-11.md")
     assert fm["scenario_rows"] == ["alpha scenario"]
     assert fm["verification"]["dataset_rows"] == ["alpha scenario"]
+
+
+# --------------------------------------------------------------------------
+# Verdict enum breadth, upstream-state gating edges, fix-candidate refresh,
+# list filtering, digest membership, verify error paths
+# --------------------------------------------------------------------------
+
+def test_check_accepts_all_six_verdicts(tmp_path, capsys):
+    # Every member of the six-way enum must be able to lint clean when its
+    # companions are populated — the ratchet is coverage, not a whitelist
+    # of the easy verdicts.
+    per_verdict = {
+        # Row-backed verdicts without rows take the expressible: false
+        # escape, which in turn requires blocked_on.
+        "fixed": {"expressible": False, "blocked_on": "manual replay"},
+        "data-gap": {"expressible": False, "blocked_on": "f2p-harness"},
+        "plugin-bug": {"expressible": False, "blocked_on": "f2p-harness"},
+        # Prose-only verdicts need unblock_conditions + pin_sha (defaults).
+        "grammar-gap": {},
+        "invalid": {},
+        "feature": {"feature_size": "small"},
+    }
+    assert set(per_verdict) == set(ii.VERDICT_ENUM)
+    for n, verdict in enumerate(sorted(per_verdict), start=80):
+        make_shadow(tmp_path, n, status="reported",
+                    fm_extra={"triage": triage_block(
+                        verdict=verdict, **per_verdict[verdict])})
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "check: clean" in capsys.readouterr().out
+
+
+def test_check_verdict_is_case_sensitive(tmp_path, capsys):
+    # The enum is a lowercase vocabulary — a capitalized verdict is an
+    # unknown token and fails coverage rather than silently matching.
+    make_shadow(tmp_path, 86, status="reported",
+                fm_extra={"triage": triage_block(verdict="Fixed")})
+    assert run_check(tmp_path) != 0
+    assert "lacks a valid triage.verdict" in capsys.readouterr().out
+
+
+def test_check_upstream_state_gating_is_case_insensitive(tmp_path, capsys):
+    # The verdict gate compares upstream_state case-insensitively: a
+    # hand-edited "Open" must still trigger coverage, while a "CLOSED"
+    # file stays exempt from it.
+    make_shadow(tmp_path, 87, status="reported",
+                fm_extra={"triage": None, "upstream_state": "Open"})
+    make_shadow(tmp_path, 88, status="reported",
+                fm_extra={"triage": None, "upstream_state": "CLOSED"})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert "ISSUE-87.md" in out and "lacks a valid triage.verdict" in out
+    assert "ISSUE-88.md" not in out
+
+
+def test_check_non_dict_evidence_requires_pin_sha(tmp_path, capsys):
+    # A malformed evidence block degrades to the pin_sha error, never a
+    # crash — shadow frontmatter is not a trusted schema.
+    make_shadow(tmp_path, 89, status="reported",
+                fm_extra={"triage": triage_block(evidence="not-a-dict")})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    assert "pin_sha" in capsys.readouterr().out
+
+
+def test_resync_refreshes_fix_candidates(tmp_path, monkeypatch):
+    # fix_candidates is upstream-owned: a re-sync rebuilds it from the
+    # latest fetch (new candidates appear, stale ones drop) while
+    # maintainer-owned triage carries over untouched.
+    issues = load_fixture("gh_issue_list_all.json")
+    run_sync(tmp_path, monkeypatch, issues, extra_args=["--no-digest"])
+    path = tmp_path / "ISSUE-549.md"
+    fm, _body = frontmatter_and_body(path)
+    assert any(e["pr"] == 99995 for e in fm["fix_candidates"])
+    fm["triage"] = triage_block(verdict="plugin-bug")
+    path.write_text("---\n" + yaml.safe_dump(fm, sort_keys=False)
+                    + "---\n\n## Triage Notes\n\nnote\n")
+    new_candidates = [{
+        "pr": 88888, "url": "https://example.invalid/pull/88888",
+        "author": "dev", "branch": "fix/549-new", "link": "confirmed",
+    }]
+    monkeypatch.setattr(ii, "fetch_fix_candidates",
+                        lambda *a, **k: {549: new_candidates})
+    changed = dict(fixture_issue("gh_issue_list_all.json", 549))
+    changed["title"] = "Retitled upstream report"
+    run_sync(tmp_path, monkeypatch, [changed], extra_args=["--no-digest"])
+    fm2, _body = frontmatter_and_body(path)
+    assert fm2["fix_candidates"] == new_candidates
+    assert fm2["triage"]["verdict"] == "plugin-bug"
+
+
+def test_fix_candidate_reference_without_repo_data_not_confirmed(
+        tmp_path, monkeypatch):
+    # closingIssuesReferences only earns "confirmed" when the reference
+    # resolves into the upstream repo itself — entries with missing
+    # repository data, a foreign owner, or a foreign repo name are
+    # dropped entirely when nothing else links them.
+    prs = [{
+        "number": 1, "title": "work", "state": "OPEN", "body": "",
+        "author": {"login": "dev"}, "headRefName": "work",
+        "headRepositoryOwner": {"login": "dev"}, "isDraft": False,
+        "closingIssuesReferences": [
+            {"number": 77, "repository": None},
+            {"number": 78, "repository": {
+                "owner": {"login": "Skretzo"}, "name": "other-repo"}},
+            {"number": 79, "repository": {
+                "owner": {"login": "someone-else"},
+                "name": "shortest-path"}},
+        ],
+        "url": "https://example.invalid/pull/1",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-01T00:00:00Z",
+    }]
+    monkeypatch.setattr(ii, "gh_json", lambda args: prs)
+    out = ii.fetch_fix_candidates()
+    assert 77 not in out and 78 not in out and 79 not in out
+
+
+def test_resync_closed_with_unmapped_reason_stays_silent(
+        tmp_path, monkeypatch, capsys):
+    # The closure-signal mapping is deliberately conservative: a closed
+    # upstream issue whose stateReason is neither NOT_PLANNED nor
+    # COMPLETED produces no suggestion and no history event.
+    issue = dict(fixture_issue("gh_issue_list_all.json", 99996))
+    issue["stateReason"] = "DUPLICATE"
+    rc = run_sync(tmp_path, monkeypatch, [issue],
+                  extra_args=["--no-digest"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "suggest" not in out
+    fm, _body = frontmatter_and_body(tmp_path / "ISSUE-99996.md")
+    assert fm["upstream_state"] == "closed"
+    assert fm["upstream_state_reason"] == "DUPLICATE"
+    assert fm["status"] == "reported"
+    events = [h["event"] for h in fm["history"]]
+    assert not any(e.startswith("upstream-closed") for e in events)
+
+
+def test_list_status_filter(tmp_path, capsys):
+    make_shadow(tmp_path, 33, status="reported")
+    make_shadow(tmp_path, 34, status="triaged", body_text=PRD_BODY)
+    rc = ii.main(["list", "--output-dir", str(tmp_path),
+                  "--status", "triaged"])
+    assert rc == 0
+    lines = [l for l in capsys.readouterr().out.splitlines() if l.strip()]
+    assert len(lines) == 1
+    assert lines[0].startswith("ISSUE-34")
+
+
+def test_list_skips_unparseable_frontmatter(tmp_path, capsys):
+    # A shadow file whose frontmatter cannot be parsed is omitted from
+    # the listing rather than crashing it — `check` is the tool that
+    # reports malformed files.
+    make_shadow(tmp_path, 35, status="reported")
+    (tmp_path / "ISSUE-36.md").write_text(
+        "---\nbad: [unclosed\n---\nbody\n")
+    rc = ii.main(["list", "--output-dir", str(tmp_path)])
+    assert rc == 0
+    lines = [l for l in capsys.readouterr().out.splitlines() if l.strip()]
+    assert [l.split()[0] for l in lines] == ["ISSUE-35"]
+
+
+def test_sync_no_digest_leaves_state_file_untouched(tmp_path, monkeypatch):
+    state = tmp_path / "STATE.md"
+    state.write_text("# keep me\n")
+    rc = run_sync(tmp_path / "issues", monkeypatch,
+                  [fixture_issue("gh_issue_list_all.json", 549)],
+                  extra_args=["--no-digest"])
+    assert rc == 0
+    assert state.read_text() == "# keep me\n"
+
+
+def test_sync_state_file_override(tmp_path, monkeypatch):
+    # --state-file redirects the digest; the default sibling location is
+    # left alone.
+    default_state = tmp_path / "STATE.md"
+    default_state.write_text("# default\n")
+    alt = tmp_path / "ALT.md"
+    alt.write_text("# alt\n")
+    rc = run_sync(tmp_path / "issues", monkeypatch,
+                  [fixture_issue("gh_issue_list_all.json", 549)],
+                  extra_args=["--state-file", str(alt)])
+    assert rc == 0
+    assert "Skretzo/shortest-path#549" in alt.read_text()
+    assert default_state.read_text() == "# default\n"
+
+
+def test_digest_excludes_missing_upstream_state(tmp_path):
+    # A file that never recorded upstream_state cannot be known-open, so
+    # it stays out of the digest — matching the fail-closed lint that
+    # flags the same file rather than silently exempting it.
+    state = tmp_path / "STATE.md"
+    state.write_text("# S\n\n<!-- issues:digest:start -->\nold\n"
+                     "<!-- issues:digest:end -->\n")
+    files = [(1, {"title": "no state", "status": "reported",
+                  "phase": None}),
+             (2, {"upstream_state": "Open", "title": "mixed case",
+                  "status": "reported", "phase": None})]
+    ii.update_state_digest(state, files)
+    text = state.read_text()
+    assert "#1" not in text
+    assert "#2" in text
+
+
+def test_verification_rejects_unparseable_report(tmp_path, capsys):
+    path = make_shadow(tmp_path, 21, status="fixed",
+                       fm_extra={"scenario_rows": ["alpha scenario"]})
+    before = path.read_text()
+    report = tmp_path / "report.json"
+    report.write_text("{ not json")
+    rc = run_verify(tmp_path, 21, "--command", "cmd",
+                    "--report", str(report))
+    assert rc != 0
+    assert "cannot parse" in capsys.readouterr().err
+    assert path.read_text() == before
+
+
+def test_verification_missing_file(tmp_path, capsys):
+    rc = run_verify(tmp_path, 99, "--command", "cmd",
+                    "--report", "report.json")
+    assert rc != 0
+    assert "file not found" in capsys.readouterr().err
