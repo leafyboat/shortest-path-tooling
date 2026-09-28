@@ -687,6 +687,22 @@ def test_check_unhashable_verdict_lints_not_crashes(tmp_path, capsys):
     assert out.count("lacks a valid triage.verdict") == 3
 
 
+def test_check_scenario_rows_must_be_list(tmp_path, capsys):
+    # scenario_rows is consumed as a list — a truthy string previously
+    # satisfied the row-backed gate and then emitted one cross-ref error
+    # per character, while an int crashed the iteration with TypeError.
+    make_shadow(tmp_path, 66, status="reported",
+                fm_extra={"scenario_rows": "alpha"})
+    make_shadow(tmp_path, 67, status="reported",
+                fm_extra={"scenario_rows": 5})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert out.count("scenario_rows must be a list") == 2
+    # One schema error per file — never per-character garbage errors.
+    assert "entry 'a'" not in out
+
+
 def test_check_non_fixed_verdict_requires_unblock_conditions(tmp_path,
                                                            capsys):
     make_shadow(tmp_path, 52, status="reported",

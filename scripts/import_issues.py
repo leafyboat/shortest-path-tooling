@@ -828,6 +828,12 @@ def lint_shadow(path: Path, fm: Dict, body: str) -> List[str]:
     if status not in STATUS_ENUM:
         errors.append(f"status {status!r} is not a known lifecycle state")
         return errors
+    # scenario_rows is consumed as a list downstream — a truthy string
+    # would iterate per-character and an int would crash with TypeError,
+    # so the shape is checked once here rather than at each consumer.
+    scenario_rows = fm.get("scenario_rows")
+    if scenario_rows is not None and not isinstance(scenario_rows, list):
+        errors.append("scenario_rows must be a list")
     if status in MAINLINE_AFTER_TRIAGE:
         sections = maintainer_sections_from(body)
         for name in REQUIRED_PRD_SECTIONS:
@@ -861,7 +867,7 @@ def lint_shadow(path: Path, fm: Dict, body: str) -> List[str]:
                     f"triage.verdict {verdict!r} requires non-empty "
                     f"triage.unblock_conditions")
             if (verdict in ROW_BACKED_VERDICTS
-                    and not fm.get("scenario_rows")
+                    and not scenario_rows
                     and triage.get("expressible") is not False):
                 errors.append(
                     f"triage.verdict {verdict!r} requires non-empty "
@@ -985,8 +991,12 @@ def cmd_check(args: argparse.Namespace) -> int:
             continue
         for e in lint_shadow(path, fm, body):
             errors.append((path.name, e))
-        for row in fm.get("scenario_rows") or []:
-            scenario_refs.append((path.name, row))
+        # lint_shadow already reports a non-list scenario_rows — skip
+        # the iteration here so a string does not error per-character
+        # and an int does not crash the run.
+        rows = fm.get("scenario_rows")
+        if isinstance(rows, list):
+            scenario_refs.extend((path.name, row) for row in rows)
     csv_errors, seen_names = lint_scenarios(
         args.output_dir / "scenarios.csv", issue_numbers)
     errors.extend(("scenarios.csv", e) for e in csv_errors)
