@@ -780,6 +780,25 @@ def test_check_closed_upstream_skips_verdict_coverage(tmp_path, capsys):
     assert "triage" not in capsys.readouterr().out
 
 
+def test_check_missing_upstream_state_fails_closed(tmp_path, capsys):
+    # upstream_state keys the verdict-coverage gate — a file that never
+    # recorded it (hand-authored or written by another tool) must fail
+    # closed, not lint clean without a verdict.
+    path = make_shadow(tmp_path, 71, status="reported")
+    fm, body = ii.load_shadow(path)
+    del fm["upstream_state"]
+    path.write_text("---\n" + yaml.safe_dump(fm, sort_keys=False)
+                    + "---\n" + body)
+    make_shadow(tmp_path, 72, status="reported",
+                fm_extra={"upstream_state": None})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert out.count("missing required field upstream_state") == 2
+    # The schema error fires — the verdict gate is waived, not skipped.
+    assert "triage.verdict" not in out
+
+
 def test_check_fixed_verdict_with_rows_clean(tmp_path, capsys):
     # `fixed` is the only verdict exempt from unblock_conditions — the
     # upstream fix already landed; the paired scenario rows are the

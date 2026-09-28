@@ -853,7 +853,13 @@ def lint_shadow(path: Path, fm: Dict, body: str) -> List[str]:
         if not (ver.get("command") and ver.get("report")):
             errors.append(f"status {status} requires populated "
                           f"verification.command and verification.report")
-    if (fm.get("upstream_state") or "").lower() == "open":
+    upstream_state = fm.get("upstream_state")
+    if upstream_state is None:
+        # upstream_state is required frontmatter and keys the coverage
+        # gate — a file that never recorded it must fail closed rather
+        # than lint clean without a verdict.
+        errors.append("missing required field upstream_state")
+    elif str(upstream_state).lower() == "open":
         # Malformed triage (non-dict) or a non-string/unhashable verdict
         # degrades to the coverage error, never a crash — shadow
         # frontmatter is not a trusted schema.
