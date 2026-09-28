@@ -1646,3 +1646,286 @@ def test_verification_missing_file(tmp_path, capsys):
                     "--report", "report.json")
     assert rc != 0
     assert "file not found" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
+# gh_run seam — non-JSON gh calls (write ops)
+# --------------------------------------------------------------------------
+
+def test_gh_run_returns_completed_process(monkeypatch):
+    proc = ii.subprocess.CompletedProcess(["gh"], 0, stdout="", stderr="")
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        seen.update(kwargs)
+        return proc
+
+    monkeypatch.setattr(ii.subprocess, "run", fake_run)
+    assert ii.gh_run(["issue", "close", "504"]) is proc
+    assert seen["cmd"] == ["gh", "issue", "close", "504"]
+    assert seen["timeout"] > 0
+    assert seen["check"] is True
+    assert seen["text"] is True
+
+
+def test_gh_run_timeout_exits_cleanly(monkeypatch):
+    def fake_run(cmd, **kwargs):
+        raise ii.subprocess.TimeoutExpired(cmd, kwargs.get("timeout"))
+
+    monkeypatch.setattr(ii.subprocess, "run", fake_run)
+    with pytest.raises(SystemExit) as exc:
+        ii.gh_run(["issue", "close", "504"])
+    assert "gh issue close" in str(exc.value)
+
+
+def test_gh_run_called_process_error_exits_with_stderr(monkeypatch):
+    def fake_run(cmd, **kwargs):
+        raise ii.subprocess.CalledProcessError(
+            2, cmd, stderr="boom details")
+
+    monkeypatch.setattr(ii.subprocess, "run", fake_run)
+    with pytest.raises(SystemExit) as exc:
+        ii.gh_run(["issue", "close", "504"])
+    assert "boom details" in str(exc.value)
+
+
+# --------------------------------------------------------------------------
+# plan-close / close — closure-plan emission and execution
+# --------------------------------------------------------------------------
+
+def fixed_shadow(tmp_path, number=504,
+                 fix_pr="https://github.com/Skretzo/shortest-path/pull/539",
+                 scenario_rows=None, status="triaged"):
+    """A close-set shadow: open upstream, verdict fixed, fix_pr set."""
+    rows = ["alpha scenario"] if scenario_rows is None else scenario_rows
+    return make_shadow(
+        tmp_path, number, status=status, body_text=PRD_BODY,
+        fm_extra={
+            "scenario_rows": rows,
+            "triage": triage_block(verdict="fixed", unblock_conditions=[]),
+            "verification": {
+                "command": ("./gradlew dashboard "
+                            "-PdashboardDataset=scenarios.csv"),
+                "dataset_rows": rows,
+                "report": "build/reports/bundles/sweep/report.json",
+                "fix_commit": "31bc5e9",
+                "fix_pr": fix_pr,
+                "verifier": "tester",
+                "verified_at": "2026-09-28T00:00:00Z",
+            },
+        })
+
+
+def run_plan_close(tmp_path, *argv):
+    return ii.main(["plan-close", "--output-dir", str(tmp_path), *argv])
+
+
+def replay_entry(issue=504, comment=None):
+    return {
+        "issue": issue,
+        "kind": "replay",
+        "comment": comment or (
+            "Fixed by Skretzo/shortest-path#539 — verified via "
+            "scenario 'alpha scenario', now covered in "
+            "routing-issues.csv"),
+        "fix_pr": "https://github.com/Skretzo/shortest-path/pull/539",
+        "fix_commit": "31bc5e9",
+        "evidence_rows": ["alpha scenario"],
+        "upstream_state_at_plan": "open",
+        "reason": "completed",
+    }
+
+
+def make_closure_plan(tmp_path, entries, filename="closure-plan.json",
+                      command="cmd", report="rep", pin_sha="fixturepin"):
+    plan = {
+        "generated_at": "2026-09-28T00:00:00Z",
+        "pin_sha": pin_sha,
+        "command": command,
+        "report": report,
+        "entries": entries,
+    }
+    path = tmp_path / filename
+    path.write_text(json.dumps(plan, indent=2))
+    return path
+
+
+def run_close(tmp_path, plan_path, *argv):
+    return ii.main(["close", "--output-dir", str(tmp_path),
+                    "--plan", str(plan_path), *argv])
+
+
+def test_plan_close_emits_replay_entry(tmp_path):
+    fixed_shadow(tmp_path, 504)
+    rc = run_plan_close(tmp_path)
+    assert rc == 0
+    plan_path = tmp_path / "closure-plan.json"
+    assert plan_path.is_file()
+    plan = json.loads(plan_path.read_text())
+    assert plan["pin_sha"] == "fixturepin"
+    for key in ("generated_at", "command", "report", "entries"):
+        assert key in plan
+    assert len(plan["entries"]) == 1
+    entry = plan["entries"][0]
+    assert entry["issue"] == 504
+    assert entry["kind"] == "replay"
+    assert entry["reason"] == "completed"
+    assert entry["upstream_state_at_plan"] == "open"
+    assert entry["fix_pr"].endswith("/pull/539")
+    assert entry["fix_commit"] == "31bc5e9"
+    assert entry["evidence_rows"] == ["alpha scenario"]
+    assert entry["comment"] == (
+        "Fixed by Skretzo/shortest-path#539 — verified via "
+        "scenario 'alpha scenario', now covered in "
+        "routing-issues.csv")
+
+
+def test_plan_close_dry_run_writes_nothing(tmp_path, capsys):
+    fixed_shadow(tmp_path, 504)
+    rc = run_plan_close(tmp_path, "--dry-run")
+    assert rc == 0
+    assert not (tmp_path / "closure-plan.json").exists()
+    out = capsys.readouterr().out
+    assert "would close ISSUE-504" in out
+    assert "Skretzo/shortest-path#539" in out
+
+
+def test_plan_close_skips_missing_fix_pr(tmp_path, capsys):
+    # verdict fixed but attribution not yet populated — the entry is
+    # skipped and the empty plan writes nothing.
+    make_shadow(tmp_path, 504, fm_extra={
+        "scenario_rows": ["alpha scenario"],
+        "triage": triage_block(verdict="fixed", unblock_conditions=[])})
+    rc = run_plan_close(tmp_path)
+    assert rc != 0
+    assert "SKIP ISSUE-504" in capsys.readouterr().out
+    assert not (tmp_path / "closure-plan.json").exists()
+
+
+def test_plan_close_skips_non_fixed_and_closed(tmp_path, capsys):
+    make_shadow(tmp_path, 1, fm_extra={
+        "triage": triage_block(verdict="data-gap")})
+    make_shadow(tmp_path, 2, fm_extra={
+        "upstream_state": "closed",
+        "triage": triage_block(verdict="fixed", unblock_conditions=[]),
+        "verification": {"command": "c",
+                         "dataset_rows": ["alpha scenario"],
+                         "report": "r", "fix_commit": "x",
+                         "fix_pr": "https://example.invalid/pull/2",
+                         "verifier": "t", "verified_at": "t"}})
+    rc = run_plan_close(tmp_path)
+    assert rc != 0
+    assert not (tmp_path / "closure-plan.json").exists()
+
+
+def test_plan_close_explicit_plan_path(tmp_path):
+    fixed_shadow(tmp_path, 504)
+    plan_path = tmp_path / "nested" / "plan.json"
+    plan_path.parent.mkdir()
+    rc = run_plan_close(tmp_path, "--plan", str(plan_path))
+    assert rc == 0
+    assert plan_path.is_file()
+
+
+def test_close_dry_run_never_calls_gh_run(tmp_path, monkeypatch, capsys):
+    make_shadow(tmp_path, 504)
+    plan_path = make_closure_plan(tmp_path, [replay_entry(504)])
+    monkeypatch.setattr(
+        ii, "gh_json", lambda args: {"state": "OPEN", "stateReason": None})
+    calls = []
+    monkeypatch.setattr(ii, "gh_run",
+                        lambda args: calls.append(list(args)))
+    rc = run_close(tmp_path, plan_path, "--dry-run")
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "would close ISSUE-504" in out
+    assert "Skretzo/shortest-path#539" in out
+    assert calls == []
+    # Dry-run must not touch the shadow file's verification block.
+    fm, _ = frontmatter_and_body(tmp_path / "ISSUE-504.md")
+    assert fm["verification"]["fix_pr"] is None
+
+
+def test_close_skips_already_closed_upstream(tmp_path, monkeypatch, capsys):
+    make_shadow(tmp_path, 504)
+    plan_path = make_closure_plan(tmp_path, [replay_entry(504)])
+    monkeypatch.setattr(ii, "gh_json",
+                        lambda args: load_fixture(
+                            "gh_issue_view_closed.json"))
+    calls = []
+    monkeypatch.setattr(ii, "gh_run",
+                        lambda args: calls.append(list(args)))
+    rc = run_close(tmp_path, plan_path)
+    assert rc == 0
+    assert "already closed" in capsys.readouterr().out
+    assert calls == []
+    fm, _ = frontmatter_and_body(tmp_path / "ISSUE-504.md")
+    assert fm["verification"]["fix_pr"] is None
+
+
+def test_close_executes_and_records(tmp_path, monkeypatch):
+    path = make_shadow(tmp_path, 504)
+    plan_path = make_closure_plan(tmp_path, [replay_entry(504)])
+    upstream = {"open": True}
+
+    def fake_gh_json(args):
+        if upstream["open"]:
+            upstream["open"] = False
+            return {"state": "OPEN", "stateReason": None}
+        return dict(load_fixture("gh_issue_view_closed.json"))
+
+    gh_run_calls = []
+
+    def fake_gh_run(args):
+        gh_run_calls.append(list(args))
+        return ii.subprocess.CompletedProcess(["gh", *args], 0)
+
+    monkeypatch.setattr(ii, "gh_json", fake_gh_json)
+    monkeypatch.setattr(ii, "gh_run", fake_gh_run)
+    rc = run_close(tmp_path, plan_path)
+    assert rc == 0
+    entry = replay_entry(504)
+    assert gh_run_calls == [[
+        "issue", "close", "504", "--repo", "Skretzo/shortest-path",
+        "-c", entry["comment"], "-r", "completed"]]
+    fm, _ = frontmatter_and_body(path)
+    v = fm["verification"]
+    assert v["fix_pr"] == entry["fix_pr"]
+    assert v["fix_commit"] == "31bc5e9"
+    assert v["dataset_rows"] == ["alpha scenario"]
+    assert v["report"] == "rep"
+    assert v["command"] == "cmd"
+    assert v["verified_at"]
+    events = [h["event"] for h in fm["history"]]
+    assert events.count("upstream-close: executed (gh)") == 1
+
+    # Re-run with upstream reporting OPEN again: the close executes a
+    # second time but the identical history event is not duplicated.
+    upstream["open"] = True
+    rc = run_close(tmp_path, plan_path)
+    assert rc == 0
+    fm, _ = frontmatter_and_body(path)
+    events = [h["event"] for h in fm["history"]]
+    assert events.count("upstream-close: executed (gh)") == 1
+
+
+def test_close_flags_unconfirmed_reason(tmp_path, monkeypatch, capsys):
+    # A bare CLOSED with a non-COMPLETED reason means the close took an
+    # unexpected path — flag it for maintainer review and write nothing.
+    path = make_shadow(tmp_path, 504)
+    before = path.read_text()
+    plan_path = make_closure_plan(tmp_path, [replay_entry(504)])
+    views = iter([
+        {"state": "OPEN", "stateReason": None},
+        {"state": "CLOSED", "stateReason": "NOT_PLANNED"},
+    ])
+    monkeypatch.setattr(ii, "gh_json", lambda args: next(views))
+    monkeypatch.setattr(ii, "gh_run",
+                        lambda args: ii.subprocess.CompletedProcess(
+                            ["gh", *args], 0))
+    rc = run_close(tmp_path, plan_path)
+    assert rc != 0
+    err = capsys.readouterr().err
+    assert "ISSUE-504" in err
+    assert path.read_text() == before
