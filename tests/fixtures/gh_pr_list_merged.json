@@ -1,0 +1,83 @@
+[
+  {
+    "author": {
+      "id": "MDQ6VXNlcjQ5MDgxNTIw",
+      "is_bot": false,
+      "login": "pr0f3ss",
+      "name": "Filip Dobrosavljević"
+    },
+    "body": "Fixes issue #504 \r\n\r\nBoth Jungle bush and Jungle tree require an axe AND machete, so the pathfinder and bank pickup hint now ask for both instead of only one.",
+    "closingIssuesReferences": [],
+    "createdAt": "2026-08-17T08:09:24Z",
+    "headRefName": "fix/504-kharazi-axe-machete",
+    "headRepositoryOwner": {
+      "id": "MDQ6VXNlcjQ5MDgxNTIw",
+      "name": "Filip Dobrosavljević",
+      "login": "pr0f3ss"
+    },
+    "isDraft": false,
+    "mergedAt": "2026-08-19T10:00:00Z",
+    "number": 539,
+    "state": "MERGED",
+    "title": "Require axe and machete for Kharazi jungle bushes and trees.",
+    "updatedAt": "2026-08-19T10:00:00Z",
+    "url": "https://github.com/Skretzo/shortest-path/pull/539"
+  },
+  {
+    "author": {
+      "id": "MDQ6VXNlcjQ5MDgxNTIw",
+      "is_bot": false,
+      "login": "pr0f3ss",
+      "name": "Filip Dobrosavljević"
+    },
+    "body": "Fixes #509 \r\n\r\nRequire the (trimmed) cape plus every quest completed.",
+    "closingIssuesReferences": [
+      {
+        "id": "I_kwDOGiX-VM8AAAABGeUCyQ",
+        "number": 509,
+        "repository": {
+          "id": "R_kgDOGiX-VA",
+          "name": "shortest-path",
+          "owner": {
+            "id": "MDQ6VXNlcjUzNDkzNjMx",
+            "login": "Skretzo"
+          }
+        },
+        "url": "https://github.com/Skretzo/shortest-path/issues/509"
+      }
+    ],
+    "createdAt": "2026-08-17T12:03:10Z",
+    "headRefName": "fix/509-quest-cape-all-quests",
+    "headRepositoryOwner": {
+      "id": "MDQ6VXNlcjQ5MDgxNTIw",
+      "name": "Filip Dobrosavljević",
+      "login": "pr0f3ss"
+    },
+    "isDraft": false,
+    "mergedAt": "2026-08-20T00:00:00Z",
+    "number": 541,
+    "state": "MERGED",
+    "title": "Require all completed quests for the quest point cape teleport.",
+    "updatedAt": "2026-08-20T00:00:00Z",
+    "url": "https://github.com/Skretzo/shortest-path/pull/541"
+  },
+  {
+    "author": {
+      "login": "fixture-bot"
+    },
+    "body": "Internal performance refactor, unrelated to any reported bug.",
+    "closingIssuesReferences": [],
+    "createdAt": "2026-09-25T00:00:00Z",
+    "headRefName": "perf/search-deadline",
+    "headRepositoryOwner": {
+      "login": "fixture-bot"
+    },
+    "isDraft": false,
+    "mergedAt": "2026-09-26T00:00:00Z",
+    "number": 571,
+    "state": "MERGED",
+    "title": "Search deadline refactor",
+    "updatedAt": "2026-09-26T00:00:00Z",
+    "url": "https://github.com/Skretzo/shortest-path/pull/571"
+  }
+]

@@ -187,6 +187,56 @@ def test_fix_candidate_ignores_foreign_repo_refs(monkeypatch):
     assert all(e["pr"] != 530 for entries in out.values() for e in entries)
 
 
+def test_fix_candidates_merged_state_lookup(monkeypatch):
+    # The close-time attribution ladder needs merged PRs — the stored
+    # fix_candidates map stays open-only, so callers pass state=.
+    captured = {}
+
+    def fake_gh(args):
+        captured["args"] = list(args)
+        return load_fixture("gh_pr_list_merged.json")
+
+    monkeypatch.setattr(ii, "gh_json", fake_gh)
+    out = ii.fetch_fix_candidates(state="merged")
+    args = captured["args"]
+    assert args[args.index("--state") + 1] == "merged"
+    # confirmed via closingIssuesReferences resolving into upstream
+    assert 509 in out
+    entry = next(e for e in out[509] if e["pr"] == 541)
+    assert entry["link"] == "confirmed"
+    assert entry["mergedAt"] == "2026-08-20T00:00:00Z"
+    # heuristic via the "Fixes issue #504" phrasing GitHub's parser misses
+    assert 504 in out
+    entry = next(e for e in out[504] if e["pr"] == 539)
+    assert entry["link"] == "heuristic"
+    assert entry["mergedAt"] == "2026-08-19T10:00:00Z"
+    # the unrelated merged PR maps to nothing
+    all_prs = [e["pr"] for entries in out.values() for e in entries]
+    assert 571 not in all_prs
+
+
+def test_fix_candidates_default_state_is_open(monkeypatch):
+    # sync's stored map semantics are unchanged: no state argument still
+    # fetches --state open.
+    captured = {}
+
+    def fake_gh(args):
+        captured["args"] = list(args)
+        return load_fixture("gh_pr_list.json")
+
+    monkeypatch.setattr(ii, "gh_json", fake_gh)
+    ii.fetch_fix_candidates()
+    args = captured["args"]
+    assert args[args.index("--state") + 1] == "open"
+
+
+def test_fix_candidates_entries_carry_mergedat(monkeypatch):
+    # mergedAt flows through on every emitted entry — null on open PRs.
+    out = stub_prs(monkeypatch)
+    entry = next(e for e in out[509] if e["pr"] == 541)
+    assert entry["mergedAt"] is None
+
+
 def test_sync_populates_fix_candidates_frontmatter(tmp_path, monkeypatch):
     run_sync(tmp_path, monkeypatch)
     fm, _body = frontmatter_and_body(tmp_path / "ISSUE-549.md")
