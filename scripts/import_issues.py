@@ -833,12 +833,13 @@ def lint_shadow(path: Path, fm: Dict, body: str) -> List[str]:
             errors.append(f"status {status} requires populated "
                           f"verification.command and verification.report")
     if (fm.get("upstream_state") or "").lower() == "open":
-        # Malformed triage (non-dict) degrades to the coverage error,
-        # never a crash — shadow frontmatter is not a trusted schema.
+        # Malformed triage (non-dict) or a non-string/unhashable verdict
+        # degrades to the coverage error, never a crash — shadow
+        # frontmatter is not a trusted schema.
         triage = fm.get("triage")
         triage = triage if isinstance(triage, dict) else {}
         verdict = triage.get("verdict")
-        if verdict not in VERDICT_ENUM:
+        if not isinstance(verdict, str) or verdict not in VERDICT_ENUM:
             errors.append(
                 "open issue lacks a valid triage.verdict (one of: "
                 + ", ".join(sorted(VERDICT_ENUM)) + ")")

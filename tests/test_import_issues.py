@@ -674,6 +674,19 @@ def test_check_verdict_must_be_known_enum(tmp_path, capsys):
     assert "lacks a valid triage.verdict" in capsys.readouterr().out
 
 
+def test_check_unhashable_verdict_lints_not_crashes(tmp_path, capsys):
+    # A non-string verdict (`[fixed]`, `{a: b}`, `5`) must produce a
+    # coverage error, never a TypeError — the lint exists to catch
+    # exactly this class of malformed YAML.
+    for n, verdict in ((63, ["fixed"]), (64, {"a": "b"}), (65, 5)):
+        make_shadow(tmp_path, n, status="reported",
+                    fm_extra={"triage": triage_block(verdict=verdict)})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert out.count("lacks a valid triage.verdict") == 3
+
+
 def test_check_non_fixed_verdict_requires_unblock_conditions(tmp_path,
                                                            capsys):
     make_shadow(tmp_path, 52, status="reported",
