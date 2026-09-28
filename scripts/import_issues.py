@@ -675,6 +675,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="Closure plan file produced by plan-close")
     cl.add_argument("--dry-run", action="store_true")
 
+    sr = sub.add_parser(
+        "sweep-report",
+        help="Per-issue green/red/missing tally over a bundle report")
+    sr.add_argument("--output-dir", type=Path, required=True)
+    sr.add_argument("report", type=Path,
+                    help="report.json produced by the dashboard sweep")
+
     args = ap.parse_args(argv)
 
     if args.cmd == "sync":
@@ -691,6 +698,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return cmd_plan_close(args)
     if args.cmd == "close":
         return cmd_close(args)
+    if args.cmd == "sweep-report":
+        return cmd_sweep_report(args)
     return 0
 
 
@@ -1380,6 +1389,62 @@ def cmd_close(args: argparse.Namespace) -> int:
                         + "---" + body)
         print(f"ISSUE-{n}: closed upstream COMPLETED")
     return 1 if failures else 0
+
+
+def cmd_sweep_report(args: argparse.Namespace) -> int:
+    """Per-issue verdict × row-outcome table over a bundle report.
+
+    Read-only: never touches shadow files or upstream.  Every shadow
+    file prints one ``ISSUE-<N> verdict=<v> rows=<n> green=<g> red=<r>
+    missing=<m>`` line in ascending issue order — rowless files print
+    ``rows=0`` and can never show GREEN.  Rows evaluate through the
+    shared ``run_green_failure`` predicate; a row name with no run
+    record counts as ``missing`` (fail-closed: an absent run is never
+    silently skipped).  Exits 0 whenever the report parses — the tally
+    IS the output, red/missing rows are data, not errors.
+    """
+    try:
+        runs = load_report_runs(args.report)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"ERROR {args.report}: cannot parse report: {e}",
+              file=sys.stderr)
+        return 1
+    by_name = {r.get("name"): r for r in runs if isinstance(r, dict)}
+    issues = fully_green = has_red = has_missing = 0
+    for number, fm in sorted(scan_shadows(args.output_dir)):
+        triage = fm.get("triage")
+        verdict = (triage.get("verdict") if isinstance(triage, dict)
+                   else None) or "-"
+        rows = fm.get("scenario_rows")
+        rows = list(rows) if isinstance(rows, list) else []
+        green: List[str] = []
+        red: List[str] = []
+        missing: List[str] = []
+        for row in rows:
+            run = by_name.get(row)
+            if run is None:
+                missing.append(row)
+            elif run_green_failure(run) is not None:
+                red.append(row)
+            else:
+                green.append(row)
+        line = (f"ISSUE-{number} verdict={verdict} rows={len(rows)} "
+                f"green={len(green)} red={len(red)} "
+                f"missing={len(missing)}")
+        if rows and not red and not missing:
+            line += " GREEN"
+            fully_green += 1
+        if red:
+            line += " red=[" + ",".join(red) + "]"
+            has_red += 1
+        if missing:
+            line += " missing=[" + ",".join(missing) + "]"
+            has_missing += 1
+        print(line)
+        issues += 1
+    print(f"issues={issues} fully-green={fully_green} "
+          f"has-red={has_red} has-missing={has_missing}")
+    return 0
 
 
 def cmd_list(args: argparse.Namespace) -> int:
