@@ -159,6 +159,30 @@ def gh_json(args: List[str]) -> Any:
     return json.loads(proc.stdout)
 
 
+def gh_run(args: List[str]) -> subprocess.CompletedProcess:
+    """Run a non-JSON ``gh`` call (write ops like ``issue close``).
+
+    Same subprocess discipline as ``gh_json`` — list-argv (never
+    ``shell=True``), captured output, ``check=True``,
+    ``GH_TIMEOUT_SECONDS`` — but returns the ``CompletedProcess`` for
+    commands that emit no JSON payload.
+    """
+    try:
+        return subprocess.run(
+            ["gh", *args], capture_output=True, text=True, check=True,
+            timeout=GH_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        # A wedged gh (auth prompt, network stall) must not hang the
+        # whole run without a diagnostic.
+        raise SystemExit(
+            f"gh {' '.join(args[:2])} timed out after "
+            f"{GH_TIMEOUT_SECONDS}s") from None
+    except subprocess.CalledProcessError as e:
+        raise SystemExit(
+            f"gh {' '.join(args[:2])} failed: "
+            f"{(e.stderr or '').strip()}") from None
+
+
 def fetch_issues(state: str = "open", limit: int = 1000) -> List[Dict]:
     return gh_json([
         "issue", "list", "--repo", UPSTREAM_REPO,
@@ -627,6 +651,23 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="Comma-separated scenario row names, overriding "
                          "the file's scenario_rows")
 
+    pc = sub.add_parser(
+        "plan-close",
+        help="Emit a closure plan for verified-fixed open issues")
+    pc.add_argument("--output-dir", type=Path, required=True)
+    pc.add_argument("--plan", type=Path, default=None,
+                    help="Plan file to write "
+                         "(default: <output-dir>/closure-plan.json)")
+    pc.add_argument("--dry-run", action="store_true")
+
+    cl = sub.add_parser(
+        "close",
+        help="Execute a closure plan against upstream issues")
+    cl.add_argument("--output-dir", type=Path, required=True)
+    cl.add_argument("--plan", type=Path, required=True,
+                    help="Closure plan file produced by plan-close")
+    cl.add_argument("--dry-run", action="store_true")
+
     args = ap.parse_args(argv)
 
     if args.cmd == "sync":
@@ -639,6 +680,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         return cmd_check(args)
     if args.cmd == "verify":
         return cmd_verify(args)
+    if args.cmd == "plan-close":
+        return cmd_plan_close(args)
+    if args.cmd == "close":
+        return cmd_close(args)
     return 0
 
 
@@ -1140,6 +1185,174 @@ def cmd_verify(args: argparse.Namespace) -> int:
         dataset_rows=rows)
     print(msg, file=sys.stdout if ok else sys.stderr)
     return 0 if ok else 1
+
+
+def cmd_plan_close(args: argparse.Namespace) -> int:
+    """Emit the closure plan for verified-fixed, still-open issues.
+
+    Scans the shadow store for ``upstream_state: open`` +
+    ``triage.verdict: fixed`` files and renders one ``replay`` plan
+    entry per issue whose ``verification.fix_pr`` is populated — the
+    required comment source for the upstream close.  Entries emit in
+    ascending issue-number order so an unchanged store produces a
+    stable plan diff for the approval gate.
+    """
+    entries: List[Dict] = []
+    pins: set = set()
+    commands: set = set()
+    reports: set = set()
+    for number, fm in scan_shadows(args.output_dir):
+        if (fm.get("upstream_state") or "").lower() != "open":
+            continue
+        triage = fm.get("triage")
+        triage = triage if isinstance(triage, dict) else {}
+        if triage.get("verdict") != "fixed":
+            continue
+        ver = fm.get("verification")
+        ver = ver if isinstance(ver, dict) else {}
+        fix_pr = ver.get("fix_pr")
+        if not fix_pr:
+            print(f"SKIP ISSUE-{number}: verification.fix_pr unset — "
+                  "run attribution first")
+            continue
+        pr_number = str(fix_pr).rstrip("/").rsplit("/", 1)[-1]
+        if not pr_number.isdigit():
+            print(f"SKIP ISSUE-{number}: verification.fix_pr "
+                  f"{fix_pr!r} does not end in a PR number")
+            continue
+        rows = fm.get("scenario_rows")
+        rows = list(rows) if isinstance(rows, list) else []
+        if not rows:
+            print(f"SKIP ISSUE-{number}: no scenario_rows — a replay "
+                  "comment needs a scenario name")
+            continue
+        evidence = triage.get("evidence")
+        evidence = evidence if isinstance(evidence, dict) else {}
+        if evidence.get("pin_sha"):
+            pins.add(evidence["pin_sha"])
+        if ver.get("command"):
+            commands.add(ver["command"])
+        report = ver.get("report") or evidence.get("report")
+        if report:
+            reports.add(report)
+        entries.append({
+            "issue": number,
+            "kind": "replay",
+            # The comment interpolates only trusted local fields — the
+            # PR number and the scenario row name — never upstream
+            # title/body text.
+            "comment": (f"Fixed by {UPSTREAM_REPO}#{pr_number} — "
+                        f"verified via scenario '{rows[0]}', now "
+                        "covered in routing-issues.csv"),
+            "fix_pr": fix_pr,
+            "fix_commit": ver.get("fix_commit"),
+            "evidence_rows": rows,
+            "upstream_state_at_plan": "open",
+            "reason": "completed",
+        })
+    entries.sort(key=lambda e: e["issue"])
+    if not entries:
+        print("WARNING: no eligible issues — no closure plan emitted",
+              file=sys.stderr)
+        return 0 if args.dry_run else 1
+    if args.dry_run:
+        for e in entries:
+            print(f"would close ISSUE-{e['issue']}: {e['comment']}")
+        return 0
+    plan = {
+        "generated_at": utc_now_iso(),
+        # Entries may span verdicts recorded on different pins; the
+        # sorted pick keeps the emitted plan deterministic rather than
+        # dependent on store scan order.
+        "pin_sha": sorted(pins)[0] if pins else None,
+        "command": next(iter(commands)) if len(commands) == 1 else None,
+        "report": next(iter(reports)) if len(reports) == 1 else None,
+        "entries": entries,
+    }
+    plan_path = args.plan or (args.output_dir / "closure-plan.json")
+    plan_path.write_text(json.dumps(plan, indent=2) + "\n")
+    print(f"wrote {plan_path.name}: {len(entries)} "
+          f"{'entry' if len(entries) == 1 else 'entries'}")
+    return 0
+
+
+def cmd_close(args: argparse.Namespace) -> int:
+    """Execute a closure plan against upstream issues.
+
+    Every entry is re-checked live (``gh issue view``) before acting —
+    issues closed upstream between plan approval and execution are
+    skipped idempotently.  A successful close requires BOTH
+    ``state: CLOSED`` and ``stateReason: COMPLETED`` on the confirming
+    view; anything else flags the entry for maintainer review and exits
+    nonzero once every entry has been attempted.
+    """
+    try:
+        plan = json.loads(args.plan.read_text())
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"ERROR {args.plan}: cannot parse plan: {e}",
+              file=sys.stderr)
+        return 1
+    entries = plan.get("entries") if isinstance(plan, dict) else None
+    if not isinstance(entries, list):
+        print(f"ERROR {args.plan}: plan has no entries list",
+              file=sys.stderr)
+        return 1
+    failures = 0
+    for entry in sorted(entries, key=lambda e: e.get("issue") or 0):
+        n = entry.get("issue")
+        comment = entry.get("comment") or ""
+        state = gh_json(["issue", "view", str(n), "--repo", UPSTREAM_REPO,
+                         "--json", "state,stateReason"])
+        if state.get("state") == "CLOSED":
+            print(f"ISSUE-{n}: already closed upstream — skipped")
+            continue
+        if args.dry_run:
+            print(f"would close ISSUE-{n}: {comment}")
+            continue
+        gh_run(["issue", "close", str(n), "--repo", UPSTREAM_REPO,
+                "-c", comment, "-r", "completed"])
+        confirm = gh_json(["issue", "view", str(n), "--repo",
+                           UPSTREAM_REPO, "--json", "state,stateReason"])
+        if not (confirm.get("state") == "CLOSED"
+                and confirm.get("stateReason") == "COMPLETED"):
+            print(f"ERROR ISSUE-{n}: close did not confirm — "
+                  f"state={confirm.get('state')} "
+                  f"stateReason={confirm.get('stateReason')}",
+                  file=sys.stderr)
+            failures += 1
+            continue
+        path = shadow_path(args.output_dir, int(n))
+        fm, body = load_shadow(path)
+        if fm is None:
+            print(f"ERROR ISSUE-{n}: closed upstream but "
+                  f"{path.name} has no readable frontmatter",
+                  file=sys.stderr)
+            failures += 1
+            continue
+        now = utc_now_iso()
+        fm["verification"] = {
+            "command": plan.get("command"),
+            "dataset_rows": entry.get("evidence_rows") or [],
+            "report": plan.get("report"),
+            "fix_commit": entry.get("fix_commit"),
+            "fix_pr": entry.get("fix_pr"),
+            "verifier": current_user(),
+            "verified_at": now,
+        }
+        # History is append-only — a re-run after a partial failure must
+        # not pile up an identical event (same dedupe convention as the
+        # upstream-closed sync signal).
+        history = fm.setdefault("history", [])
+        event = "upstream-close: executed (gh)"
+        if not any(h.get("event") == event for h in history):
+            history.append({"at": now, "event": event,
+                            "by": current_user()})
+        path.write_text("---\n"
+                        + yaml.safe_dump(fm, sort_keys=False,
+                                         allow_unicode=True)
+                        + "---" + body)
+        print(f"ISSUE-{n}: closed upstream COMPLETED")
+    return 1 if failures else 0
 
 
 def cmd_list(args: argparse.Namespace) -> int:
