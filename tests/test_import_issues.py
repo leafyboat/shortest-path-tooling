@@ -1259,7 +1259,7 @@ def test_sync_writes_digest_to_derived_state_file(tmp_path, monkeypatch):
 
 def make_report(tmp_path, name="alpha scenario", reached=True,
                 assertion_passed=True, assertion_message=None,
-                filename="report.json"):
+                expected_reachable=None, filename="report.json"):
     """Write a report.json in the DashboardBundlePublisher shape."""
     report = json.loads((FIXTURES / "report.json").read_text())
     run = report["runs"][0]
@@ -1267,6 +1267,11 @@ def make_report(tmp_path, name="alpha scenario", reached=True,
     run["reached"] = reached
     run["assertionPassed"] = assertion_passed
     run["assertionMessage"] = assertion_message
+    # expectedReachable stays absent unless asked for — old reports and
+    # fixtures predate the field, and the absent-field fail-closed case
+    # must keep being exercised.
+    if expected_reachable is not None:
+        run["expectedReachable"] = expected_reachable
     path = tmp_path / filename
     path.write_text(json.dumps(report))
     return path
@@ -1423,6 +1428,54 @@ def test_verification_dataset_rows_override(tmp_path):
     fm, _body = frontmatter_and_body(tmp_path / "ISSUE-11.md")
     assert fm["scenario_rows"] == ["alpha scenario"]
     assert fm["verification"]["dataset_rows"] == ["alpha scenario"]
+
+
+def test_verification_accepts_green_tripwire_run(tmp_path):
+    # An expect_reachable=false row is green when the run stayed
+    # unreachable with no failed assertion — the defect-tripwire shape
+    # real reports emit (reached=false, expectedReachable=false,
+    # assertionPassed=true).
+    make_shadow(tmp_path, 13, status="fixed",
+                fm_extra={"scenario_rows": ["alpha scenario"]})
+    report = make_report(tmp_path, reached=False, expected_reachable=False)
+    rc = run_verify(tmp_path, 13, "--command", "cmd",
+                    "--report", str(report))
+    assert rc == 0
+    fm, _body = frontmatter_and_body(tmp_path / "ISSUE-13.md")
+    assert fm["status"] == "verified"
+    assert fm["verification"]["dataset_rows"] == ["alpha scenario"]
+
+
+def test_verification_rejects_reached_tripwire_run(tmp_path, capsys):
+    # A tripwire row that now reaches means the guard broke — a polarity
+    # violation, not a green run.
+    path = make_shadow(tmp_path, 14, status="fixed",
+                       fm_extra={"scenario_rows": ["alpha scenario"]})
+    before = path.read_text()
+    report = make_report(tmp_path, reached=True, expected_reachable=False)
+    rc = run_verify(tmp_path, 14, "--command", "cmd",
+                    "--report", str(report))
+    assert rc != 0
+    err = capsys.readouterr().err
+    assert "alpha scenario" in err
+    assert "expected unreachable" in err
+    assert path.read_text() == before
+
+
+def test_verification_rejects_tripwire_assertion_failure(tmp_path, capsys):
+    # assertionPassed: false fails on either polarity — an
+    # expected-unreachable row with a failed assertion still rejects.
+    path = make_shadow(tmp_path, 15, status="fixed",
+                       fm_extra={"scenario_rows": ["alpha scenario"]})
+    before = path.read_text()
+    report = make_report(tmp_path, reached=False, expected_reachable=False,
+                         assertion_passed=False,
+                         assertion_message="tripwire assertion failed")
+    rc = run_verify(tmp_path, 15, "--command", "cmd",
+                    "--report", str(report))
+    assert rc != 0
+    assert "tripwire assertion failed" in capsys.readouterr().err
+    assert path.read_text() == before
 
 
 # --------------------------------------------------------------------------
