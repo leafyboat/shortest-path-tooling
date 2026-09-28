@@ -61,9 +61,18 @@ test {
     }
 }
 
+// The plugin checkout the build uses (see settings.gradle)
+def shortestPathProjectDir = gradle.ext.shortestPathProjectDir
+
+// The sailing tools (src/sailing/java) need a plugin with the experimental sailing search, so they're only
+// compiled when the plugin checkout has it, e.g. with -PshortestPathDir=../shortest-path on a sailing branch
+ext.pluginHasSailing = new File(shortestPathProjectDir, 'src/main/java/shortestpath/pathfinder/SailingMoves.java').exists()
+if (pluginHasSailing) {
+    sourceSets.test.java.srcDir 'src/sailing/java'
+}
+
 // Pull in the plugin's test helpers that the dashboard/dump code depends on.
 // These files stay in shortest-path/src/test/java (no changes to the plugin build).
-def shortestPathProjectDir = gradle.ext.shortestPathProjectDir
 
 compileTestJava.source fileTree(
     dir: new File(shortestPathProjectDir, 'src/test/java'),

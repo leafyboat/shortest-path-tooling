@@ -137,6 +137,9 @@ public class DashboardTest {
         return provider;
     }
 
+    /** Null unless the plugin checkout has the experimental sailing search (see SailingRouteRunner). */
+    private final SailingRouteRunner sailingRunner = SailingRouteRunner.find();
+
     /**
      * Serializes the heartbeat increment together with its printf. The
      * counter alone would still tick monotonically, but two workers could
@@ -457,6 +460,18 @@ public class DashboardTest {
                 if (profileData != null) {
                     profilerReportWriter.populateProfilerData(run, profileData);
                 }
+                // Rows with a speed also run the sailing search, drawn next to the normal path
+                String sailingSummary = "";
+                if (scenario.getSailingSpeed().isPresent()) {
+                    if (sailingRunner != null) {
+                        run.sailing = sailingRunner.run(applied.pathfinderConfig, scenario, path);
+                        sailingSummary = String.format("  | sailing %s: %s %d ticks, %d legs, %.0fms",
+                            run.sailing.speed, run.sailing.reached ? "\u2714" : "\u2716", run.sailing.ticks, run.sailing.legs,
+                            run.sailing.elapsedNanos / 1_000_000.0);
+                    } else {
+                        sailingSummary = "  | sailing skipped: the plugin checkout has no sailing search (-PshortestPathDir)";
+                    }
+                }
                 // The scenario index is a valid unique heatmap name — the
                 // frontend resolves heatmaps via the recorded heatmapFile
                 // path, not by run position.
@@ -464,12 +479,13 @@ public class DashboardTest {
                 results[i] = run;
 
                 synchronized (HEARTBEAT_LOCK) {
-                    System.out.printf("[%2d/%-2d] %s %s  %.0fms  %d steps%n",
+                    System.out.printf("[%2d/%-2d] %s %s  %.0fms  %d steps%s%n",
                         completed.incrementAndGet(), n,
                         reached ? "✔" : "✖",
                         scenario.getName(),
                         result.getElapsedNanos() / 1_000_000.0,
-                        pathLength);
+                        pathLength,
+                        sailingSummary);
                 }
             } catch (Throwable t) {
                 // A crashing scenario must still surface in report.json (the

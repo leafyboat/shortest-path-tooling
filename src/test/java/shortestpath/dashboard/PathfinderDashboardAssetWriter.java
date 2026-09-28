@@ -12,6 +12,7 @@ public class PathfinderDashboardAssetWriter {
         "/reachability-dashboard/app.js",
         "/reachability-dashboard/profiler.js",
         "/reachability-dashboard/collision-overlay.js",
+        "/reachability-dashboard/sailing.js",
         "/reachability-dashboard/styles.css"
     };
 

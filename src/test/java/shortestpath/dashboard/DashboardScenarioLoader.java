@@ -42,6 +42,7 @@ import shortestpath.WorldPointUtil;
  * minimum_length               : integer
  * expect_reachable             : true|false (default true — intentional-failure
  *                                rows assert the route is unreachable)
+ * speed                        : boat speed in tiles per tick, e.g. 1.5 (makes the row a sailing route)
  * </pre>
  */
 public final class DashboardScenarioLoader {
@@ -115,6 +116,7 @@ public final class DashboardScenarioLoader {
         int expectedLengthIdx   = indexOf(headers, "expected_length");
         int minimumLengthIdx    = indexOf(headers, "minimum_length");
         int expectReachableIdx  = indexOf(headers, "expect_reachable");
+        int speedIdx            = indexOf(headers, "speed");
 
         if (xIdx < 0 || yIdx < 0 || planeIdx < 0) {
             throw new IOException("Routes CSV missing x/y/plane columns in " + source);
@@ -164,6 +166,10 @@ public final class DashboardScenarioLoader {
             String expectReachable = get(f, expectReachableIdx, "");
             if (!expectReachable.isEmpty()) {
                 b.expectedReachable(Boolean.parseBoolean(expectReachable.trim()));
+            }
+            String speed = get(f, speedIdx, "");
+            if (!speed.isEmpty()) {
+                b.sailingSpeed(Double.parseDouble(speed.trim()));
             }
 
             result.add(b.build());

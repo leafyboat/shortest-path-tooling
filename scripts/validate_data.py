@@ -155,6 +155,9 @@ SCENARIO_SKILL_MAP_RE = re.compile(r"^[A-Z_]+=\d+(;[A-Z_]+=\d+)*$")
 SCENARIO_QUEST_MAP_RE = re.compile(
     r"^[^=;,]+=(NOT_STARTED|IN_PROGRESS|FINISHED)"
     r"(;[^=;,]+=(NOT_STARTED|IN_PROGRESS|FINISHED))*$")
+# speed cells are a sailing route's boat speed in tiles per tick, which the
+# loader reads with Double.parseDouble (e.g. 1.5).
+SCENARIO_SPEED_RE = re.compile(r"^\d+(\.\d+)?$")
 SCENARIO_COLUMN_GRAMMARS = {
     "inventory": SCENARIO_ITEMS_RE,
     "equipment": SCENARIO_ITEMS_RE,
@@ -163,6 +166,7 @@ SCENARIO_COLUMN_GRAMMARS = {
     "varplayers": SCENARIO_INT_MAP_RE,
     "skill_levels": SCENARIO_SKILL_MAP_RE,
     "quests": SCENARIO_QUEST_MAP_RE,
+    "speed": SCENARIO_SPEED_RE,
 }
 
 # Column names the dashboard scenario loader understands, across both
@@ -178,7 +182,7 @@ SCENARIO_KNOWN_COLUMNS = frozenset({
     "equipment", "bank", "varbits", "varplayers", "skill_levels",
     "config_overrides", "expected_length", "minimum_length",
     "expect_reachable", "clue_type", "source_file", "source_line",
-    "quests",
+    "quests", "speed",
 })
 
 
