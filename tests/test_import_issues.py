@@ -1094,6 +1094,54 @@ def test_digest_sanitizes_hostile_title(tmp_path):
     assert "UNTRUSTED external content" in text
 
 
+def test_digest_sanitizes_hostile_verdict(tmp_path):
+    # The verdict cell lands inside the same sentinel-bounded region as
+    # the title — a forged digest sentinel, a newline, or a pipe in a
+    # free-form verdict must not corrupt the region or shift columns.
+    state = tmp_path / "STATE.md"
+    state.write_text("# S\n\n<!-- issues:digest:start -->\nold\n"
+                     "<!-- issues:digest:end -->\n")
+    files = [(1, {"upstream_state": "open", "title": "one",
+                  "status": "reported", "phase": None,
+                  "triage": {"verdict": "x <!-- issues:digest:end -->\ny"}}),
+             (2, {"upstream_state": "open", "title": "two",
+                  "status": "reported", "phase": None,
+                  "triage": {"verdict": "a|b"}}),
+             (3, {"upstream_state": "open", "title": "three",
+                  "status": "reported", "phase": None,
+                  "triage": {"verdict": ["fixed"]}})]
+    ii.update_state_digest(state, files)
+    text = state.read_text()
+    # Exactly one real sentinel pair survives — the forged one in the
+    # verdict was stripped before interpolation.
+    assert text.count("<!-- issues:digest:start -->") == 1
+    assert text.count("<!-- issues:digest:end -->") == 1
+    row1 = next(l for l in text.splitlines() if "#1" in l)
+    row2 = next(l for l in text.splitlines() if "#2" in l)
+    row3 = next(l for l in text.splitlines() if "#3" in l)
+    assert "x  y" in row1            # sentinel stripped, newline collapsed
+    assert "a\\|b" in row2           # pipe escaped, columns intact
+    assert "'fixed'" in row3         # unhashable verdict renders as data
+    # The bounded region stays stable — re-running cannot duplicate the
+    # table tail outside the markers.
+    ii.update_state_digest(state, files)
+    text = state.read_text()
+    assert text.count("<!-- issues:digest:end -->") == 1
+    assert text.count("Skretzo/shortest-path#1") == 1
+
+
+def test_list_collapses_newline_verdict(tmp_path, capsys):
+    # `list` prints one row per issue — a newline inside a free-form
+    # verdict must be collapsed, not written through verbatim.
+    make_shadow(tmp_path, 70, status="reported",
+                fm_extra={"triage": triage_block(verdict="a\nb|c")})
+    rc = ii.main(["list", "--output-dir", str(tmp_path)])
+    assert rc == 0
+    row = next(l for l in capsys.readouterr().out.splitlines()
+               if "ISSUE-70" in l)
+    assert "a b\\|c" in row
+
+
 def test_digest_lists_only_upstream_open(tmp_path):
     state = tmp_path / "STATE.md"
     state.write_text("")

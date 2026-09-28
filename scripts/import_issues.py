@@ -643,6 +643,19 @@ DIGEST_START = "<!-- issues:digest:start -->"
 DIGEST_END = "<!-- issues:digest:end -->"
 
 
+def sanitize_cell(value: Any) -> str:
+    """Sanitize an untrusted frontmatter scalar for a table cell.
+
+    Whitespace is collapsed (no line injection), HTML comments are
+    stripped (a forged digest sentinel would otherwise split the bounded
+    region at the wrong marker), and pipes are escaped so one cell
+    cannot shift the table's columns.
+    """
+    text = re.sub(r"\s+", " ", str(value or ""))
+    text = re.sub(r"<!--.*?-->", "", text).strip()
+    return text.replace("|", "\\|")
+
+
 def update_state_digest(state_path: Path,
                         files: List[Tuple[int, Dict]]) -> bool:
     """Regenerate the bounded open-issue digest inside a state file.
@@ -659,21 +672,20 @@ def update_state_digest(state_path: Path,
     for number, fm in sorted(files):
         if (fm.get("upstream_state") or "").lower() != "open":
             continue
-        # The title is untrusted upstream text: collapse newlines, strip
-        # HTML comments (a forged digest sentinel would otherwise split
-        # the bounded region at the wrong marker), and escape pipes so
-        # one row cannot shift the table's columns.
-        title = re.sub(r"\s+", " ", fm.get("title") or "")
-        title = re.sub(r"<!--.*?-->", "", title).strip()
-        title = title.replace("|", "\\|")
+        # The title is untrusted upstream text — sanitize_cell collapses
+        # newlines, strips HTML comments (a forged digest sentinel would
+        # otherwise split the bounded region at the wrong marker), and
+        # escapes pipes so one row cannot shift the table's columns.
+        title = sanitize_cell(fm.get("title"))
         status = fm.get("status") or "unknown"
         phase = fm.get("phase") or "—"
-        # Maintainer-authored enum, not untrusted text — the title's
-        # sanitization above already covers the injectable field.  A
-        # malformed (non-dict) triage block degrades to the placeholder.
+        # The verdict is frontmatter too — hand-edited YAML is not a
+        # trusted schema — so it takes the same cell sanitization as the
+        # title; a malformed (non-dict) triage block degrades to "-".
         triage = fm.get("triage")
-        verdict = (triage.get("verdict")
-                   if isinstance(triage, dict) else None) or "-"
+        verdict = sanitize_cell(
+            triage.get("verdict") if isinstance(triage, dict) else None
+        ) or "-"
         rows.append(f"| {UPSTREAM_REPO}#{number} | {title}"
                     f" | {status} | {phase} | {verdict} |")
     table = (UNTRUSTED_MARKER + "\n\n"
@@ -1127,8 +1139,9 @@ def cmd_list(args: argparse.Namespace) -> int:
         if args.status and status != args.status:
             continue
         triage = fm.get("triage")
-        verdict = (triage.get("verdict")
-                   if isinstance(triage, dict) else None) or "-"
+        verdict = sanitize_cell(
+            triage.get("verdict") if isinstance(triage, dict) else None
+        ) or "-"
         rows.append(f"{path.stem}  {status}  {verdict}  "
                     f"{fm.get('title') or ''}")
     for row in rows:
