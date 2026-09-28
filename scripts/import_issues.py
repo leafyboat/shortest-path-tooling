@@ -1435,10 +1435,35 @@ def cmd_close(args: argparse.Namespace) -> int:
         print(f"ERROR {args.plan}: plan has no entries list",
               file=sys.stderr)
         return 1
-    failures = 0
-    for entry in sorted(entries, key=lambda e: e.get("issue") or 0):
+    # The plan is untrusted input — validate every entry up front.  One
+    # malformed entry fails the whole run before any upstream call, so a
+    # hand-edited or truncated plan can never execute partially.
+    malformed = False
+    for i, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            print(f"ERROR {args.plan}: entry[{i}] is not an object",
+                  file=sys.stderr)
+            malformed = True
+            continue
         n = entry.get("issue")
-        comment = entry.get("comment") or ""
+        if not isinstance(n, int) or isinstance(n, bool):
+            print(f"ERROR {args.plan}: entry[{i}].issue is not an "
+                  "issue number", file=sys.stderr)
+            malformed = True
+        comment = entry.get("comment")
+        if not isinstance(comment, str) or not comment.strip():
+            print(f"ERROR {args.plan}: entry[{i}].comment is missing "
+                  "or empty", file=sys.stderr)
+            malformed = True
+    if malformed:
+        return 1
+    if not entries:
+        print("plan carries 0 entries — nothing to do")
+        return 0
+    failures = 0
+    for entry in sorted(entries, key=lambda e: e["issue"]):
+        n = entry["issue"]
+        comment = entry["comment"]
         state = gh_json(["issue", "view", str(n), "--repo", UPSTREAM_REPO,
                          "--json", "state,stateReason"])
         if state.get("state") == "CLOSED":
