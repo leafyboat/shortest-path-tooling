@@ -33,7 +33,7 @@ ISSUE_JSON_FIELDS = (
 )
 PR_JSON_FIELDS = (
     "number,title,state,body,author,headRefName,headRepositoryOwner,"
-    "isDraft,closingIssuesReferences,url,createdAt,updatedAt"
+    "isDraft,closingIssuesReferences,url,createdAt,updatedAt,mergedAt"
 )
 CLOSING_RE = re.compile(
     r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b[^#\n]{0,20}#(\d+)",
@@ -198,17 +198,23 @@ def fetch_issue(number: int) -> Dict:
     ])
 
 
-def fetch_fix_candidates(limit: int = 500) -> Dict[int, List[Dict]]:
+def fetch_fix_candidates(limit: int = 500,
+                         state: str = "open") -> Dict[int, List[Dict]]:
     """Map issue number -> PRs that (maybe) fix it.
 
     ``closingIssuesReferences`` is GitHub's authoritative parse and
     yields ``link: confirmed``; closing keywords in the body and
     ``fix/<N>``-style branch names are only ``link: heuristic`` because
     GitHub misses loose references such as "Fixes issue #504".
+
+    ``state`` selects the PR listing — ``open`` is what ``sync`` stores
+    in ``fix_candidates`` frontmatter (the map lists still-open upstream
+    PRs only); ``merged`` is a close-time attribution lookup whose
+    results are never persisted to frontmatter.
     """
     prs = gh_json([
         "pr", "list", "--repo", UPSTREAM_REPO,
-        "--state", "open", "--limit", str(limit),
+        "--state", state, "--limit", str(limit),
         "--json", PR_JSON_FIELDS,
     ])
     out: Dict[int, List[Dict]] = {}
@@ -232,6 +238,7 @@ def fetch_fix_candidates(limit: int = 500) -> Dict[int, List[Dict]]:
                 "author": (pr.get("author") or {}).get("login"),
                 "branch": pr.get("headRefName"),
                 "link": "confirmed" if n in confirmed else "heuristic",
+                "mergedAt": pr.get("mergedAt"),
             })
     return out
 
