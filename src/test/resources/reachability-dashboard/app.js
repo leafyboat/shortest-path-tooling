@@ -1,5 +1,5 @@
 // ── Configuration constants ───────────────────────────────────────────
-const tileBaseUrl = "https://maps.runescape.wiki/osrs/versions/2026-03-04_a/tiles/rendered";
+const tileBaseUrl = "https://maps.runescape.wiki/osrs/versions/2026-08-12_a/tiles/rendered";
 const MAP_ID = -1;
 const MIN_ZOOM = -4;
 const MIN_NATIVE_ZOOM = -2;
