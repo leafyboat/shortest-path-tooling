@@ -556,7 +556,10 @@ def write_shadow(output_dir: Path, issue: Dict,
                                  output_dir=output_dir)
     else:
         fm = build_frontmatter(issue, fix_candidates, None, utc_now_iso())
-        body = render_body(issue, output_dir, "")
+        # load_shadow still recovered the body when the frontmatter was
+        # unparseable — pass it through so re-sync preserves maintainer
+        # sections instead of overwriting them with empty templates.
+        body = render_body(issue, output_dir, existing[1])
     note = upstream_closure_signal(fm, number)
     path.write_text("---\n"
                     + yaml.safe_dump(fm, sort_keys=False, allow_unicode=True)

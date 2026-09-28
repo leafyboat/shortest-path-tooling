@@ -948,6 +948,23 @@ def test_resync_title_with_triple_dash_preserves_maintainer(tmp_path,
     assert fm["phase"] == "phases/x"
 
 
+def test_resync_corrupt_frontmatter_preserves_body(tmp_path, monkeypatch):
+    # Unparseable frontmatter is not a license to drop maintainer work —
+    # load_shadow still recovers the body, so re-sync must carry its
+    # maintainer sections over instead of re-stamping empty templates.
+    issue = dict(fixture_issue("gh_issue_list_all.json", 549))
+    path = tmp_path / "ISSUE-549.md"
+    path.write_text(
+        "---\nbad: [unclosed\n---\n\n"
+        "## Triage Notes\n\nkeep this note\n\n"
+        "## Requirements\n\n- keep this requirement\n")
+    run_sync(tmp_path, monkeypatch, [issue], extra_args=["--no-digest"])
+    _fm, body = frontmatter_and_body(path)
+    sections = ii.split_sections(body)
+    assert "keep this note" in sections["Triage Notes"]
+    assert "keep this requirement" in sections["Requirements"]
+
+
 def test_status_note_with_triple_dash_roundtrips(tmp_path):
     # A "---" inside a --note lands in the history event string; the file
     # must stay readable afterwards.
