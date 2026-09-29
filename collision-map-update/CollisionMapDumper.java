@@ -339,7 +339,7 @@ public class CollisionMapDumper
 						}
 
 						boolean tile = FlagMap.TILE_BLOCKED;
-						Boolean exclusion = Exclusion.matches(loc.getId());
+						Boolean exclusion = Exclusion.matches(loc.getId(), pos.getX(), pos.getY(), pos.getZ());
 
 						int X = loc.getPosition().getX();
 						int Y = loc.getPosition().getY();
@@ -582,6 +582,12 @@ public class CollisionMapDumper
 
 		BRIMHAVEN_DUNGEON_EXIT_20878(20878),
 
+		// Locked house north of the Shrimp and Parrot in Brimhaven (issue #273).
+		// Both exterior doors are closed in-game. The door ids are shared with
+		// unrelated placements, so the exclusions are scoped to these exact tiles.
+		BRIMHAVEN_SHRIMP_AND_PARROT_DOOR_1535(1535, 2789, 3197, 0),
+		BRIMHAVEN_SHRIMP_AND_PARROT_DOOR_1722(1722, 2794, 3199, 0),
+
 		BURGH_DE_ROTT_GATE_12816(12816),
 		BURGH_DE_ROTT_GATE_12817(12817),
 		BURGH_DE_ROTT_LOW_FENCE_12776(12776),
@@ -768,6 +774,15 @@ public class CollisionMapDumper
 		 */
 		private final boolean tile;
 
+		/**
+		 * Optional placement coordinates. When x >= 0 the exclusion only applies
+		 * to the object placed at exactly (x, y, z); shared object ids such as
+		 * generic doors must use this so other placements stay untouched.
+		 */
+		private final int x;
+		private final int y;
+		private final int z;
+
 		Exclusion(int id)
 		{
 			this(id, FlagMap.TILE_BLOCKED);
@@ -775,11 +790,24 @@ public class CollisionMapDumper
 
 		Exclusion(int id, boolean tile)
 		{
-			this.id = id;
-			this.tile = tile;
+			this(id, tile, -1, -1, -1);
 		}
 
-		public static Boolean matches(int id)
+		Exclusion(int id, int x, int y, int z)
+		{
+			this(id, FlagMap.TILE_BLOCKED, x, y, z);
+		}
+
+		Exclusion(int id, boolean tile, int x, int y, int z)
+		{
+			this.id = id;
+			this.tile = tile;
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+
+		public static Boolean matches(int id, int x, int y, int z)
 		{
 			// Hunter footprint trail objects (Fossil Island, Death Plateau, etc.).
 			// These are decorative trail tiles that the dumper otherwise treats as
@@ -799,10 +827,16 @@ public class CollisionMapDumper
 			}
 			for (Exclusion exclusion : values())
 			{
-				if (exclusion.id == id)
+				if (exclusion.id != id)
 				{
-					return exclusion.tile;
+					continue;
 				}
+				if (exclusion.x >= 0
+					&& (exclusion.x != x || exclusion.y != y || exclusion.z != z))
+				{
+					continue;
+				}
+				return exclusion.tile;
 			}
 			return null;
 		}
