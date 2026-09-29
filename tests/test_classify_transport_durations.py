@@ -114,11 +114,12 @@ def test_full_file_map_covers_every_row(tmp_path, monkeypatch):
     data = [line for line in out_lines if not line.startswith("#")]
 
     src_lines = TRANSPORTS_TSV.read_text().splitlines()
-    body = [
-        line for line in src_lines
+    # The header line itself is '#'-prefixed, so the non-comment
+    # non-blank remainder is exactly the data rows.
+    expected = sum(
+        1 for line in src_lines
         if line.strip() and not line.startswith("#")
-    ]
-    expected = len(body) - 1  # minus the header line
+    )
     assert len(data) == expected
 
     known = {
