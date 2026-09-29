@@ -359,6 +359,26 @@ def cacheDumperSpecs = [
         ],
         sysPropKeys: [cacheDir: 'briefcase.tt.cacheDir'],
     ],
+    // Dumps SequenceDefinition frameLengths sums per animation id from
+    // the ANIMATIONS index — duration evidence for anim-bound
+    // transports (teleport spells, rides, minigame teleports). Sums are
+    // cache frame units; the TSV header records the unit and consumers
+    // own any frames-to-ticks conversion.
+    [
+        name: 'animDurationDump',
+        description: 'Dumps SequenceDefinition frameLengths sums per animation id. ' +
+                'Required: -PanimDurationCacheDir=<cache dir>, -PanimDurationXteaPath=<keys.json>. ' +
+                'Optional: -PanimDurationOutput=<tsv path>.',
+        testClass: 'shortestpath/dump/AnimDurationDumperTest.class',
+        cachePrefix: 'animDuration',
+        xteaPrefix: 'animDuration',
+        outputProp: 'animDurationOutput',
+        outputDefault: 'anim-durations.tsv',
+        sysProps: ['anim.duration.dump': 'true'],
+        sysPropKeys: [cacheDir: 'anim.duration.cacheDir',
+                      xtea: 'anim.duration.xteaPath',
+                      output: 'anim.duration.output'],
+    ],
 ]
 
 // Registers one dumper/probe Test task per spec entry. The factory is
