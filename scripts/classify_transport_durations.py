@@ -1,242 +1,279 @@
 #!/usr/bin/env python3
-"""
-Classify transports.tsv rows into interaction classes for the duration
-audit.
+"""Classify every transports.tsv row into a duration class.
 
 Reads:
-- shortest-path/src/main/resources/transports/transports.tsv
-  (plugin data in the shortest-path submodule)
+    shortest-path/src/main/resources/transports/transports.tsv
 
 Writes:
-- .planning/issues/duration-class-map.tsv — one line per data row:
-  line number, origin coords, menuOption, menuTarget, objectID,
-  assigned class, current Duration cell.  Leading ``#`` comment lines
-  record generation date, source file, and per-class counts so the
-  audit sweep can eyeball the bucket sizes before applying defaults.
+    .planning/issues/duration-class-map.tsv
 
-Classification is a first-match-wins rule table keyed on the
-lower-cased menuOption (the verb) with menuTarget (the noun) as
-tie-breaker.  Anything unrecognized lands in ``other`` — the map is a
-coverage device, not a filter, so no row is ever dropped.
+Each data row is emitted once, in source order, with its source line number,
+all original columns, the parsed interaction triple (menuOption / menuTarget /
+objectID), the assigned duration class, and the name of the rule that fired.
+The map is the input for the manual duration-probe sampling work: each class
+groups transports whose traversal duration is expected to behave the same way.
+
+Classes (fixed vocabulary):
+
+    door           hinged/openable barriers, including trapdoors and secret
+                   panels (pushable walls, bookcases)
+    gate           gates, portcullises, and toll-pass boundaries
+    ladder         ladders plus rope/vine climbs (vertical hand-over-hand
+                   transitions behave like ladders for duration purposes)
+    stairs         staircases, stairs and steps
+    cave-entrance  transitions into or out of enclosed areas via openings:
+                   caves, tunnels, passageways, holes, rifts, whirlpools,
+                   wells, entrances and exits; also Enter/Exit-family menu
+                   options on otherwise unclassified targets
+    ride           scripted vehicle/guide traversal: carts, rafts, lifts,
+                   winches, glider/balloon pilots, tunnel guides, swims and
+                   slides that move the player a long distance in one action
+    other          everything else: single-obstacle crossings (ditches,
+                   stiles, bridges, gangplanks, rocks, webs, foliage),
+                   teleports, and rows with no interaction metadata
+
+Classification is deterministic: rules are evaluated in the order listed
+above and the first match wins. menuTarget keywords are matched before
+menuOption fallbacks so that e.g. "Go-through Shantay pass" lands in gate
+(boundary checkpoint) rather than cave-entrance, and "Climb-up Ship's
+ladder" lands in ladder rather than ride.
+
+Stdlib only. Runnable from any working directory.
 """
 
 import re
 import sys
-from collections import Counter
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-TRANSPORTS_TSV = (
-    REPO / "shortest-path" / "src" / "main" / "resources"
-    / "transports" / "transports.tsv"
-)
-MAP_TSV = REPO / ".planning" / "issues" / "duration-class-map.tsv"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SOURCE_TSV = REPO_ROOT / "shortest-path" / "src" / "main" / "resources" / "transports" / "transports.tsv"
+OUTPUT_TSV = REPO_ROOT / ".planning" / "issues" / "duration-class-map.tsv"
 
-CLASSES = (
-    "door", "gate", "ladder", "stairs",
-    "cave-entrance", "ride", "agility", "other",
-)
+CLASSES = ("door", "gate", "ladder", "stairs", "cave-entrance", "ride", "other")
 
-# Object nouns that mean the interaction is a vehicle/NPC ride.
-_RIDE_TARGETS = (
-    r"\b(travel cart|mine ?carts?|gangplank|log rafts?|rafts?|row ?boats?|"
-    r"ferry|ferries|barges?|sled|sledge|boats?|ships?|vessels?|lift|"
-    r"lift platform|winch|canoe|balloon)\b"
-)
-# Obstacle nouns — climbs, jumps and squeezes over/through terrain.
-_AGILITY_TARGETS = (
-    r"\b(wilderness ditch|climbing rocks|rocks?|rocky (handholds|shore)|"
-    r"handholds|ropeswing|rope bridge|stepping stones?|sand piles?|"
-    r"basalt|jungle (bush|tree)|fallen trees?|dead trees?|broken carts?|"
-    r"wall rubble|crumbling walls?|cracked walls?|boulders?|rubble|"
-    r"mud piles?|ice chunks|floorboards|washing lines?|gaps?|"
-    r"strange floor|rubber cap mushrooms?|beach|odd.looking|walls?|"
-    r"planks?|a wooden log|aged log|logs?|trees?|roots?|shelf|shelves|"
-    r"chains?|rockslides?|rock slides?|ledges?|little boulder|"
-    r"broken bridge)\b"
-)
-# Aperture nouns — walking/climbing through a hole in the world.
-_CAVE_TARGETS = (
-    r"\b(caves?|caverns?|tunnels?|crevices?|crevasse|holes?|entrances?|"
-    r"exits?|passages?|passageways?|manholes?|trap ?doors?|whirlpools?|"
-    r"wells?|chasms?|grottos?|openings?|cracks?|dungeons?|crypts?|"
-    r"pyramids?|strongholds?|barrels?)\b"
+# menuTarget substrings that map straight onto a class. Matched
+# case-insensitively against the whole target string.
+LADDER_TARGET_RE = re.compile(r"ladder")
+STAIRS_TARGET_RE = re.compile(r"stair|\bsteps?\b")
+DOOR_TARGET_RE = re.compile(r"door")  # includes trapdoor and doorway
+GATE_TARGET_RE = re.compile(r"gate|portcullis|shantay pass")
+CAVE_TARGET_RE = re.compile(
+    r"cave|cavern|tunnel|grotto|passage|hole|crevice|crevasse|"
+    r"entrance|entry|exit|opening|manhole|rift|whirlpool|dungeon|"
+    r"crypt|memorial|crack|chasm|\bwell\b"
 )
 
-# (class, menuOption regex, menuTarget regex) — first match wins.
-# A None pattern is a wildcard.  Option-only rules cover verbs whose
-# target vocabulary is open-ended; target rules cover the big noun
-# families; trailing generic-verb rules sweep the remainder so `other`
-# stays small.
-_RULES = [
-    # Rides: decisive travel verbs (Board, Travel, Ride, Paddle, ...),
-    # NPC-guide verbs (Follow/Talk-to), and lifts/winch machinery.
-    ("ride", r"^(board|ride|paddle|sail|charter|row|transport|travel|"
-             r"watermill|mines|cellar|use-lift)\b", None),
-    ("ride", r"^(follow|talk-to)\b", None),
-    ("ride", r"^(go-up|go-down|use|turn|operate)\b", _RIDE_TARGETS),
-    ("ride", r"^(board|cross|use|enter|ride|travel)\b", _RIDE_TARGETS),
-    # Ladders — the noun decides; rope/vine climbs behave like ladders.
-    ("ladder", None, r"\bladder\b"),
-    ("ladder", r"^climb", r"\b(ropes?|vines?|trellis)\b"),
-    # Stairs — staircase/steps/slope nouns, then generic vertical verbs.
-    ("stairs", None, r"\b(stairs?|staircase|steps|slope|stairwell)\b"),
-    ("stairs", r"^(walk-up|walk-down|go-up|go-down|ascend|descend|"
-               r"top-floor|bottom-floor)\b", None),
-    # Doors — door/bookcase/tapestry nouns; open-y verbs on
-    # secret-door-ish nouns (hollow trees, curtains, chests).
-    ("door", None, r"\b(doors?|doorway|bookcases?|tapestr(?:y|ies))\b"),
-    ("door", r"^(open|close|unlock|pick-lock|search)\b",
-     r"\b(trees?|curtains?|chests?)\b"),
-    # Gates / barriers — gate, portcullis, barrier, stile, fence nouns
-    # plus the toll option.
-    ("gate", None, r"\b(gates?|portcullis|barriers?|stiles?|fences?|"
-                   r"shantay pass|railings?)\b"),
-    ("gate", r"^pay-toll\b", None),
-    # Cave entrances / apertures — the noun family is large.
-    ("cave-entrance", None, _CAVE_TARGETS),
-    # Agility obstacles — unambiguous obstacle verbs first, then
-    # obstacle nouns under generic verbs.
-    ("agility", r"^(jump|leap|swing|slash|chop|vault|balance|push|move|"
-                r"cross-bridge|walk-across|walk-through|climb-over|"
-                r"climb over|crawl|crawl-under|crawl-through|crawl-down|"
-                r"swim)\b", None),
-    ("agility",
-     r"^(use|cross|pass|climb|climb-up|climb-down|enter|leave|squeeze-"
-     r"through|search)\b", _AGILITY_TARGETS),
-    # Fallbacks for generic verbs whose targets stayed unrecognized.
-    ("stairs", r"^climb", None),
-    ("cave-entrance", r"^(enter|go-through|exit-through|exit|leave|"
-                      r"climb-into|pass|pass-through|quick-pass|"
-                      r"investigate|get)\b", None),
-    ("door", r"^(open|close)\b", None),
-]
+# Targets that are door-like only under specific menu options: hidden panels
+# you push, search or open. The same targets under climb/crawl options are
+# plain obstacles and fall through to `other`.
+SECRET_PANEL_TARGETS = frozenset(
+    {
+        "wall",
+        "odd looking wall",
+        "odd-looking wall",
+        "strange wall",
+        "bookcase",
+        "roots",
+    }
+)
+SECRET_PANEL_OPTIONS = frozenset({"open", "push", "search", "unlock"})
 
-# Pre-compile once: [(class, option_re|None, target_re|None)].
-RULES = [
-    (
-        cls,
-        re.compile(o, re.IGNORECASE) if o else None,
-        re.compile(t, re.IGNORECASE) if t else None,
-    )
-    for cls, o, t in _RULES
-]
+# menuOptions starting with `climb` on rope-family targets are vertical
+# transitions equivalent to ladders.
+ROPE_CLIMB_TARGETS = frozenset(
+    {
+        "rope",
+        "climbing rope",
+        "vine",
+        "dripping vine",
+        "goo covered vine",
+        "trellis",
+        "roped tree",
+        "bone chain",
+        "rocky handholds",
+        "handholds",
+    }
+)
+
+# Scripted traversal: the menuOption alone marks the interaction as a ride.
+RIDE_OPTIONS = frozenset(
+    {
+        "board",
+        "travel",
+        "ride",
+        "follow",
+        "transport",
+        "swim",
+        "slide",
+        "get",
+        "use-lift",
+    }
+)
+
+# Vehicles, lifts, and guide NPCs that carry the player regardless of the
+# option word used (e.g. "Talk-to Dondakan the Dwarf" is a mine-cart ride,
+# "Mines Kazgar" is a guided tunnel trip).
+RIDE_TARGETS = frozenset(
+    {
+        "travel cart",
+        "log raft",
+        "aged log",
+        "mountain guide",
+        "elkoy",
+        "waydar",
+        "daero",
+        "primio",
+        "kazgar",
+        "mistag",
+        "dartog",
+        "brother tranquility",
+        "dondakan the dwarf",
+        "lift",
+        "lift platform",
+        "platform",
+        "iron winch",
+        "in barrel",
+        "barrel",
+        "canoe",
+    }
+)
+
+# Option fallbacks for the entrance family: only applied after every
+# target-based rule, so "Enter Door" style conflicts cannot occur (door
+# targets are claimed first) and toll checkpoints (gate) and vehicles
+# (ride) win over generic Enter/Go-through wording.
+CAVE_OPTIONS = frozenset(
+    {
+        "enter",
+        "exit",
+        "leave",
+        "exit-through",
+        "go-through",
+        "walk-through",
+        "crawl-through",
+        "crawl-into",
+        "climb-through",
+        "climb-into",
+        "descend",
+        "ascend",
+        "jump-into",
+    }
+)
 
 
-def split_object_info(field):
-    """Split a `menuOption menuTarget objectID` cell.
+def parse_object(obj_field: str) -> tuple[str, str, str]:
+    """Split a 'menuOption menuTarget objectID' cell into lowercase parts.
 
-    The option is the first token, the objectID the last token, and the
-    target is everything between (multi-word nouns like
-    ``Cave entrance`` or ``Ship's ladder``).  Missing parts come back
-    as empty strings — never None — so classifiers can regex freely.
+    The cell packs three logical fields separated by spaces: the menuOption
+    (first token), the objectID (last token, only when numeric), and the
+    menuTarget (everything in between, which may itself contain spaces or be
+    empty). A missing trailing numeric token means the row has no objectID.
     """
-    parts = field.split()
-    if not parts:
-        return "", "", ""
-    if len(parts) == 1:
-        return parts[0], "", ""
-    if len(parts) == 2:
-        return parts[0], parts[1], ""
-    return parts[0], " ".join(parts[1:-1]), parts[-1]
+    tokens = obj_field.split()
+    if tokens and tokens[-1].isdigit():
+        tokens = tokens[:-1]
+        object_id = obj_field.split()[-1]
+    else:
+        object_id = ""
+    if len(tokens) >= 2:
+        return tokens[0].lower(), " ".join(tokens[1:]).lower(), object_id
+    if tokens:
+        return "", tokens[0].lower(), object_id
+    return "", "", object_id
 
 
-def classify(menu_option, menu_target, object_id=""):
-    """Return the interaction class for one transport row."""
-    opt = menu_option.strip()
-    tgt = menu_target.strip()
-    for cls, o_re, t_re in RULES:
-        if o_re is not None and not o_re.search(opt):
-            continue
-        if t_re is not None and not t_re.search(tgt):
-            continue
-        return cls
-    return "other"
+def classify(menu_option: str, menu_target: str, object_id: str = "") -> tuple[str, str]:
+    """Return (class, rule) for one parsed interaction triple.
 
-
-def iter_body_lines(path):
-    """Yield (line_no, fields) for every data row in a transport TSV.
-
-    Mirrors TsvParser's skip rules: ``#``-prefixed comment lines and
-    whitespace-only lines are skipped; the first remaining line is the
-    header and yields the column-name list instead of a row.
+    object_id is accepted for future disambiguation but is not currently
+    consulted: the option/target vocabulary covers the whole file.
     """
-    header = None
-    with open(path, encoding="utf-8") as f:
-        for lineno, raw in enumerate(f, 1):
-            line = raw.rstrip("\n")
-            if not line.strip():
+    target = menu_target
+    option = menu_option
+
+    if LADDER_TARGET_RE.search(target):
+        return "ladder", "ladder:target"
+    if STAIRS_TARGET_RE.search(target):
+        return "stairs", "stairs:target"
+    if DOOR_TARGET_RE.search(target):
+        return "door", "door:target"
+    if option in SECRET_PANEL_OPTIONS and target in SECRET_PANEL_TARGETS:
+        return "door", "door:secret-panel"
+    if option.startswith("climb") and target in ROPE_CLIMB_TARGETS:
+        return "ladder", "ladder:climb-rope"
+    if GATE_TARGET_RE.search(target):
+        return "gate", "gate:target"
+    if option in RIDE_OPTIONS or (option in {"go-up", "go-down"} and "lift" in target):
+        return "ride", "ride:option"
+    if target in RIDE_TARGETS:
+        return "ride", "ride:target"
+    if CAVE_TARGET_RE.search(target):
+        return "cave-entrance", "cave:target"
+    if option in CAVE_OPTIONS:
+        return "cave-entrance", "cave:option"
+    return "other", "other"
+
+
+def iter_data_rows(path: Path):
+    """Yield (line_number, fields) for each data row of a transports TSV.
+
+    Comment lines (starting with '#', including the header) and blank lines
+    are skipped. Every other line is split on tabs and yielded verbatim;
+    trailing empty fields are preserved.
+    """
+    with open(path, encoding="utf-8") as handle:
+        for lineno, line in enumerate(handle, 1):
+            if line.startswith("#") or not line.strip():
                 continue
-            if header is None:
-                # The first non-blank line is the header; it may carry a
-                # leading '#' comment marker (TsvParser.parseHeaderLine
-                # strips '#'/ '# ' the same way).
-                header = [
-                    h.lstrip("#").strip() for h in line.split("\t")
-                ]
-                yield lineno, header, True
-                continue
-            if line.startswith("#"):
-                continue
-            yield lineno, line.split("\t"), False
+            yield lineno, line.rstrip("\n").split("\t")
 
 
-def main():
-    rows = []
-    header = []
-    for lineno, fields, is_header in iter_body_lines(TRANSPORTS_TSV):
-        if is_header:
-            header = fields
-        else:
-            rows.append((lineno, fields))
-    if not rows:
-        sys.exit(f"no data rows in {TRANSPORTS_TSV}")
+def main() -> int:
+    counts = {name: 0 for name in CLASSES}
+    rows_written = 0
 
-    try:
-        duration_idx = header.index("Duration")
-    except ValueError:
-        sys.exit(f"{TRANSPORTS_TSV}: no 'Duration' column in header")
-    origin_idx = header.index("Origin")
-    object_idx = header.index("menuOption menuTarget objectID")
-
-    counts = Counter()
-    empty_durations = Counter()
-    out = [
-        "# duration-class-map — generated by "
-        "scripts/classify_transport_durations.py",
-        "# source: shortest-path/src/main/resources/transports/"
-        "transports.tsv",
-    ]
-    for lineno, fields in rows:
-        cell = fields[object_idx] if len(fields) > object_idx else ""
-        option, target, object_id = split_object_info(cell)
-        cls = classify(option, target, object_id)
-        duration = (
-            fields[duration_idx].strip() if len(fields) > duration_idx
-            else ""
+    OUTPUT_TSV.parent.mkdir(parents=True, exist_ok=True)
+    with open(OUTPUT_TSV, "w", encoding="utf-8") as out:
+        out.write(
+            "# line\torigin\tdestination\tobject\tmenu_option\tmenu_target\t"
+            "object_id\tskills\titems\tquests\tvarbits\tvarplayers\tduration\t"
+            "display\tinfo\tclass\trule\n"
         )
-        counts[cls] += 1
-        if not duration or duration == "0":
-            empty_durations[cls] += 1
-        origin = fields[origin_idx] if len(fields) > origin_idx else ""
-        out.append(
-            f"{lineno}\t{origin}\t{option}\t{target}\t{object_id}"
-            f"\t{cls}\t{duration}"
-        )
+        for lineno, fields in iter_data_rows(SOURCE_TSV):
+            fields = fields + [""] * (11 - len(fields))  # tolerate ragged rows
+            object_field = fields[2]
+            option, target, object_id = parse_object(object_field)
+            cls, rule = classify(option, target, object_id)
+            counts[cls] += 1
+            rows_written += 1
+            out.write(
+                "\t".join(
+                    [
+                        str(lineno),
+                        fields[0],
+                        fields[1],
+                        object_field,
+                        option,
+                        target,
+                        object_id,
+                        fields[3],
+                        fields[4],
+                        fields[5],
+                        fields[6],
+                        fields[7],
+                        fields[8],
+                        fields[9],
+                        fields[10],
+                        cls,
+                        rule,
+                    ]
+                )
+                + "\n"
+            )
 
-    summary = " ".join(f"{cls}={counts[cls]}" for cls in CLASSES)
-    empty_summary = " ".join(
-        f"{cls}={empty_durations[cls]}" for cls in CLASSES
-    )
-    out.insert(2, f"# rows: {len(rows)} — {summary}")
-    out.insert(3, f"# empty-or-zero Duration rows per class — "
-                  f"{empty_summary}")
-    MAP_TSV.parent.mkdir(parents=True, exist_ok=True)
-    MAP_TSV.write_text("\n".join(out) + "\n", encoding="utf-8")
-
-    print(f"wrote {MAP_TSV} ({len(rows)} rows)")
-    print(f"class counts: {summary}")
-    print(f"empty/0 Duration per class: {empty_summary}")
+    print(f"wrote {rows_written} rows -> {OUTPUT_TSV.relative_to(REPO_ROOT)}")
+    for name in CLASSES:
+        print(f"  {name:<14} {counts[name]:>5}")
     return 0
 
 
