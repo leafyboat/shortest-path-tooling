@@ -909,6 +909,31 @@ def lint_shadow(path: Path, fm: Dict, body: str) -> List[str]:
     scenario_rows = fm.get("scenario_rows")
     if scenario_rows is not None and not isinstance(scenario_rows, list):
         errors.append("scenario_rows must be a list")
+    # `residual` nests inside `triage:` by design — the build_frontmatter
+    # carry-over tuple already copies `triage` wholesale, so the ledger
+    # survives re-sync with no top-level field or carry-tuple change.
+    triage_block = fm.get("triage")
+    if isinstance(triage_block, dict):
+        residual = triage_block.get("residual")
+        if residual is not None:
+            if not isinstance(residual, list):
+                errors.append(
+                    "triage.residual must be a list of "
+                    "{what, why, resumes_in} mappings")
+            else:
+                for i, entry in enumerate(residual):
+                    if not isinstance(entry, dict):
+                        errors.append(
+                            f"triage.residual entry {i} must be a "
+                            "{what, why, resumes_in} mapping")
+                        continue
+                    missing = [k for k in ("what", "why", "resumes_in")
+                               if not (isinstance(entry.get(k), str)
+                                       and entry[k].strip())]
+                    if missing:
+                        errors.append(
+                            f"triage.residual entry {i} requires "
+                            f"non-empty {', '.join(missing)}")
     if status in MAINLINE_AFTER_TRIAGE:
         sections = maintainer_sections_from(body)
         for name in REQUIRED_PRD_SECTIONS:
