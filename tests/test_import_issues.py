@@ -884,6 +884,79 @@ def test_check_feature_size_large_clean(tmp_path, capsys):
     assert "check: clean" in capsys.readouterr().out
 
 
+# --- triage.residual — the carry-over ledger entries --------------------
+
+def test_check_residual_must_be_list(tmp_path, capsys):
+    # `residual` is a list of {what, why, resumes_in} mappings — a scalar
+    # or a bare mapping is malformed and must error, not pass silently.
+    make_shadow(tmp_path, 80, status="reported",
+                fm_extra={"triage": triage_block(residual="see notes")})
+    make_shadow(tmp_path, 81, status="reported",
+                fm_extra={"triage": triage_block(
+                    residual={"what": "x", "why": "y",
+                              "resumes_in": "p10"})})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert out.count("triage.residual must be a list") == 2
+
+
+def test_check_residual_entry_requires_all_keys(tmp_path, capsys):
+    # One error per malformed entry — empty strings count as missing, and
+    # a non-mapping entry errors instead of crashing on .get().
+    make_shadow(tmp_path, 82, status="reported",
+                fm_extra={"triage": triage_block(residual=[
+                    {"what": "", "why": "grammar gap",
+                     "resumes_in": "p10"},
+                    {"what": "weight gate", "why": "no weight type"},
+                    "not-a-mapping",
+                ])})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    out = capsys.readouterr().out
+    assert out.count("triage.residual") == 3
+
+
+def test_check_residual_wellformed_lints_clean(tmp_path, capsys):
+    # A well-formed residual list is opt-in extra metadata — it must not
+    # trip any lint rule, on an otherwise-clean file.
+    make_shadow(tmp_path, 83, status="reported",
+                fm_extra={"triage": triage_block(residual=[
+                    {"what": "weight gate omitted",
+                     "why": "no weight requirement type",
+                     "resumes_in": "phase-10"},
+                ])})
+    rc = run_check(tmp_path)
+    assert rc == 0
+    assert "check: clean" in capsys.readouterr().out
+
+
+def test_check_residual_survives_closed_upstream(tmp_path, capsys):
+    # Residual shape is checked regardless of the verdict gate — a
+    # malformed entry on a closed-upstream file still errors even though
+    # that file is exempt from verdict coverage.
+    make_shadow(tmp_path, 84, status="reported",
+                fm_extra={"upstream_state": "closed",
+                          "triage": triage_block(residual="oops")})
+    rc = run_check(tmp_path)
+    assert rc != 0
+    assert "triage.residual" in capsys.readouterr().out
+
+
+def test_build_frontmatter_carries_triage_residual():
+    # `residual` nests inside `triage:` on purpose: the carry-over tuple
+    # already copies `triage` wholesale, so the ledger survives a re-sync
+    # with no carry-tuple change — this is the property the design
+    # relies on.
+    issue = dict(fixture_issue("gh_issue_list_all.json", 549))
+    residual = [{"what": "weight gate omitted",
+                 "why": "no weight requirement type",
+                 "resumes_in": "phase-10"}]
+    existing = {"triage": triage_block(residual=residual)}
+    fm = ii.build_frontmatter(issue, [], existing, "2026-09-29T00:00:00Z")
+    assert fm["triage"]["residual"] == residual
+
+
 # --------------------------------------------------------------------------
 # re-sync preservation, upstream-state mapping, STATE.md digest
 # --------------------------------------------------------------------------
