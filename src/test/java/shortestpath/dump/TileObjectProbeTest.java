@@ -65,6 +65,14 @@ public class TileObjectProbeTest {
                         if (x >= b[0] && x <= b[1] && y >= b[2] && y <= b[3]) { inBox = true; break; }
                     }
                     if (!inBox) continue;
+                    String idFilter = System.getProperty("tile.probe.ids", "");
+                    if (!idFilter.isEmpty()) {
+                        boolean idMatch = false;
+                        for (String s : idFilter.split(",")) {
+                            if (loc.getId() == Integer.parseInt(s.trim())) { idMatch = true; break; }
+                        }
+                        if (!idMatch) continue;
+                    }
                     ObjectDefinition def = objectManager.getObject(loc.getId());
                     String name = def != null ? def.getName() : "?";
                     StringBuilder extra = new StringBuilder();
@@ -100,8 +108,8 @@ public class TileObjectProbeTest {
                             }
                         }
                     }
-                    System.out.printf("%d %d %d\tid=%d\ttype=%d\tname=%s%s%n",
-                        x, y, z, loc.getId(), loc.getType(), name, extra);
+                    System.out.printf("%d %d %d\tid=%d\ttype=%d\torient=%d\tname=%s%s%n",
+                        x, y, z, loc.getId(), loc.getType(), loc.getOrientation(), name, extra);
                 }
             }
         }
