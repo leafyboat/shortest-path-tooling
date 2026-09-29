@@ -55,6 +55,7 @@ EXPECTED_TASKS = frozenset({
     "briefcaseDbRowScan",
     "briefcaseTeleportTables",
     "sailingWaterProbe",
+    "animDurationDump",
 })
 
 # The exact -D keys each task emits — what the Java call sites read.
@@ -113,6 +114,10 @@ EXPECTED_SYSPROPS = {
     "sailingWaterProbe": {"sailing.water.probe",
                           "sailing.water.cacheDir",
                           "sailing.water.xteaPath"},
+    "animDurationDump": {"anim.duration.dump",
+                         "anim.duration.cacheDir",
+                         "anim.duration.xteaPath",
+                         "anim.duration.output"},
 }
 
 
@@ -179,7 +184,7 @@ def _specs():
     return specs
 
 
-def test_all_17_task_names_in_spec():
+def test_all_18_task_names_in_spec():
     assert frozenset(_specs()) == EXPECTED_TASKS
 
 
