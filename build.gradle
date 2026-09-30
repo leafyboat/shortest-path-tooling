@@ -53,7 +53,8 @@ test {
     // through explicitly.
     ['tile.probe', 'tile.probe.boxes', 'tile.probe.plane',
      'tile.probe.ids', 'tile.probe.defids',
-     'tile.probe.cacheDir', 'tile.probe.xteaPath'].each { k ->
+     'tile.probe.cacheDir', 'tile.probe.xteaPath',
+     'poh.loc.probe', 'poh.loc.probe.cacheDir', 'poh.loc.probe.xteaPath'].each { k ->
         if (System.getProperty(k) != null) {
             systemProperty k, System.getProperty(k)
         }
