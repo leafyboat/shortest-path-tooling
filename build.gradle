@@ -52,7 +52,7 @@ test {
     // does not forward -D to the forked test JVM, so pass the probe keys
     // through explicitly.
     ['tile.probe', 'tile.probe.boxes', 'tile.probe.plane',
-     'tile.probe.cacheDir', 'tile.probe.xteaPath'].each { k ->
+     'tile.probe.ids', 'tile.probe.cacheDir', 'tile.probe.xteaPath'].each { k ->
         if (System.getProperty(k) != null) {
             systemProperty k, System.getProperty(k)
         }
