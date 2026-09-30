@@ -52,6 +52,25 @@ public class TileObjectProbeTest {
         try (Store store = CacheUtils.openStore(cacheDir)) {
             ObjectManager objectManager = new ObjectManager(store);
             objectManager.load();
+
+            String defIds = System.getProperty("tile.probe.defids", "");
+            if (!defIds.isEmpty()) {
+                for (String s : defIds.split(",")) {
+                    ObjectDefinition d = objectManager.getObject(Integer.parseInt(s.trim()));
+                    if (d == null) { System.out.println("def " + s + " = null"); continue; }
+                    StringBuilder ops = new StringBuilder();
+                    if (d.getOps() != null && d.getOps().ops != null) {
+                        for (EntityOpsDefinition.Op op : d.getOps().ops) {
+                            if (op != null && op.text != null) ops.append(' ').append(op.text);
+                        }
+                    }
+                    System.out.printf("def %d\tname=%s\tinteract=%d\twallOrDoor=%d\tsize=%dx%d\tvarbit=%d\tvarp=%d\tblockingMask=%d\tops=%s%n",
+                        d.getId(), d.getName(), d.getInteractType(), d.getWallOrDoor(),
+                        d.getSizeX(), d.getSizeY(), d.getVarbitID(), d.getVarpID(),
+                        d.getBlockingMask(), ops);
+                }
+            }
+
             RegionLoader regionLoader = CacheUtils.loadRegions(store, xtea);
             regionLoader.calculateBounds();
 
@@ -77,6 +96,9 @@ public class TileObjectProbeTest {
                     String name = def != null ? def.getName() : "?";
                     StringBuilder extra = new StringBuilder();
                     if (def != null) {
+                        extra.append("\tinteract=").append(def.getInteractType())
+                            .append(" wallOrDoor=").append(def.getWallOrDoor())
+                            .append(" size=").append(def.getSizeX()).append("x").append(def.getSizeY());
                         if (def.getVarbitID() != -1 || def.getVarpID() != -1) {
                             extra.append("\tvarbit=").append(def.getVarbitID())
                                 .append(" varp=").append(def.getVarpID());
@@ -87,12 +109,13 @@ public class TileObjectProbeTest {
                                     def.getConfigChangeDest()));
                             for (int c : def.getConfigChangeDest()) {
                                 ObjectDefinition cd = objectManager.getObject(c);
-                                if (cd != null && cd.getOps() != null
-                                        && cd.getOps().ops != null) {
-                                    extra.append(" [").append(c).append(":");
-                                    for (EntityOpsDefinition.Op op : cd.getOps().ops) {
-                                        if (op != null && op.text != null) {
-                                            extra.append(' ').append(op.text);
+                                if (cd != null) {
+                                    extra.append(" [").append(c).append(":").append(cd.getName()).append(":");
+                                    if (cd.getOps() != null && cd.getOps().ops != null) {
+                                        for (EntityOpsDefinition.Op op : cd.getOps().ops) {
+                                            if (op != null && op.text != null) {
+                                                extra.append(' ').append(op.text);
+                                            }
                                         }
                                     }
                                     extra.append(']');
