@@ -11,8 +11,8 @@ Ardougne to Port Tyras (sloop),sailing,2663,3259,0,2147,3117,0,UNIT_TEST,1.5,slo
 # Tight spots
 Past the rocks off Mudskipper Point (raft),sailing-tight,2948,3074,0,3069,2983,0,UNIT_TEST,3.0,raft
 Past the rocks off Mudskipper Point (sloop),sailing-tight,2948,3074,0,3069,2983,0,UNIT_TEST,3.0,sloop
-Through the gate south of Pest Control (raft),sailing-tight,2632,2538,0,2632,2556,0,UNIT_TEST,1.5,raft
-Through the gate south of Pest Control (sloop),sailing-tight,2632,2538,0,2632,2556,0,UNIT_TEST,1.5,sloop
+Ruins of Unkah past the Elid Delta islands (skiff),sailing-tight,3143,2847,0,3273,2738,0,UNIT_TEST,1.5,skiff
+Ruins of Unkah past the Elid Delta islands (sloop),sailing-tight,3143,2847,0,3273,2738,0,UNIT_TEST,1.5,sloop
 # Rocky seas
 Through the Storm Tempor rocks past Tempoross Cove (raft),sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5,raft
 Through the Storm Tempor rocks past Tempoross Cove (sloop),sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5,sloop
