@@ -15,14 +15,24 @@ def dashboardF2p = providers.gradleProperty('dashboardF2p')
 // e.g. dataset=/dashboard/clue_locations_full.csv, profile=true
 //   → bundle: clue-locations-full-profiled, title: Clue Locations Full Profiled
 // Override with -PdashboardBundle=... or -PdashboardTitle=...
-def filename = dashboardDataset.get().tokenize('/').last()
-def stem = filename.contains('.') ? filename.substring(0, filename.lastIndexOf('.')) : filename
-def slug = stem.replace('_', '-').toLowerCase()
 def profiled = dashboardProfile.get() == 'true'
+def datasetStem = { String dataset ->
+    def filename = dataset.tokenize('/').last()
+    filename.contains('.') ? filename.substring(0, filename.lastIndexOf('.')) : filename
+}
+def bundleFor = { String dataset ->
+    def slug = datasetStem(dataset).replace('_', '-').toLowerCase()
+    profiled ? "${slug}-profiled" : slug
+}
+def titleFor = { String dataset ->
+    datasetStem(dataset).tokenize('_').collect { it.capitalize() }.join(' ') + (profiled ? ' Profiled' : '')
+}
 def dashboardBundle = providers.gradleProperty('dashboardBundle')
-        .orElse(profiled ? "${slug}-profiled" : slug)
+        .orElse(bundleFor(dashboardDataset.get()))
 def dashboardTitle = providers.gradleProperty('dashboardTitle')
-        .orElse(stem.tokenize('_').collect { it.capitalize() }.join(' ') + (profiled ? ' Profiled' : ''))
+        .orElse(titleFor(dashboardDataset.get()))
+// Built alongside the default dataset when no -PdashboardDataset is given (see sailingDashboard)
+def sailingDataset = '/dashboard/sailing_routes.csv'
 
 def logDashboardLocation = { String taskName ->
     logger.lifecycle("")
@@ -32,40 +42,57 @@ def logDashboardLocation = { String taskName ->
     logger.lifecycle("Then open: http://localhost:8000")
 }
 
+// Runs DashboardTest for one dataset, publishing it as one bundle of the shared site
+def configureDashboard = { Test task, String dataset, String bundle, String title, String subtitle ->
+    task.doNotTrackState('Dashboard always re-runs to pick up the latest dataset and config.')
+    task.group = 'verification'
+    task.testClassesDirs = sourceSets.test.output.classesDirs
+    task.classpath = sourceSets.test.runtimeClasspath
+    task.useJUnit()
+    task.include 'shortestpath/dashboard/DashboardTest.class'
+    task.ignoreFailures = true
+    task.reports.junitXml.required = false
+    task.reports.html.required = false
+    task.jvmArgs = ['-Xms1g', '-Xmx8g']
+    task.testLogging.showStandardStreams = true
+    task.systemProperty 'runDashboardVerification', 'true'
+    task.systemProperty 'dashboard.outputRoot', dashboardOutputRoot.get().asFile.absolutePath
+    task.systemProperty 'dashboard.bundleName', bundle
+    task.systemProperty 'dashboard.dataset', dataset
+    task.systemProperty 'dashboard.profile', dashboardProfile.get()
+    task.systemProperty 'dashboard.seasonal', dashboardSeasonal.get()
+    task.systemProperty 'dashboard.f2p', dashboardF2p.get()
+    if (!title.isEmpty()) {
+        task.systemProperty 'dashboard.title', title
+    }
+    if (!subtitle.isEmpty()) {
+        task.systemProperty 'dashboard.subtitle', subtitle
+    }
+}
+
 tasks.register('dashboard', Test) {
-    doNotTrackState('Dashboard always re-runs to pick up the latest dataset and config.')
-    group = 'verification'
-    description = 'Builds the pathfinder dashboard from DashboardTest scenarios. ' +
-            'Options (all via -P): dashboardDataset (default: /dashboard/routes.csv), ' +
+    description = 'Builds the pathfinder dashboard from DashboardTest scenarios: the default routes and, ' +
+            'through sailingDashboard, the sailing routes. ' +
+            'Options (all via -P): dashboardDataset (default: /dashboard/routes.csv; when given, only that ' +
+            'dataset is built), ' +
             'dashboardBundle, dashboardTitle, dashboardSubtitle, dashboardProfile (default: true), ' +
             'dashboardSeasonal (default: false; tags the bundle so the frontend renders the ' +
             'Demonic Pacts League regions overlay), ' +
             'dashboardF2p (default: false; tags the bundle so the frontend tints members-only chunks).'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnit()
-    include 'shortestpath/dashboard/DashboardTest.class'
-    ignoreFailures = true
-    reports {
-        junitXml.required = false
-        html.required = false
-    }
-    jvmArgs = ['-Xms1g', '-Xmx8g']
-    testLogging.showStandardStreams = true
-    systemProperty 'runDashboardVerification', 'true'
-    systemProperty 'dashboard.outputRoot', dashboardOutputRoot.get().asFile.absolutePath
-    systemProperty 'dashboard.bundleName', dashboardBundle.get()
-    systemProperty 'dashboard.dataset', dashboardDataset.get()
-    systemProperty 'dashboard.profile', dashboardProfile.get()
-    systemProperty 'dashboard.seasonal', dashboardSeasonal.get()
-    systemProperty 'dashboard.f2p', dashboardF2p.get()
-    if (!dashboardTitle.get().isEmpty()) {
-        systemProperty 'dashboard.title', dashboardTitle.get()
-    }
-    if (!dashboardSubtitle.get().isEmpty()) {
-        systemProperty 'dashboard.subtitle', dashboardSubtitle.get()
+    configureDashboard(it, dashboardDataset.get(), dashboardBundle.get(), dashboardTitle.get(), dashboardSubtitle.get())
+    if (!providers.gradleProperty('dashboardDataset').isPresent()) {
+        // Sailing first, so the default routes are the newest bundle and still the one the site opens on
+        dependsOn 'sailingDashboard'
     }
     doLast { logDashboardLocation('dashboard') }
+}
+
+tasks.register('sailingDashboard', Test) {
+    description = 'Builds the sailing routes bundle of the pathfinder dashboard from ' + sailingDataset + '. ' +
+            'Rows with a speed also run the experimental sailing search when -PpluginDir points at a plugin ' +
+            'checkout that has it. Takes the same -P options as dashboard, except the dataset, bundle and titles.'
+    configureDashboard(it, sailingDataset, bundleFor(sailingDataset), titleFor(sailingDataset), '')
+    doLast { logDashboardLocation('Sailing') }
 }
 
 tasks.register('sailingBenchmark', Test) {

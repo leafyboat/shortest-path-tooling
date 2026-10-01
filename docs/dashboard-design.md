@@ -158,8 +158,9 @@ Tab-separated with `Description`, `X`, `Y`, `Plane` columns. Legacy format.
 
 ### `dashboard` (default task)
 
-Runs `DashboardTest` against one dataset and writes a bundle into the output site.
-Profiling is **on** by default.
+Runs `DashboardTest` against one dataset and writes a bundle into the output site. Without a
+`dashboardDataset` it builds the default `routes.csv` and, through `sailingDashboard`, `sailing_routes.csv`
+as a second bundle. Profiling is **on** by default.
 
 ```bash
 ./gradlew dashboard \
@@ -335,8 +336,12 @@ to the normal path: the path, the boat's hull at each turn (facing the leg that 
 hull sweeps along each leg, which is what the search keeps clear. Turn on the **Collision map** layer to see
 the blocked tiles, and **Sailing hull** to hide the hull. A card compares the two searches.
 
+`./gradlew dashboard` builds `sailing_routes.csv` as its own bundle along with the default routes, unless it's
+given a `dashboardDataset`; `sailingDashboard` builds just that bundle. Without a plugin checkout that has the
+sailing search, the sailing routes show only the normal path.
+
 ```bash
-./gradlew dashboard -PpluginDir=../shortest-path -PdashboardDataset=/dashboard/sailing_routes.csv
+./gradlew dashboard -PpluginDir=../shortest-path
 ```
 
 Hulls come from the game's bounds for each boat (`SailingBoats`), sitting on the centre of their tile.
