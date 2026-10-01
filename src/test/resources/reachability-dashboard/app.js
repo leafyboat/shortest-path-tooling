@@ -1356,9 +1356,19 @@ function renderReport(report) {
   selectRun(runs[0]);
 }
 
+// Dashboard tasks rewrite a bundle's files in place, and `python -m http.server` sends no caching headers, so the
+// browser can keep reusing an old report for hours. Asking for each bundle by when it was generated means a rebuilt
+// bundle is always fetched fresh.
+function bundleReportUrl(bundle) {
+  return "bundles/" + bundle.reportPath + "?v=" + encodeURIComponent(bundle.generatedAt || "");
+}
+
 async function loadReport(url) {
-  currentBundleBase = url.substring(0, url.lastIndexOf("/") + 1);
+  const path = url.split("?")[0];
+  currentBundleBase = path.substring(0, path.lastIndexOf("/") + 1);
   window.currentBundleBase = currentBundleBase;
+  // The report's version, for the files it points to such as heatmaps
+  window.currentBundleQuery = url.includes("?") ? url.substring(url.indexOf("?")) : "";
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to load ${url}`);
@@ -1368,7 +1378,7 @@ async function loadReport(url) {
 }
 
 async function initDashboard() {
-  const indexResp = await fetch("bundles/index.json");
+  const indexResp = await fetch("bundles/index.json", { cache: "no-cache" });
   if (!indexResp.ok) {
     throw new Error("No bundles/index.json found. Run a dashboard task first.");
   }
@@ -1392,7 +1402,7 @@ async function initDashboard() {
   }
   bundleSelectEl.addEventListener("change", async () => {
     try {
-      await loadReport("bundles/" + bundleSelectEl.value);
+      await loadReport(bundleReportUrl(index.bundles.find(b => b.reportPath === bundleSelectEl.value)));
     } catch (error) {
       summaryEl.textContent = error.message;
     }
@@ -1403,7 +1413,7 @@ async function initDashboard() {
   const requested = params.get("bundle");
   const initial = (requested && index.bundles.find(b => b.name === requested)) || index.bundles[0];
   bundleSelectEl.value = initial.reportPath;
-  await loadReport("bundles/" + initial.reportPath);
+  await loadReport(bundleReportUrl(initial));
 
   // Auto-select route by index (?route=<index>)
   const routeParam = params.get("route");

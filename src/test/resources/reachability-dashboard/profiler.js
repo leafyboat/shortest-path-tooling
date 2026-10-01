@@ -465,7 +465,8 @@
     // Lazy-load externalized heatmap data (compact flat array: [x1,y1,c1, x2,y2,c2, ...])
     if (!run.tileHeatmap && run.heatmapFile) {
       const base = window.currentBundleBase || "";
-      const url = base + run.heatmapFile;
+      // Same version as the report (see bundleReportUrl), so a rebuilt bundle's heatmaps aren't served stale
+      const url = base + run.heatmapFile + (window.currentBundleQuery || "");
       fetch(url)
         .then(r => { if (!r.ok) throw new Error("Failed to load " + url); return r.json(); })
         .then(flat => {

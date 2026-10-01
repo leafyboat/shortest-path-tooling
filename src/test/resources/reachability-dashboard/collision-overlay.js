@@ -81,9 +81,10 @@
       return zipPromise;
     }
     const base = (typeof window.currentBundleBase === "string" ? window.currentBundleBase : "");
-    // collision-map.zip is published at the dashboard root (not per-bundle).
+    // collision-map.zip is published at the dashboard root (not per-bundle). Each dashboard run rewrites it, so
+    // check it's still current rather than trusting the browser's cache.
     const url = "collision-map.zip";
-    zipPromise = fetch(url)
+    zipPromise = fetch(url, { cache: "no-cache" })
       .then(r => {
         if (!r.ok) throw new Error("HTTP " + r.status + " fetching " + url);
         return r.arrayBuffer();
