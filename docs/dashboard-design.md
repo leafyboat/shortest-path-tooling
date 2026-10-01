@@ -178,8 +178,9 @@ Tab-separated with `Description`, `X`, `Y`, `Plane` columns. Legacy format.
 
 ### `dashboard` (default task)
 
-Runs `DashboardTest` against one dataset and writes a bundle into the output site.
-Profiling is **on** by default.
+Runs `DashboardTest` against one dataset and writes a bundle into the output site. Without a
+`dashboardDataset` it builds the default `routes.csv` and, through `sailingDashboard`, `sailing_routes.csv`
+as a second bundle. Profiling is **on** by default.
 
 ```bash
 ./gradlew dashboard \
@@ -353,8 +354,12 @@ Rows with a `speed` also run the sailing search from the same start, and the das
 to the normal path, with a dot where it turns. Turn on the **Collision map** layer to see the blocked tiles. A
 card compares the two searches.
 
+`./gradlew dashboard` builds `sailing_routes.csv` as its own bundle along with the default routes, unless it's
+given a `dashboardDataset`; `sailingDashboard` builds just that bundle. Without a plugin checkout that has the
+sailing search, the sailing routes show only the normal path.
+
 ```bash
-./gradlew dashboard -PshortestPathDir=../shortest-path -PdashboardDataset=/dashboard/sailing_routes.csv
+./gradlew dashboard -PshortestPathDir=../shortest-path
 ```
 
 ### Sailing benchmark
