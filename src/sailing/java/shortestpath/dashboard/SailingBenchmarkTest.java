@@ -44,6 +44,10 @@ import shortestpath.pathfinder.SailingMoves;
  * {@code speed} column is ignored; the speeds to compare come from the properties below. Rows with the same
  * start and target are one route, named after the first of them without a trailing note in brackets.</p>
  *
+ * <p>The player counts as on a boat, as they are whenever the plugin runs the sailing search, so neither search
+ * uses teleports. Off a boat the existing search would spread out from every teleport's destination as well, and
+ * take several times as long as it does in game.</p>
+ *
  * <p>Every search on a route runs {@code warmup} times untimed, then {@code rounds} times timed, taking turns
  * so noise spreads evenly. The report gives the median and fastest search times (as the plugin's debug panel
  * measures them), the nodes checked, and the path each search found.</p>
@@ -148,6 +152,8 @@ public class SailingBenchmarkTest {
             when(client.getTotalLevel()).thenReturn(2277);
             when(client.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE)).thenReturn(1);
             when(client.getVarbitValue(VarbitID.FAIRY2_QUEENCURE_QUEST)).thenReturn(100);
+            // On a boat, which turns teleports off for every search, as in game while sailing
+            when(client.getVarbitValue(VarbitID.SAILING_BOARDED_BOAT)).thenReturn(1);
             when(client.getWorldType()).thenReturn(EnumSet.noneOf(WorldType.class));
             when(client.getItemContainer(InventoryID.INV)).thenReturn(null);
             when(client.getItemContainer(InventoryID.WORN)).thenReturn(null);
@@ -221,7 +227,8 @@ public class SailingBenchmarkTest {
 
         String report = "# Sailing benchmark\n\n"
             + String.format(Locale.ROOT, "%d warm-up and %d timed runs of each search; times are the search as the "
-                + "plugin's debug panel measures it.%n%n", warmup, rounds)
+                + "plugin's debug panel measures it. The player is on a boat, so neither search uses teleports.%n%n",
+                warmup, rounds)
             + comparisonTable(comparisons) + "\n"
             + summaryTable(searches, results) + "\n" + String.join("", routeTables(routes, results));
         System.out.println(summaryTable(searches, results));
