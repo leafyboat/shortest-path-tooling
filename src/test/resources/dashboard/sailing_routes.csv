@@ -8,7 +8,7 @@ Musa Point to Corsair Cove,sailing,2961,3150,0,2584,2848,0,UNIT_TEST,1.5
 Ardougne to Port Tyras,sailing,2663,3259,0,2147,3117,0,UNIT_TEST,1.5
 # Tight spots
 Past the rocks off Mudskipper Point,sailing-tight,2948,3074,0,3069,2983,0,UNIT_TEST,3.0
-Through the gate south of Pest Control,sailing-tight,2632,2538,0,2632,2556,0,UNIT_TEST,1.5
+Ruins of Unkah past the Elid Delta islands,sailing-tight,3143,2847,0,3273,2738,0,UNIT_TEST,1.5
 # Rocky seas
 Through the Storm Tempor rocks past Tempoross Cove,sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5
 North of Charred Island to south of Wyrmscraig,sailing-rocky,2672,2452,0,2515,2160,0,UNIT_TEST,1.5
