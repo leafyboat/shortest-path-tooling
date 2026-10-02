@@ -51,7 +51,7 @@ test {
     // Opt-in cache probes run via `test --tests ... -D<key>=...` — Gradle
     // does not forward -D to the forked test JVM, so pass the probe keys
     // through explicitly.
-    ['tile.probe', 'tile.probe.boxes', 'tile.probe.plane',
+    ['tile.probe', 'tile.probe.box', 'tile.probe.boxes', 'tile.probe.plane',
      'tile.probe.ids', 'tile.probe.defids',
      'tile.probe.cacheDir', 'tile.probe.xteaPath',
      'poh.loc.probe', 'poh.loc.probe.cacheDir', 'poh.loc.probe.xteaPath'].each { k ->
