@@ -264,38 +264,9 @@ python3 scripts/analyse_dashboard_runs.py \
 
 - No remaining non-algorithmic hot-path items from C9/3.5/3.7.
 - Algorithmic branch work:
-  - bidirectional BFS (`perf/bidir-jps`): first implementation committed, A/B harness ready
-  - JPS experiments (`perf/bidir-jps`)
   - region-graph precompute (`perf/region-graph`)
 
 ## Algorithmic Workstreams (Detailed)
-
-### Bidirectional BFS Plan (`perf/bidir-jps`)
-
-- Goal: cut reachable/unreachable search expansion by meeting in the middle while preserving OSRS-compatible forward-path behavior.
-- Shape:
-  - Forward side keeps existing semantics (`boundary` + `pending`, full transport behavior).
-  - Reverse side starts from target and walks tiles only (no reverse one-way transports).
-  - Stop when frontiers meet, then reconstruct.
-- Correctness constraints:
-  - Meeting path may not match OSRS tie-break ordering directly.
-  - Recovery strategy: run a final forward BFS from start to the chosen meeting tile to recover OSRS-consistent first half.
-  - One-way transports are handled on the forward side; reverse side should not assume invertibility.
-- First rollout target:
-  - Gate by route type/distance and unreachable-heavy scenarios first.
-  - Keep single-direction fallback path available.
-
-### JPS Experiments (`perf/bidir-jps`)
-
-- Goal: reduce open-terrain expansion by jumping between forced-neighbor points.
-- Constraints:
-  - Must preserve transport semantics and final path correctness contract.
-  - JPS pruning must not invalidate bank/wilderness state transitions.
-- Experiment shape:
-  - Start from walking-only segments and treat transport-related tiles as hard expansion anchors.
-  - Validate against existing route corpus for step-by-step parity where required.
-- Success criterion:
-  - Significant node-count reduction on long open routes without regressions in route validity.
 
 ### Region-Graph Precompute (`perf/region-graph`)
 
@@ -310,22 +281,6 @@ python3 scripts/analyse_dashboard_runs.py \
   - Build static region connectivity first.
   - Add dynamic edge filters second.
   - Introduce hybrid search only after full regression parity.
-
-## Bidirectional BFS Status (2026-05-14)
-
-- Implementation on `perf/bidir-jps` (`90b04dd6`).
-- Approach: hybrid forward (reimplementation of production search) + deferred reverse (walking-only, targets seed) for dead-end detection.
-- Reverse starts after 2048 forward iterations without target found — eliminates overhead on routes with early transport shortcuts.
-- A/B harness: `./gradlew bidirAB -PdashboardDataset=/dashboard/routes.csv`
-  (the harness now lives on branch `perf/bidir-tests`, commit `27cdf13`;
-  the `bidirAB` Gradle task was removed from `gradle/dashboards.gradle`)
-- Latest results on `routes.csv` (29 scenarios):
-  - Total time: 1133ms → 948ms (**-16.3%**)
-  - Total nodes: 6.76M → 5.39M (**-20.3%**)
-  - Unreachable routes: near-instant (Brimhaven→Port Khazard: 177ms→0.4ms, White Knight 2F: 143ms→0.5ms, Auburnvale→Ferox Enclave: 88ms→0.5ms)
-  - 15/29 routes disagree on reachability/path-length (forward reimplementation diverges from production on some paths)
-- Known limitation: forward search reimplements production logic rather than wrapping it; 15 routes diverge.
-- Next step for correctness: wrap production `Pathfinder` and inject reverse BFS as an early-termination pre-check rather than duplicating the forward search.
 
 ## Delta Reconciliation
 
@@ -343,145 +298,12 @@ python3 scripts/analyse_dashboard_runs.py \
 - This document is now intentionally concise and current-state oriented.
 - Detailed algorithmic workstream notes were restored per request.
 
-## Bidirectional BFS — Status (rebased onto NodeStore baseline, 2026-05-15)
-
-`perf/bidir-jps` was rebased onto `perf/optimise-pathfinder` (clean, no
-conflicts). Branch HEAD `2bc79795`. Backup at `backup/bidir-jps-before-rebase`.
-
-### Approach (unchanged from previous summary)
-
-- **Forward search**: production `Pathfinder` (now with NodeStore) — zero
-  divergence on the forward path.
-- **Reverse pre-check**: JPS-accelerated reverse walking-BFS from
-  `targets ∪ getUsableTeleportsArray(both bank states)`. Each visited
-  tile checks against a cached set of all transport destinations
-  (`PrimitiveIntHashMap`). When such a destination is reached, the
-  reverse expansion follows the transport backward to its origin via a
-  pre-built `revTransportIndex`.
-- **Early exit**: as soon as the reverse frontier reaches any transport
-  destination, the pre-check returns "may be reachable" and the forward
-  Pathfinder runs. If the reverse search exhausts within
-  `REVERSE_MAX = 500_000` nodes without bridging, a walking-overlap
-  check from `start` (capped at `OVERLAP_CAP = 100_000` tiles) decides
-  reachability.
-
-### Per-route UX on rebased branch — `bidirAB` harness
-
-The bidir A/B harness (`./gradlew bidirAB -PdashboardDataset=…`; the
-harness lives on branch `perf/bidir-tests` and the Gradle task was
-removed) now
-writes one JSON record per scenario to
-`build/reports/bidir-ab/<dataset>.jsonl` with `pfElapsedNanos`,
-`bpfElapsedNanos`, and reachability for both. Analysed with
-`scripts/analyse_bidir_runs.py`.
-
-**Combined across all 6 datasets (975 scenarios, run inside the bidir A/B
-test harness):**
-
-| Bucket | Metric | Pathfinder (NodeStore) | Bidir + NodeStore | Delta |
-|---|---|---:|---:|---:|
-| Reachable (777) | Median | 61.1 ms | 62.0 ms | **+2.4%** |
-| Reachable (777) | p95 | 203 ms | 207 ms | +1.9% |
-| Reachable (777) | Max | 258 ms | 280 ms | +8.5% |
-| Unreachable (198) | Median | 214 ms | 218 ms | +1.9% |
-| Unreachable (198) | Max | 330 ms | **292 ms** | **−11.5%** |
-
-The pre-check adds a small (~2 ms median) overhead on reachable routes and
-trims worst-case unreachable latency by ~11%. The unreachable-max gain is
-smaller than it was against the master baseline (462 → 234 ms before
-NodeStore landed on the forward search) because NodeStore already cut
-unreachable max from 462 ms to 234 ms; bidir on top of NodeStore only
-shaves a further ~38 ms.
-
-### Cross-comparison caveat
-
-The bidir A/B test harness (`BidirectionalPathfinderABTest`, which now
-lives on branch `perf/bidir-tests`, commit `27cdf13`) uses a
-minimal Mockito `Client` (elite diary varbit + queencure quest + level 99
-skills + 25 000 bank items). The dashboard tests do considerably more
-config setup: per-scenario region unlocks, varbit state from CSV, locked-
-region flags. As a result the **bidir A/B harness reports different
-reachability counts than the dashboard** — e.g. `clue_locations_full`
-shows 683 R / 183 U in the bidir harness vs 817 R / 49 U in the
-dashboard, because some clue locations are gated behind unlocks the
-dashboard provides and the bidir harness does not.
-
-**Implication:** the table above is internally consistent (PF vs Bidir
-are both run in the same harness) but the absolute milliseconds cannot
-be directly compared with the NodeStore dashboard table earlier in this
-document. The per-route deltas (+/− %) remain meaningful.
-
-### Correctness: two reachability disagreements found
-
-`unit-tests.csv` exposes two scenarios where the bidir pre-check declares
-unreachable but `Pathfinder` reaches:
-
-| Scenario | PF | Bidir |
-|---|---|---|
-| Great Conch → McGrubor's Wood with inventory Dramen staff | reached, 3.07 ms | unreachable, 8.60 ms |
-| Banked Dramen staff should not leak to non-bank fairy-ring branch | reached, 12.4 ms | unreachable, 18.7 ms |
-
-Both involve fairy-ring transport with a Dramen-staff requirement. The
-reverse pre-check seeds from `config.getUsableTeleportsArray` (which only
-returns one-way teleports) and propagates backward through
-`revTransportIndex`. The fairy-ring transport's origin/destination pair
-is present in `revTransportIndex`, but the reverse frontier evidently
-isn't reaching the fairy-ring destination tile under
-`REVERSE_MAX = 500_000` for these specific scenarios — likely the
-walking expansion from the targets is fenced in by item-gated tiles the
-forward search treats differently.
-
-**This is a correctness regression** and must be resolved before the
-bidir wrapper can ship. Two options:
-
-1. **Loosen the pre-check failure mode**: when the reverse BFS exhausts
-   its budget without bridging, fall back to running the forward
-   Pathfinder anyway (treat "no bridge" as "unknown", not "unreachable").
-   This is the safest change — it eliminates false negatives at the cost
-   of running the full forward search on the slow unreachables.
-2. **Fix the reverse expansion** to honour the same transport-usability
-   rules as forward search. Higher complexity, higher risk.
-
-Option (1) is the recommended next step — see *Remaining Work*.
-
-### Reproducing
-
-(The `bidirAB` task was removed from `gradle/dashboards.gradle`; the
-harness survives on branch `perf/bidir-tests`, commit `27cdf13` —
-check that branch out to reproduce.)
-
-```bash
-# from shortest-path-tooling/
-cd /Users/frans/code/shortest-path
-git checkout perf/bidir-jps
-cd ../shortest-path-tooling
-mkdir -p /tmp/dashboard-runs/bidir
-for csv in routes.csv unit-tests.csv quetzal_whistle_routes.csv \
-           collision-map-issues.csv seasonal_briefcase_routes.csv \
-           clue_locations_full.csv; do
-  ../shortest-path/gradlew --quiet bidirAB \
-    -PdashboardDataset=/dashboard/$csv \
-    -Pbidir.outputDir=/tmp/dashboard-runs/bidir
-done
-python3 scripts/analyse_bidir_runs.py /tmp/dashboard-runs/bidir \
-    --label-baseline "Pathfinder (NodeStore)" \
-    --label-candidate "Bidir + NodeStore"
-```
-
-### Production readiness
-
-Currently **NOT** ready to ship as a drop-in wrapper because of the two
-false-negative scenarios. With the proposed Option (1) safety net, the
-pre-check becomes a pure performance optimisation with zero correctness
-risk and can replace the forward-only path.
-
 ## Optimisation Opportunities — Code Audit (2026-05-15)
 
-A full read of `Pathfinder.java`, `NodeStore.java`, and
-`BidirectionalPathfinder.java` against the use-case constraint (users
+A full read of `Pathfinder.java` and `NodeStore.java` on
+`perf/optimise-pathfinder` against the use-case constraint (users
 plan paths *infrequently* — one search at a time, latency-sensitive,
-never a hot loop). Findings are split per branch so that
-`perf/optimise-pathfinder` and `perf/bidir-jps` stay focused.
+never a hot loop).
 
 ### Findings on `perf/optimise-pathfinder`
 
@@ -556,131 +378,13 @@ short-path regression survives O-1, this is the next suspect.
 
 **Action:** read `VisitedTiles.java`, measure first-search GC behaviour.
 
-### Findings on `perf/bidir-jps`
-
-#### B-1 (HIGH IMPACT, HIGH VALUE — correctness blocker) — Pre-check returns false-negative on budget exhaustion
-
-`BidirectionalPathfinder.java:116`:
-```java
-if (complete && !walkingOverlap())
-{
-    // declare unreachable, return early without forward search
-    ...
-}
-```
-
-`reverseBFS()` returns `true` only when `frontier.isEmpty() && n <
-REVERSE_MAX`. If `n` hit `REVERSE_MAX` first, the reverse search was
-*budget-exhausted*, not *exhausted*. The current code treats both
-cases as "exhausted" and then relies on `walkingOverlap()` to catch
-mistakes. But `walkingOverlap` is capped at 100 000 tiles, so two
-budgets in series can both run out while the route remains reachable.
-
-This is the root cause of the two `unit-tests.csv` false negatives
-documented above.
-
-**Fix (Option 1 from the bidir section):** change the conditional so
-that when the reverse BFS hit `REVERSE_MAX`, the code falls through to
-the forward Pathfinder regardless of `walkingOverlap` result. Only
-declare unreachable when the reverse frontier *naturally exhausts*
-(no more reverse-walkable tiles) AND no walking overlap exists.
-
-Concretely:
-
-```java
-private boolean reverseExhaustedBudget;
-private boolean reverseBFS() {
-    ...
-    reverseExhaustedBudget = !(frontier.isEmpty()) && n >= REVERSE_MAX;
-    return frontier.isEmpty() && n < REVERSE_MAX;
-}
-...
-if (complete && !walkingOverlap() && !reverseExhaustedBudget)
-{
-    // genuine unreachable
-}
-```
-
-**Expected outcome:** eliminates the 2 false negatives; on those
-scenarios the forward search runs (small cost — both were sub-20 ms).
-
-**Risk:** essentially none — net behaviour becomes "pre-check is a hint,
-forward search is the source of truth".
-
-#### B-2 (HIGH IMPACT, LOW RISK) — Reverse transport-index built per search
-
-`BidirectionalPathfinder.java:50-90` (`buildDestinationSet` +
-`buildReverseTransportIndex`) iterate every transport × both bank states
-in the constructor. With ~2000 transports each, this is a few hundred
-KB of object churn and a couple of ms of work — **paid on every
-single search**, including the ones the pre-check would catch
-near-instantly.
-
-**Fix:** cache both structures keyed by `PathfinderConfig` identity (or
-a config version counter). Build once when config first appears, reuse
-across all searches until the config invalidates. `PathfinderConfig`
-already knows when usable teleports change.
-
-Even simpler: hold the cache in `PathfinderConfig` itself (e.g.
-`getOrComputeAllDestinations()`) so the bidir wrapper is just a reader.
-
-**Expected outcome:** 2–5 ms shaved off *every* bidir search. On short
-reachable routes this is a meaningful percentage.
-
-**Risk:** low — cache invalidation triggers already exist when
-teleport-set changes (varbits, region unlocks).
-
-#### B-3 (LOW IMPACT, LOW RISK) — `walkingOverlap` allocates per call
-
-`BidirectionalPathfinder.java:166-167` (`ArrayDeque` + `PrimitiveIntHashMap(1024)`).
-Field-promote and `clear()` per search instead. Trivial.
-
-#### B-4 (LOW IMPACT, MEDIUM RISK) — JPS uses Java recursion
-
-`jpsScan` and `jpsDiag` recurse straight-line until a forced neighbour
-or block. On long open corridors this can blow stack depth or thrash
-the JIT. Iterativise into a `while` loop with explicit `x += dx; y +=
-dy`. Performance gain is small (warm JIT inlines recursion anyway) but
-removes the StackOverflowError risk.
-
-#### B-5 (DESIGN, MEDIUM EFFORT) — `revTransportIndex` built via `HashMap` then copied
-
-`buildReverseTransportIndex` (lines 78-90) constructs a
-`java.util.HashMap<Integer, List<Transport>>` and then copies to a
-`PrimitiveIntHashMap`. Two allocations + autoboxing. Build into the
-primitive map directly. Only relevant if B-2 doesn't make this moot.
-
-#### B-6 (DESIGN, LARGE EFFORT) — Run pre-check and forward search concurrently
-
-Currently the pre-check runs first; only if it reports "may be
-reachable" does the forward search start. For unreachable routes this
-is great. For reachable routes, it's pure overhead.
-
-**Idea:** fork a background thread for the forward search the instant
-`run()` is called. Run the reverse pre-check on the calling thread. If
-the pre-check returns "unreachable" first, cancel the forward thread.
-Otherwise await the forward result.
-
-**Expected outcome:** reachable-route overhead → ~0; unreachable-route
-detection unchanged.
-
-**Risk:** introduces threading, must respect existing
-`Pathfinder.cancel()` semantics. Worth doing only after B-1 and B-2
-land and the design is stable.
-
 ### Recommended Sequence
 
 1. **`perf/optimise-pathfinder`**: land O-1 (NodeStore initial capacity
    to `1 << 12`). Re-run the dashboard A/B and check whether the
    short-path regressions disappear. If they do, that branch is
    ready to ship.
-2. **`perf/bidir-jps`**: land B-1 (correctness fallback). Re-run the
-   bidir A/B harness and confirm the 2 unit-tests disagreements are
-   gone.
-3. **`perf/bidir-jps`**: land B-2 (cache transport-index in
-   `PathfinderConfig`). Re-run the A/B and look for a couple of ms
-   shaved from every scenario.
-4. After 1–3 land and ship, revisit O-3, O-5, B-6 if there's appetite
+2. After that lands and ships, revisit O-3 and O-5 if there's appetite
    for deeper changes.
 
 ## O-1 — NodeStore initial capacity reduction (REVERTED, 2026-05-15)
@@ -714,65 +418,6 @@ no reallocations for any realistic search.
 
 Commit `bb8c9732` is preserved on history for reference; `ce45b0f7` is
 the revert that returns `perf/optimise-pathfinder` to `1<<20`.
-
-## B-1 — Bidir `walkingOverlap` budget-exhaustion fix (committed, 2026-05-15)
-
-**Bug:** `walkingOverlap()` (forward walking-BFS from `start` capped at
-`OVERLAP_CAP=100_000` nodes, looking for any tile already visited by the
-reverse pre-check) returned `false` in two indistinguishable cases:
-
-1. The frontier emptied without finding any overlap (genuine "no
-   connectivity between start and reverse-visited set" — target really is
-   unreachable).
-2. The frontier hit `OVERLAP_CAP` without finding overlap (budget
-   exhausted; overlap is unknown).
-
-The caller treated both as "unreachable", so any scenario where the
-forward walking BFS from `start` had >100K reachable tiles before bumping
-into the reverse-visited set was incorrectly declared unreachable.
-
-**Fix (commit `a129cba7` on `perf/bidir-jps`):** Renamed to
-`walkingOverlapExhausted()`. Returns `true` only when `ff.isEmpty()` (the
-frontier actually drained) **and** no overlap was found. Budget exhaustion
-returns `false`, falling through to the forward `Pathfinder` — which
-correctly handles the dense-walking case.
-
-### Combined A/B on `perf/bidir-jps` after B-1
-
-`/tmp/dashboard-runs/bidir-b1-ux-report.md` (597 scenarios — the bidir A/B
-harness uses fewer scenarios than the dashboard because the minimal Mockito
-Client gates some clue locations):
-
-| Bucket | Metric | Pathfinder (NS) | Bidir + B-1 | Delta |
-|---|---|---:|---:|---:|
-| Reachable (464) | Median | 68.4 ms | 68.5 ms | +5.9% |
-| Reachable (464) | p95 | 260 ms | 267 ms | +2.6% |
-| Reachable (464) | Max | 626 ms | 533 ms | **−14.9%** |
-| Unreachable (133) | Median | 253 ms | 266 ms | +5.0% |
-| Unreachable (133) | Max | 461 ms | 471 ms | +2.1% |
-
-**Reachability disagreements (down from 2 to 1):**
-
-| Scenario | PF | Bidir+B1 |
-|---|---|---|
-| Great Conch → McGrubor's Wood with inventory Dramen staff | reached, 2.83 ms | unreachable, 8.97 ms |
-
-The second disagreement ("Banked Dramen staff should not leak to non-bank
-fairy-ring branch") is fixed by B-1. The remaining disagreement is a
-fairy-ring inventory-gated case that the reverse expansion can't bridge
-within `REVERSE_MAX = 500_000`. Resolving it likely requires teaching the
-reverse expansion to mirror the forward search's bank-state branching
-(more invasive) or further loosening the pre-check failure mode
-(safer — return "unknown" rather than "unreachable" when the reverse
-budget is exhausted in any way).
-
-### Production readiness
-
-Still **NOT** ready to ship — one false negative remains. The fix is
-small and well-scoped; recommend resolving the remaining Dramen-staff
-case with the same "treat budget exhaustion as unknown" pattern that B-1
-applied to `walkingOverlap`, this time applied to `reverseBFS`'s
-`REVERSE_MAX` exhaustion path.
 
 ## Region Portal Pre-compute (perf/region-portals) — NEGATIVE RESULT, 2026-05-15
 
@@ -862,8 +507,7 @@ reference; **the code is not viable as written**.
 
 ```bash
 git -C ../shortest-path checkout perf/region-portals
-cd /Users/frans/code/shortest-path-tooling
-# (move bidir-only tooling tests to _skip/ as they reference BidirectionalPathfinder)
+cd ../shortest-path-tooling
 mkdir -p /tmp/dashboard-runs/region-portals
 for ds in routes unit-tests quetzal-whistle-routes collision-map-issues \
           seasonal-briefcase-routes clue-locations-full; do
