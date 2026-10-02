@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker><marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker><marker id="arrow-dark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2328"/></marker><marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#59636e"/></marker></defs>
+<rect x="0.5" y="0.5" width="499" height="499" rx="8" fill="#ffffff" stroke="#d1d9e0"/>
+<text x="24" y="32" font-size="15" fill="#1f2328" text-anchor="start" font-weight="600" >The 16 headings</text>
+<text x="24" y="52" font-size="12" fill="#59636e" text-anchor="start" >Heading i has orientation i × 128 (2048 per turn, 22.5° apart).</text>
+<text x="24" y="69" font-size="12" fill="#59636e" text-anchor="start" >0 is south; the index goes up clockwise on the map: west 4, north 8, east 12.</text>
+<circle cx="250" cy="290" r="140" fill="none" stroke="#d9e4ed" stroke-width="1" />
+<line x1="250" y1="302" x2="250" y2="422" stroke="#1f2328" stroke-width="2.2" marker-end="url(#arrow-dark)"/>
+<text x="250" y="459" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600" >S</text>
+<text x="250" y="474" font-size="11" fill="#59636e" text-anchor="middle" >0</text>
+<line x1="245.41" y1="301.09" x2="203.31" y2="402.71" stroke="#59636e" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+<text x="184.94" y="446.06" font-size="12" fill="#59636e" text-anchor="middle" >SSW</text>
+<text x="184.94" y="461.06" font-size="11" fill="#59636e" text-anchor="middle" >1</text>
+<line x1="241.51" y1="298.49" x2="163.73" y2="376.27" stroke="#0969da" stroke-width="1.7" marker-end="url(#arrow-blue)"/>
+<text x="129.79" y="409.21" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >SW</text>
+<text x="129.79" y="424.21" font-size="11" fill="#59636e" text-anchor="middle" >2</text>
+<line x1="238.91" y1="294.59" x2="137.29" y2="336.69" stroke="#59636e" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+<text x="92.94" y="354.06" font-size="12" fill="#59636e" text-anchor="middle" >WSW</text>
+<text x="92.94" y="369.06" font-size="11" fill="#59636e" text-anchor="middle" >3</text>
+<line x1="238" y1="290" x2="118" y2="290" stroke="#1f2328" stroke-width="2.2" marker-end="url(#arrow-dark)"/>
+<text x="80" y="289" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600" >W</text>
+<text x="80" y="304" font-size="11" fill="#59636e" text-anchor="middle" >4</text>
+<line x1="238.91" y1="285.41" x2="137.29" y2="243.31" stroke="#59636e" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+<text x="92.94" y="223.94" font-size="12" fill="#59636e" text-anchor="middle" >WNW</text>
+<text x="92.94" y="238.94" font-size="11" fill="#59636e" text-anchor="middle" >5</text>
+<line x1="241.51" y1="281.51" x2="163.73" y2="203.73" stroke="#0969da" stroke-width="1.7" marker-end="url(#arrow-blue)"/>
+<text x="129.79" y="168.79" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >NW</text>
+<text x="129.79" y="183.79" font-size="11" fill="#59636e" text-anchor="middle" >6</text>
+<line x1="245.41" y1="278.91" x2="203.31" y2="177.29" stroke="#59636e" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+<text x="184.94" y="131.94" font-size="12" fill="#59636e" text-anchor="middle" >NNW</text>
+<text x="184.94" y="146.94" font-size="11" fill="#59636e" text-anchor="middle" >7</text>
+<line x1="250" y1="278" x2="250" y2="158" stroke="#1f2328" stroke-width="2.2" marker-end="url(#arrow-dark)"/>
+<text x="250" y="119" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600" >N</text>
+<text x="250" y="134" font-size="11" fill="#59636e" text-anchor="middle" >8</text>
+<line x1="254.59" y1="278.91" x2="296.69" y2="177.29" stroke="#59636e" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+<text x="315.06" y="131.94" font-size="12" fill="#59636e" text-anchor="middle" >NNE</text>
+<text x="315.06" y="146.94" font-size="11" fill="#59636e" text-anchor="middle" >9</text>
+<line x1="258.49" y1="281.51" x2="336.27" y2="203.73" stroke="#0969da" stroke-width="1.7" marker-end="url(#arrow-blue)"/>
+<text x="370.21" y="168.79" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >NE</text>
+<text x="370.21" y="183.79" font-size="11" fill="#59636e" text-anchor="middle" >10</text>
+<line x1="261.09" y1="285.41" x2="362.71" y2="243.31" stroke="#59636e" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+<text x="407.06" y="223.94" font-size="12" fill="#59636e" text-anchor="middle" >ENE</text>
+<text x="407.06" y="238.94" font-size="11" fill="#59636e" text-anchor="middle" >11</text>
+<line x1="262" y1="290" x2="382" y2="290" stroke="#1f2328" stroke-width="2.2" marker-end="url(#arrow-dark)"/>
+<text x="420" y="289" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600" >E</text>
+<text x="420" y="304" font-size="11" fill="#59636e" text-anchor="middle" >12</text>
+<line x1="261.09" y1="294.59" x2="362.71" y2="336.69" stroke="#59636e" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+<text x="407.06" y="354.06" font-size="12" fill="#59636e" text-anchor="middle" >ESE</text>
+<text x="407.06" y="369.06" font-size="11" fill="#59636e" text-anchor="middle" >13</text>
+<line x1="258.49" y1="298.49" x2="336.27" y2="376.27" stroke="#0969da" stroke-width="1.7" marker-end="url(#arrow-blue)"/>
+<text x="370.21" y="409.21" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >SE</text>
+<text x="370.21" y="424.21" font-size="11" fill="#59636e" text-anchor="middle" >14</text>
+<line x1="254.59" y1="301.09" x2="296.69" y2="402.71" stroke="#59636e" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+<text x="315.06" y="446.06" font-size="12" fill="#59636e" text-anchor="middle" >SSE</text>
+<text x="315.06" y="461.06" font-size="11" fill="#59636e" text-anchor="middle" >15</text>
+<circle cx="250" cy="290" r="5" fill="#1f2328" stroke="none" stroke-width="1" />
+<path d="M250,220 A70,70 0 0 1 276.79,225.33" fill="none" stroke="#bc4c00" stroke-width="1.5" />
+<text x="280" y="214" font-size="11" fill="#bc4c00" text-anchor="start" >22.5°</text>
+</svg>

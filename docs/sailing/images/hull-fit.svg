@@ -1,0 +1,311 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="590" viewBox="0 0 760 590" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker><marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker><marker id="arrow-dark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2328"/></marker><marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#59636e"/></marker></defs>
+<rect x="0.5" y="0.5" width="759" height="589" rx="8" fill="#ffffff" stroke="#d1d9e0"/>
+<text x="24" y="32" font-size="15" fill="#1f2328" text-anchor="start" font-weight="600" >The game checks the hull exactly where the boat sits</text>
+<text x="24" y="52" font-size="12" fill="#59636e" text-anchor="start" >Touching a blocked tile is fine; overlapping one stops the boat. A gap exactly as wide as the boat</text>
+<text x="24" y="69" font-size="12" fill="#59636e" text-anchor="start" >only fits from one sub-tile across it. Blocked tiles are from the game's collision data.</text>
+<text x="24" y="110" font-size="12.5" fill="#1f2328" text-anchor="start" font-weight="600" >Sloop (3 wide) heading north through the gap south of Pest Control</text>
+<text x="24" y="127" font-size="11.5" fill="#59636e" text-anchor="start" >Rocks at x 2630 and 2634 leave 3 tiles of water on row 2548. Sloop on tile x 2632, one x sub-tile per panel.</text>
+<rect x="32" y="144" width="153" height="119" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="32" y="246" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="49" y="246" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="151" y="229" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="168" y="229" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="49" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="66" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="151" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="168" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="49" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="66" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="134" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<line x1="32" y1="144" x2="32" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="49" y1="144" x2="49" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="66" y1="144" x2="66" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="83" y1="144" x2="83" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="100" y1="144" x2="100" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="117" y1="144" x2="117" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="134" y1="144" x2="134" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="151" y1="144" x2="151" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="168" y1="144" x2="168" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="185" y1="144" x2="185" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="263" x2="185" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="246" x2="185" y2="246" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="229" x2="185" y2="229" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="212" x2="185" y2="212" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="195" x2="185" y2="195" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="178" x2="185" y2="178" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="161" x2="185" y2="161" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="144" x2="185" y2="144" stroke="#9db1c2" stroke-width="0.9" />
+<rect x="74.5" y="144" width="51" height="119" fill="rgba(9,105,218,0.14)" stroke="#0969da" stroke-width="1.8" />
+<rect x="74.5" y="212" width="8.5" height="17" fill="rgba(207,34,46,0.75)" stroke="none" stroke-width="1" />
+<rect x="74.5" y="195" width="8.5" height="17" fill="rgba(207,34,46,0.75)" stroke="none" stroke-width="1" />
+<circle cx="100" cy="237.5" r="3.6" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="108.5" y="281" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >x = 0  (sub-tile 0)</text>
+<text x="108.5" y="298" font-size="11.5" fill="#cf222e" text-anchor="middle" >½ tile into a blocked tile</text>
+<rect x="215" y="144" width="153" height="119" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="215" y="246" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="232" y="246" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="334" y="229" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="351" y="229" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="232" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="249" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="334" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="351" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="232" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="249" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="317" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<line x1="215" y1="144" x2="215" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="232" y1="144" x2="232" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="249" y1="144" x2="249" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="266" y1="144" x2="266" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="283" y1="144" x2="283" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="300" y1="144" x2="300" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="317" y1="144" x2="317" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="334" y1="144" x2="334" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="351" y1="144" x2="351" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="368" y1="144" x2="368" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="263" x2="368" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="246" x2="368" y2="246" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="229" x2="368" y2="229" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="212" x2="368" y2="212" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="195" x2="368" y2="195" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="178" x2="368" y2="178" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="161" x2="368" y2="161" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="144" x2="368" y2="144" stroke="#9db1c2" stroke-width="0.9" />
+<rect x="261.75" y="144" width="51" height="119" fill="rgba(9,105,218,0.14)" stroke="#0969da" stroke-width="1.8" />
+<rect x="261.75" y="212" width="4.25" height="17" fill="rgba(207,34,46,0.75)" stroke="none" stroke-width="1" />
+<rect x="261.75" y="195" width="4.25" height="17" fill="rgba(207,34,46,0.75)" stroke="none" stroke-width="1" />
+<circle cx="287.25" cy="237.5" r="3.6" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="291.5" y="281" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >x = 32  (sub-tile 1)</text>
+<text x="291.5" y="298" font-size="11.5" fill="#cf222e" text-anchor="middle" >¼ tile into a blocked tile</text>
+<rect x="398" y="144" width="153" height="119" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="398" y="246" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="415" y="246" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="517" y="229" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="534" y="229" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="415" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="432" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="517" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="534" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="415" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="432" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="500" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<line x1="398" y1="144" x2="398" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="415" y1="144" x2="415" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="432" y1="144" x2="432" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="449" y1="144" x2="449" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="466" y1="144" x2="466" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="483" y1="144" x2="483" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="500" y1="144" x2="500" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="517" y1="144" x2="517" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="534" y1="144" x2="534" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="551" y1="144" x2="551" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="263" x2="551" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="246" x2="551" y2="246" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="229" x2="551" y2="229" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="212" x2="551" y2="212" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="195" x2="551" y2="195" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="178" x2="551" y2="178" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="161" x2="551" y2="161" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="144" x2="551" y2="144" stroke="#9db1c2" stroke-width="0.9" />
+<rect x="449" y="144" width="51" height="119" fill="rgba(26,127,55,0.16)" stroke="#1a7f37" stroke-width="1.8" />
+<circle cx="474.5" cy="237.5" r="3.6" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="474.5" y="281" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >x = 64  (sub-tile 2)</text>
+<text x="474.5" y="298" font-size="11.5" fill="#1a7f37" text-anchor="middle" font-weight="600" >fits, touching both sides</text>
+<rect x="581" y="144" width="153" height="119" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="581" y="246" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="598" y="246" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="700" y="229" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="717" y="229" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="598" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="615" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="700" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="717" y="212" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="598" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="615" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="683" y="195" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<line x1="581" y1="144" x2="581" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="598" y1="144" x2="598" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="615" y1="144" x2="615" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="632" y1="144" x2="632" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="649" y1="144" x2="649" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="666" y1="144" x2="666" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="683" y1="144" x2="683" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="700" y1="144" x2="700" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="717" y1="144" x2="717" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="734" y1="144" x2="734" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="263" x2="734" y2="263" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="246" x2="734" y2="246" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="229" x2="734" y2="229" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="212" x2="734" y2="212" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="195" x2="734" y2="195" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="178" x2="734" y2="178" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="161" x2="734" y2="161" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="144" x2="734" y2="144" stroke="#9db1c2" stroke-width="0.9" />
+<rect x="636.25" y="144" width="51" height="119" fill="rgba(9,105,218,0.14)" stroke="#0969da" stroke-width="1.8" />
+<rect x="683" y="195" width="4.25" height="17" fill="rgba(207,34,46,0.75)" stroke="none" stroke-width="1" />
+<circle cx="661.75" cy="237.5" r="3.6" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="657.5" y="281" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >x = 96  (sub-tile 3)</text>
+<text x="657.5" y="298" font-size="11.5" fill="#cf222e" text-anchor="middle" >¼ tile into a blocked tile</text>
+<text x="24" y="360" font-size="12.5" fill="#1f2328" text-anchor="start" font-weight="600" >Skiff (2 wide) heading east past the Agility stepping stone in the Lum channel</text>
+<text x="24" y="377" font-size="11.5" fill="#59636e" text-anchor="start" >Stone at (3214, 3135), bank on row 3132: 2 tiles of water between. Skiff on row 3134, one y sub-tile per panel.</text>
+<rect x="32" y="394" width="153" height="119" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="32" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="49" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="117" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="134" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="151" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="168" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="32" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="49" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="66" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="83" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="100" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="117" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="134" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="83" y="428" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="32" y="394" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="49" y="394" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<line x1="32" y1="394" x2="32" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="49" y1="394" x2="49" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="66" y1="394" x2="66" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="83" y1="394" x2="83" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="100" y1="394" x2="100" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="117" y1="394" x2="117" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="134" y1="394" x2="134" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="151" y1="394" x2="151" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="168" y1="394" x2="168" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="185" y1="394" x2="185" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="513" x2="185" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="496" x2="185" y2="496" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="479" x2="185" y2="479" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="462" x2="185" y2="462" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="445" x2="185" y2="445" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="428" x2="185" y2="428" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="411" x2="185" y2="411" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="32" y1="394" x2="185" y2="394" stroke="#9db1c2" stroke-width="0.9" />
+<rect x="49" y="445" width="85" height="34" fill="rgba(26,127,55,0.16)" stroke="#1a7f37" stroke-width="1.8" />
+<circle cx="91.5" cy="462" r="3.6" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="108.5" y="531" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >y = 0  (sub-tile 0)</text>
+<text x="108.5" y="548" font-size="11.5" fill="#1a7f37" text-anchor="middle" font-weight="600" >fits, touching both sides</text>
+<rect x="215" y="394" width="153" height="119" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="215" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="232" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="300" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="317" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="334" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="351" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="215" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="232" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="249" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="266" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="283" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="300" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="317" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="266" y="428" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="215" y="394" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="232" y="394" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<line x1="215" y1="394" x2="215" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="232" y1="394" x2="232" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="249" y1="394" x2="249" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="266" y1="394" x2="266" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="283" y1="394" x2="283" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="300" y1="394" x2="300" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="317" y1="394" x2="317" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="334" y1="394" x2="334" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="351" y1="394" x2="351" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="368" y1="394" x2="368" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="513" x2="368" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="496" x2="368" y2="496" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="479" x2="368" y2="479" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="462" x2="368" y2="462" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="445" x2="368" y2="445" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="428" x2="368" y2="428" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="411" x2="368" y2="411" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="215" y1="394" x2="368" y2="394" stroke="#9db1c2" stroke-width="0.9" />
+<rect x="232" y="440.75" width="85" height="34" fill="rgba(9,105,218,0.14)" stroke="#0969da" stroke-width="1.8" />
+<rect x="266" y="440.75" width="17" height="4.25" fill="rgba(207,34,46,0.75)" stroke="none" stroke-width="1" />
+<circle cx="274.5" cy="457.75" r="3.6" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="291.5" y="531" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >y = 32  (sub-tile 1)</text>
+<text x="291.5" y="548" font-size="11.5" fill="#cf222e" text-anchor="middle" >¼ tile into a blocked tile</text>
+<rect x="398" y="394" width="153" height="119" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="398" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="415" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="483" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="500" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="517" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="534" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="398" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="415" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="432" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="449" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="466" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="483" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="500" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="449" y="428" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="398" y="394" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="415" y="394" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<line x1="398" y1="394" x2="398" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="415" y1="394" x2="415" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="432" y1="394" x2="432" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="449" y1="394" x2="449" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="466" y1="394" x2="466" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="483" y1="394" x2="483" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="500" y1="394" x2="500" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="517" y1="394" x2="517" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="534" y1="394" x2="534" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="551" y1="394" x2="551" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="513" x2="551" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="496" x2="551" y2="496" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="479" x2="551" y2="479" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="462" x2="551" y2="462" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="445" x2="551" y2="445" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="428" x2="551" y2="428" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="411" x2="551" y2="411" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="398" y1="394" x2="551" y2="394" stroke="#9db1c2" stroke-width="0.9" />
+<rect x="415" y="436.5" width="85" height="34" fill="rgba(9,105,218,0.14)" stroke="#0969da" stroke-width="1.8" />
+<rect x="449" y="436.5" width="17" height="8.5" fill="rgba(207,34,46,0.75)" stroke="none" stroke-width="1" />
+<circle cx="457.5" cy="453.5" r="3.6" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="474.5" y="531" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >y = 64  (sub-tile 2)</text>
+<text x="474.5" y="548" font-size="11.5" fill="#cf222e" text-anchor="middle" >½ tile into a blocked tile</text>
+<rect x="581" y="394" width="153" height="119" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="581" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="598" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="666" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="683" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="700" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="717" y="496" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="581" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="598" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="615" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="632" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="649" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="666" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="683" y="479" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="632" y="428" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="581" y="394" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<rect x="598" y="394" width="17" height="17" fill="#b4aa9b" stroke="#857b6d" stroke-width="0.8" />
+<line x1="581" y1="394" x2="581" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="598" y1="394" x2="598" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="615" y1="394" x2="615" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="632" y1="394" x2="632" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="649" y1="394" x2="649" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="666" y1="394" x2="666" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="683" y1="394" x2="683" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="700" y1="394" x2="700" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="717" y1="394" x2="717" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="734" y1="394" x2="734" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="513" x2="734" y2="513" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="496" x2="734" y2="496" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="479" x2="734" y2="479" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="462" x2="734" y2="462" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="445" x2="734" y2="445" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="428" x2="734" y2="428" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="411" x2="734" y2="411" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="581" y1="394" x2="734" y2="394" stroke="#9db1c2" stroke-width="0.9" />
+<rect x="598" y="432.25" width="85" height="34" fill="rgba(9,105,218,0.14)" stroke="#0969da" stroke-width="1.8" />
+<rect x="632" y="432.25" width="17" height="12.75" fill="rgba(207,34,46,0.75)" stroke="none" stroke-width="1" />
+<circle cx="640.5" cy="449.25" r="3.6" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="657.5" y="531" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600" >y = 96  (sub-tile 3)</text>
+<text x="657.5" y="548" font-size="11.5" fill="#cf222e" text-anchor="middle" >¾ tile into a blocked tile</text>
+</svg>

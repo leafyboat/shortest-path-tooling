@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="520" viewBox="0 0 700 520" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker><marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker><marker id="arrow-dark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2328"/></marker><marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#59636e"/></marker></defs>
+<rect x="0.5" y="0.5" width="699" height="519" rx="8" fill="#ffffff" stroke="#d1d9e0"/>
+<text x="24" y="32" font-size="15" fill="#1f2328" text-anchor="start" font-weight="600" >Holding a heading brings the boat back to the same sub-tile</text>
+<text x="24" y="52" font-size="12" fill="#59636e" text-anchor="start" >Speed 2.0. Each label is the boat's sub-tile after that tick.</text>
+<rect x="70" y="86" width="176" height="352" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="70" y="394" width="44" height="44" fill="#eaeef2" stroke="none" stroke-width="1" />
+<rect x="202" y="86" width="44" height="44" fill="#dafbe1" stroke="none" stroke-width="1" />
+<line x1="81" y1="86" x2="81" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="92" y1="86" x2="92" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="103" y1="86" x2="103" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="125" y1="86" x2="125" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="136" y1="86" x2="136" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="147" y1="86" x2="147" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="169" y1="86" x2="169" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="180" y1="86" x2="180" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="191" y1="86" x2="191" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="213" y1="86" x2="213" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="224" y1="86" x2="224" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="235" y1="86" x2="235" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="427" x2="246" y2="427" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="416" x2="246" y2="416" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="405" x2="246" y2="405" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="383" x2="246" y2="383" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="372" x2="246" y2="372" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="361" x2="246" y2="361" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="339" x2="246" y2="339" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="328" x2="246" y2="328" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="317" x2="246" y2="317" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="295" x2="246" y2="295" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="284" x2="246" y2="284" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="273" x2="246" y2="273" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="251" x2="246" y2="251" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="240" x2="246" y2="240" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="229" x2="246" y2="229" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="207" x2="246" y2="207" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="196" x2="246" y2="196" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="185" x2="246" y2="185" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="163" x2="246" y2="163" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="152" x2="246" y2="152" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="141" x2="246" y2="141" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="119" x2="246" y2="119" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="108" x2="246" y2="108" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="97" x2="246" y2="97" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="70" y1="86" x2="70" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="114" y1="86" x2="114" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="158" y1="86" x2="158" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="202" y1="86" x2="202" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="246" y1="86" x2="246" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="438" x2="246" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="394" x2="246" y2="394" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="350" x2="246" y2="350" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="306" x2="246" y2="306" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="262" x2="246" y2="262" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="218" x2="246" y2="218" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="174" x2="246" y2="174" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="130" x2="246" y2="130" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="70" y1="86" x2="246" y2="86" stroke="#9db1c2" stroke-width="0.9" />
+<polyline points="103,416 136,339 169,262 202,185 235,108" fill="none" stroke="#0969da" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="103" cy="416" r="5" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="112" y="420" font-size="11" fill="#1f2328" text-anchor="start" font-weight="600" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >t0  (96, 64)</text>
+<circle cx="136" cy="339" r="4.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="145" y="343" font-size="11" fill="#1f2328" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >t1  (64, 32)</text>
+<circle cx="169" cy="262" r="4.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="178" y="266" font-size="11" fill="#1f2328" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >t2  (32, 0)</text>
+<circle cx="202" cy="185" r="4.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="193" y="189" font-size="11" fill="#1f2328" text-anchor="end" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >t3  (0, 96)</text>
+<circle cx="235" cy="108" r="5" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="226" y="112" font-size="11" fill="#1f2328" text-anchor="end" font-weight="600" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >t4  (96, 64)</text>
+<text x="158" y="460" font-size="12.5" fill="#1f2328" text-anchor="middle" font-weight="600" >NNE: (3, 7) quarter tiles a tick</text>
+<text x="158" y="476" font-size="12" fill="#59636e" text-anchor="middle" >4 ticks: 3 tiles east, 7 north</text>
+<rect x="390" y="262" width="176" height="176" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="390" y="394" width="44" height="44" fill="#eaeef2" stroke="none" stroke-width="1" />
+<rect x="522" y="262" width="44" height="44" fill="#dafbe1" stroke="none" stroke-width="1" />
+<line x1="401" y1="262" x2="401" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="412" y1="262" x2="412" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="423" y1="262" x2="423" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="445" y1="262" x2="445" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="456" y1="262" x2="456" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="467" y1="262" x2="467" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="489" y1="262" x2="489" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="500" y1="262" x2="500" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="511" y1="262" x2="511" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="533" y1="262" x2="533" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="544" y1="262" x2="544" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="555" y1="262" x2="555" y2="438" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="427" x2="566" y2="427" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="416" x2="566" y2="416" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="405" x2="566" y2="405" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="383" x2="566" y2="383" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="372" x2="566" y2="372" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="361" x2="566" y2="361" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="339" x2="566" y2="339" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="328" x2="566" y2="328" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="317" x2="566" y2="317" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="295" x2="566" y2="295" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="284" x2="566" y2="284" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="273" x2="566" y2="273" stroke="#d9e4ed" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390" y1="262" x2="390" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="434" y1="262" x2="434" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="478" y1="262" x2="478" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="522" y1="262" x2="522" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="566" y1="262" x2="566" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="390" y1="438" x2="566" y2="438" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="390" y1="394" x2="566" y2="394" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="390" y1="350" x2="566" y2="350" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="390" y1="306" x2="566" y2="306" stroke="#9db1c2" stroke-width="0.9" />
+<line x1="390" y1="262" x2="566" y2="262" stroke="#9db1c2" stroke-width="0.9" />
+<polyline points="412,427 478,361 544,295" fill="none" stroke="#0969da" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="412" cy="427" r="5" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="421" y="431" font-size="11" fill="#1f2328" text-anchor="start" font-weight="600" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >t0  (64, 32)</text>
+<circle cx="478" cy="361" r="4.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="487" y="365" font-size="11" fill="#1f2328" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >t1  (0, 96)</text>
+<circle cx="544" cy="295" r="5" fill="#1f2328" stroke="#ffffff" stroke-width="1" />
+<text x="535" y="299" font-size="11" fill="#1f2328" text-anchor="end" font-weight="600" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >t2  (64, 32)</text>
+<text x="478" y="460" font-size="12.5" fill="#1f2328" text-anchor="middle" font-weight="600" >NE: (6, 6) quarter tiles a tick</text>
+<text x="478" y="476" font-size="12" fill="#59636e" text-anchor="middle" >2 ticks: 3 tiles east, 3 north</text>
+<rect x="390" y="129" width="14" height="14" fill="#eaeef2" stroke="#9db1c2" stroke-width="0.8" />
+<text x="412" y="141" font-size="11.5" fill="#1f2328" text-anchor="start" >start tile</text>
+<rect x="390" y="151" width="14" height="14" fill="#dafbe1" stroke="#9db1c2" stroke-width="0.8" />
+<text x="412" y="163" font-size="11.5" fill="#1f2328" text-anchor="start" >tile reached on the same sub-tile</text>
+<text x="390" y="192" font-size="11.5" fill="#59636e" text-anchor="start" >Heading N at speed 2.0 moves 2 whole tiles a tick,</text>
+<text x="390" y="208" font-size="11.5" fill="#59636e" text-anchor="start" >so its sub-tile never changes.</text>
+</svg>

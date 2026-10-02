@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="530" viewBox="0 0 700 530" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker><marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker><marker id="arrow-dark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2328"/></marker><marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#59636e"/></marker></defs>
+<rect x="0.5" y="0.5" width="699" height="529" rx="8" fill="#ffffff" stroke="#d1d9e0"/>
+<text x="24" y="32" font-size="15" fill="#1f2328" text-anchor="start" font-weight="600" >Sub-tiles: where a boat can be within its tile</text>
+<text x="24" y="52" font-size="12" fill="#59636e" text-anchor="start" >A boat's position is always a multiple of 32 local units (a quarter tile) on each axis,</text>
+<text x="24" y="69" font-size="12" fill="#59636e" text-anchor="start" >so it is always on one of 16 points in its tile.</text>
+<rect x="72" y="82" width="368" height="368" fill="#fafcfe" stroke="none" stroke-width="1" />
+<rect x="112" y="122" width="288" height="288" fill="#f3f8fc" stroke="none" stroke-width="1" />
+<rect x="256" y="122" width="144" height="144" fill="#e3effa" stroke="none" stroke-width="1" />
+<text x="264" y="138" font-size="11" fill="#59636e" text-anchor="start" >north-east</text>
+<text x="264" y="152" font-size="11" fill="#59636e" text-anchor="start" >quadrant</text>
+<line x1="184" y1="122" x2="184" y2="410" stroke="#d9e4ed" stroke-width="1" stroke-dasharray="3 3"/>
+<line x1="112" y1="338" x2="400" y2="338" stroke="#d9e4ed" stroke-width="1" stroke-dasharray="3 3"/>
+<line x1="256" y1="122" x2="256" y2="410" stroke="#bccbd8" stroke-width="1" stroke-dasharray="5 4"/>
+<line x1="112" y1="266" x2="400" y2="266" stroke="#bccbd8" stroke-width="1" stroke-dasharray="5 4"/>
+<line x1="328" y1="122" x2="328" y2="410" stroke="#d9e4ed" stroke-width="1" stroke-dasharray="3 3"/>
+<line x1="112" y1="194" x2="400" y2="194" stroke="#d9e4ed" stroke-width="1" stroke-dasharray="3 3"/>
+<line x1="112" y1="82" x2="112" y2="450" stroke="#9db1c2" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="72" y1="410" x2="440" y2="410" stroke="#9db1c2" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="400" y1="82" x2="400" y2="450" stroke="#9db1c2" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="72" y1="122" x2="440" y2="122" stroke="#9db1c2" stroke-width="1" stroke-dasharray="2 3"/>
+<rect x="112" y="122" width="288" height="288" fill="none" stroke="#1f2328" stroke-width="1.6" />
+<text x="256" y="98" font-size="10.5" fill="#8c959f" text-anchor="middle" >tile to the north</text>
+<text x="426" y="266" font-size="10.5" fill="#8c959f" text-anchor="middle" transform="rotate(90 426 266)">tile to the east</text>
+<circle cx="400" cy="410" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="112" cy="122" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="400" cy="338" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="184" cy="122" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="400" cy="266" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="256" cy="122" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="400" cy="194" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="328" cy="122" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="400" cy="122" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="400" cy="122" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<circle cx="112" cy="410" r="6.2" fill="#0969da" stroke="#1f2328" stroke-width="1.6" />
+<text x="119" y="403" font-size="10.5" fill="#1f2328" text-anchor="start" font-weight="600" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(0, 0)</text>
+<circle cx="184" cy="410" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="191" y="403" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(32, 0)</text>
+<circle cx="256" cy="410" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="263" y="403" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(64, 0)</text>
+<circle cx="328" cy="410" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="335" y="403" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(96, 0)</text>
+<circle cx="112" cy="338" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="119" y="331" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(0, 32)</text>
+<circle cx="184" cy="338" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="191" y="331" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(32, 32)</text>
+<circle cx="256" cy="338" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="263" y="331" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(64, 32)</text>
+<circle cx="328" cy="338" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="335" y="331" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(96, 32)</text>
+<circle cx="112" cy="266" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="119" y="259" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(0, 64)</text>
+<circle cx="184" cy="266" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="191" y="259" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(32, 64)</text>
+<circle cx="256" cy="266" r="6.2" fill="#0969da" stroke="#1f2328" stroke-width="1.6" />
+<text x="263" y="259" font-size="10.5" fill="#1f2328" text-anchor="start" font-weight="600" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(64, 64)</text>
+<circle cx="328" cy="266" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="335" y="259" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(96, 64)</text>
+<circle cx="112" cy="194" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="119" y="187" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(0, 96)</text>
+<circle cx="184" cy="194" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="191" y="187" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(32, 96)</text>
+<circle cx="256" cy="194" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="263" y="187" font-size="10.5" fill="#59636e" text-anchor="start" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(64, 96)</text>
+<circle cx="328" cy="194" r="6.2" fill="#0969da" stroke="#1f2328" stroke-width="1.6" />
+<text x="335" y="187" font-size="10.5" fill="#1f2328" text-anchor="start" font-weight="600" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke" >(96, 96)</text>
+<text x="112" y="468" font-size="11.5" fill="#1f2328" text-anchor="middle" >0</text>
+<text x="112" y="483" font-size="10.5" fill="#59636e" text-anchor="middle" >(0)</text>
+<text x="62" y="414" font-size="11.5" fill="#1f2328" text-anchor="end" >0  (0)</text>
+<text x="184" y="468" font-size="11.5" fill="#1f2328" text-anchor="middle" >32</text>
+<text x="184" y="483" font-size="10.5" fill="#59636e" text-anchor="middle" >(1)</text>
+<text x="62" y="342" font-size="11.5" fill="#1f2328" text-anchor="end" >32  (1)</text>
+<text x="256" y="468" font-size="11.5" fill="#1f2328" text-anchor="middle" >64</text>
+<text x="256" y="483" font-size="10.5" fill="#59636e" text-anchor="middle" >(2)</text>
+<text x="62" y="270" font-size="11.5" fill="#1f2328" text-anchor="end" >64  (2)</text>
+<text x="328" y="468" font-size="11.5" fill="#1f2328" text-anchor="middle" >96</text>
+<text x="328" y="483" font-size="10.5" fill="#59636e" text-anchor="middle" >(3)</text>
+<text x="62" y="198" font-size="11.5" fill="#1f2328" text-anchor="end" >96  (3)</text>
+<text x="400" y="468" font-size="11.5" fill="#59636e" text-anchor="middle" >128</text>
+<text x="400" y="483" font-size="10.5" fill="#59636e" text-anchor="middle" ></text>
+<text x="62" y="126" font-size="11.5" fill="#59636e" text-anchor="end" >128</text>
+<text x="256" y="502" font-size="11" fill="#59636e" text-anchor="middle" >x within the tile, local units  (sub-tile index)</text>
+<text x="20" y="266" font-size="11" fill="#59636e" text-anchor="middle" transform="rotate(-90 20 266)">y within the tile</text>
+<circle cx="492" cy="126" r="5.2" fill="#0969da" stroke="#ffffff" stroke-width="1" />
+<text x="506" y="130" font-size="11.5" fill="#1f2328" text-anchor="start" >a sub-tile: a position</text>
+<text x="506" y="145" font-size="11.5" fill="#1f2328" text-anchor="start" >a boat can be at</text>
+<circle cx="492" cy="171" r="4.2" fill="#ffffff" stroke="#8c959f" stroke-width="1.4" />
+<text x="506" y="175" font-size="11.5" fill="#1f2328" text-anchor="start" >128 is the next tile’s 0:</text>
+<text x="506" y="190" font-size="11.5" fill="#1f2328" text-anchor="start" >a tile owns its west and</text>
+<text x="506" y="205" font-size="11.5" fill="#1f2328" text-anchor="start" >south edges, not its</text>
+<text x="506" y="220" font-size="11.5" fill="#1f2328" text-anchor="start" >east and north edges</text>
+<text x="486" y="258" font-size="11.5" fill="#1f2328" text-anchor="start" font-weight="600" >(0, 0)</text>
+<text x="548" y="258" font-size="11.5" fill="#59636e" text-anchor="start" >south-west corner</text>
+<text x="486" y="275" font-size="11.5" fill="#1f2328" text-anchor="start" font-weight="600" >(64, 64)</text>
+<text x="548" y="275" font-size="11.5" fill="#59636e" text-anchor="start" >tile centre</text>
+<text x="486" y="292" font-size="11.5" fill="#1f2328" text-anchor="start" font-weight="600" >(96, 96)</text>
+<text x="548" y="292" font-size="11.5" fill="#59636e" text-anchor="start" >centre of the</text>
+<text x="548" y="309" font-size="11.5" fill="#59636e" text-anchor="start" >north-east quadrant</text>
+<text x="486" y="326" font-size="11.5" fill="#1f2328" text-anchor="start" font-weight="600" >(0, 64)</text>
+<text x="548" y="326" font-size="11.5" fill="#59636e" text-anchor="start" >on the west edge</text>
+</svg>
