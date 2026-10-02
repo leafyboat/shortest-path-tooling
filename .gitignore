@@ -27,7 +27,6 @@ src/test/resources/dashboard/debug.csv
 .devin/
 .planning/
 .planning/tmp/
-/AGENTS.md
 /CLAUDE.md
 /GEMINI.md
 graphify-out/
@@ -40,4 +39,3 @@ specs/
 # GSD stop hook counter (session-local)
 .planning/.gsd-stop-counter
 .windsurf/
-AGENTS.md
