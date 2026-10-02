@@ -135,6 +135,16 @@ node tools/validate.js
 Generation intentionally rewrites the committed fixture; CI runs tests and
 verification, not generation.
 
+## OSRS wiki lookups
+
+When verifying game data against the wiki (e.g. seasonal transport region
+assignments, transport requirements), fetch the machine-readable wikitext
+instead of rendered HTML:
+
+- Append `?action=raw` to the page URL, or
+- call the API directly:
+  `https://oldschool.runescape.wiki/api.php?action=parse&page=<page>&prop=wikitext&format=json`
+
 ## Gotchas
 
 - Never hand-edit or `sed` `keys.json` — `maintenance.py cache` patches it
