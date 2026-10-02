@@ -33,6 +33,10 @@ python -m http.server --directory build/reports/pathfinder-dashboard 8000
 
 Then open `http://localhost:8000`.
 
+The published dashboard is also available on GitHub Pages:
+
+`https://skretzo.github.io/shortest-path/`
+
 ## Available tasks
 
 | Task | Description |
