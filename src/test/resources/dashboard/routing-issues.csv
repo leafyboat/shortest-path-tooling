@@ -4,15 +4,15 @@ Digsite gate (#139) kudos 153+ crosses gate,routing-issue-139,3293,3428,0,3350,3
 Digsite gate (#139) no kudos walks around fence,routing-issue-139,3293,3428,0,3350,3415,0,UNIT_TEST,,,,3637=0,,,bypassVarbitChecks=false,,100,
 Piscatoris colony (#148) enters through fence hole,routing-issue-148,2344,3645,0,2344,3670,0,UNIT_TEST,,,,,,,,,15,
 Civitas to Auburnvale (#171) walks around Mons Gratia,routing-issue-171,1697,3140,0,1411,3361,0,UNIT_TEST,,,,,,,,,300,
-SW Ape Atoll (#261) unreachable until collision fix,routing-issue-261,2760,2780,0,2650,2740,0,UNIT_TEST,,,,,,,,,,false
-RFD dining room (#288) cannot enter until door mapped,routing-issue-288,3213,3221,0,1866,5323,0,UNIT_TEST,,,,,,,,,,false
+SW Ape Atoll (#261) unreachable until collision fix,routing-issue-261,2760,2780,0,2650,2740,0,UNIT_TEST,,,,,,,,,281,true
+RFD dining room (#288) cannot enter until door mapped,routing-issue-288,3213,3221,0,1866,5323,0,UNIT_TEST,,,,,,,,,2,true
 Taverley dungeon (#291) dusty key opens gate to dragons,routing-issue-291,2925,9803,0,2872,9795,0,UNIT_TEST,1590:1,,,,,,useAgilityShortcuts=false,,70,
 Taverley dungeon (#291) agility pipe reaches dragons,routing-issue-291,2925,9803,0,2872,9795,0,UNIT_TEST,,,,,,AGILITY=70,useAgilityShortcuts=true,,140,
 Taverley dungeon (#291) no key no shortcut unreachable,routing-issue-291,2925,9803,0,2872,9795,0,UNIT_TEST,,,,,,,useAgilityShortcuts=false,,,false
 Great Conch (#319) fairy ring CJQ reaches island,routing-issue-319,2996,3108,0,3180,2420,0,UNIT_TEST,772:1,,,,,,useFairyRings=true,,60,
 Great Conch (#319) unreachable without fairy ring,routing-issue-319,2996,3108,0,3180,2420,0,UNIT_TEST,,,,,,,,,,false
 Keldagrim minecart (#324) GE trapdoor to station,routing-issue-324,3141,3504,0,2909,10174,0,UNIT_TEST,,,,,,,useMinecarts=true,,2,
-Entrana dungeon (#350) no wilderness exit until magic door mapped,routing-issue-350,2830,9765,0,3100,3950,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,,false,
+Entrana dungeon (#350) no wilderness exit until magic door mapped,routing-issue-350,2830,9765,0,3100,3950,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,333,true,
 Heroes guild (#362) ladder reaches fountain basement,routing-issue-362,2906,3480,0,2900,9874,0,UNIT_TEST,,,,,,,,,20,
 Ibans temple (#522) unreachable until region mapped,routing-issue-522,2433,3312,0,2147,4648,0,UNIT_TEST,,,,,,,,,,false
 Kharazi jungle (#504) machete and axe chops through bush,routing-issue-504,2795,2945,0,2800,2900,0,UNIT_TEST,975:1;1359:1,,,,139=50,,bypassVarPlayerChecks=false,,30,
@@ -56,9 +56,9 @@ Entrana (#237) boat reachable carrying an axe,routing-issue-237,3045,3235,0,2852
 Entrana (#237) boat reachable carrying nothing,routing-control,3045,3235,0,2852,3350,0,UNIT_TEST,,,,,,,,,,true,
 Legends cavern (#244) NW rocks descent missing,routing-issue-244,2820,2940,0,2790,9340,0,UNIT_TEST,,,,,,AGILITY=99,,,,false,
 Kharazi jungle (#244) control surface walk,routing-control,2820,2940,0,2899,2942,0,UNIT_TEST,,,,,,,,,,true,
-Pyramid plunder (#245) interior exit unmapped,routing-issue-245,1927,4428,0,3315,2796,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false;useTeleportationMinigames=false,,,false,
+Pyramid plunder (#245) interior exit unmapped,routing-issue-245,1927,4428,0,3315,2796,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false;useTeleportationMinigames=false,,41,true,
 Sophanem (#245) control pyramid area to city,routing-control,3288,2801,0,3315,2796,0,UNIT_TEST,,,,,,,,,,true,
-Ape Atoll bridge (#265) jump-off shortcut missing,routing-issue-265,2805,2735,0,2820,2700,0,UNIT_TEST,,,,,,,,,,false,
+Ape Atoll bridge (#265) jump-off shortcut missing,routing-issue-265,2805,2735,0,2820,2700,0,UNIT_TEST,,,,,,,,,43,true,
 Ape Atoll SE (#265) control pocket walk,routing-control,2820,2700,0,2850,2680,0,UNIT_TEST,,,,,,,,,,true,
 Diary cape (#267) teleports when diaries done,routing-issue-267,3222,3218,0,2560,3320,0,UNIT_TEST,13069:1,,,4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1,,,useTeleportationItems=INVENTORY;bypassVarbitChecks=false,,,true,
 Diary cape (#267) walk only without cape,routing-control,3222,3218,0,2560,3320,0,UNIT_TEST,,,,,,,useTeleportationItems=INVENTORY;bypassVarbitChecks=false,,,true,
@@ -69,9 +69,9 @@ Trollweiss tunnel (#275) control cave entrance to summit,routing-control,2822,37
 POH Digsite pendant (#317) mounted pendant reaches Lithkren,routing-issue-317,3222,3218,0,3549,10456,0,UNIT_TEST,8013:1,,,,,,useTeleportationItems=INVENTORY;usePoh=true;usePohMountedItems=true,,,true,
 POH Digsite pendant (#317) no mounted item unreachable,routing-control,3222,3218,0,3549,10456,0,UNIT_TEST,8013:1,,,,,,useTeleportationItems=INVENTORY;usePoh=true;usePohMountedItems=false,,,false,
 Keldagrim minecart (#324) quest-started cannot reach station,routing-issue-324,3141,3504,0,2909,10174,0,UNIT_TEST,,,,,,,useMinecarts=true,,,false,The Giant Dwarf=IN_PROGRESS
-GE recruiter (#342) Castle Wars walk-only detour,routing-issue-342,3160,3486,0,2440,3089,0,UNIT_TEST,,,,,,,,,500,,
+GE recruiter (#342) Castle Wars walk-only detour,routing-issue-342,3160,3486,0,2440,3089,0,UNIT_TEST,,,,,,,,,19,true,
 Castle Wars lobby (#342) minigame tele reaches,routing-control,3160,3486,0,2440,3089,0,UNIT_TEST,,,,,,,useTeleportationMinigames=true,,,,
-Shantay arrest (#343) pass to jail missing,routing-issue-343,3303,3124,0,3013,3180,0,UNIT_TEST,,,,,,,,,200,,
+Shantay arrest (#343) pass to jail missing,routing-issue-343,3303,3124,0,3013,3180,0,UNIT_TEST,,,,,,,,,3,true,
 Port Sarim jail (#343) street to cell walk,routing-control,3013,3190,0,3013,3180,0,UNIT_TEST,,,,,,,,,,true,
 Mogre camp (#354) sealed until diving transport mapped,routing-issue-354,2893,9388,0,2659,3155,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,,false,
 Port Khazard (#354) dock walk control,routing-control,2659,3155,0,2663,3157,0,UNIT_TEST,,,,,,,,,,true,
@@ -113,12 +113,26 @@ Lava staff (#544) covers Civitas teleport runes,routing-issue-544,3160,3486,0,17
 Civitas teleport (#544) air staff no rune coverage,routing-control,3160,3486,0,1700,3141,0,UNIT_TEST,563:2,1397:1,,,,MAGIC=60,useTeleportationSpells=true;bypassVarbitChecks=false,,,false,Twilight's Promise=FINISHED;Children of the Sun=NOT_STARTED
 Mountain guide (#548) met guide hops Gorge to Nemus,routing-issue-548,1486,3232,0,1411,3361,0,UNIT_TEST,,,,17226=1,,,bypassVarbitChecks=false,94,,true,
 Mountain guide (#548) unmet walks around mountain,routing-issue-548,1486,3232,0,1411,3361,0,UNIT_TEST,,,,17226=0,,,bypassVarbitChecks=false,,200,,
-Gutanoth crumbling wall (#549) pocket sealed without shortcut,routing-issue-549,2550,3031,0,2543,3031,0,UNIT_TEST,,,,,,AGILITY=71,useAgilityShortcuts=true,,,false,Watchtower=FINISHED
+Gutanoth crumbling wall (#549) pocket sealed without shortcut,routing-issue-549,2550,3031,0,2543,3031,0,UNIT_TEST,,,,,,AGILITY=71,useAgilityShortcuts=true,,5,true,Watchtower=FINISHED
 Gutanoth crumbling wall (#549) below 71 agility stays sealed,routing-issue-549,2550,3031,0,2543,3031,0,UNIT_TEST,,,,,,AGILITY=70,useAgilityShortcuts=true,,,false,Watchtower=FINISHED
 Gutanoth east approach walk (#549) control,routing-control,2550,3031,0,2570,3032,0,UNIT_TEST,,,,,,,,,,true,
-Construction cape (#555) under 99 takes cape hop,routing-issue-555,3160,3486,0,2953,3212,0,UNIT_TEST,9789:1,,,2187=1;4744=1,,CONSTRUCTION=50,useTeleportationItems=INVENTORY;bypassVarbitChecks=false,15,,true,
+Construction cape (#555) under 99 takes cape hop,routing-issue-555,3160,3486,0,2953,3212,0,UNIT_TEST,9789:1,,,2187=1;4744=1,,CONSTRUCTION=50,useTeleportationItems=INVENTORY;bypassVarbitChecks=false,,270,true,
 Construction cape (#555) at 99 reaches Rimmington portal,routing-control,3160,3486,0,2953,3212,0,UNIT_TEST,9789:1,,,2187=1;4744=1,,CONSTRUCTION=99,useTeleportationItems=INVENTORY;bypassVarbitChecks=false,15,,true,
 Canoe (#563) Edgeville to Lumbridge paddles with axe,routing-issue-563,3132,3510,0,3243,3235,0,UNIT_TEST,1359:1,,,,,WOODCUTTING=42,useCanoes=true,10,,true,
 Canoe (#563) no axe walks Edgeville to Lumbridge,routing-control,3132,3510,0,3243,3235,0,UNIT_TEST,,,,,,WOODCUTTING=60,useCanoes=true;useTeleportationSpellsHome=false,,50,,
-Baxtorian falls clue (#568) dig ledge unreachable,routing-issue-568,3505,3488,0,2512,3467,0,UNIT_TEST,,,,,,,,,,false,
+Baxtorian falls clue (#568) dig ledge unreachable,routing-issue-568,3505,3488,0,2512,3467,0,UNIT_TEST,,,,,65=10,,bypassVarbitChecks=false;bypassVarPlayerChecks=false,,,false,Waterfall Quest=FINISHED
 Baxtorian falls (#568) whirlpool shore reachable,routing-control,3505,3488,0,2511,3511,0,UNIT_TEST,,,,,,,,,,true,
+Dorgesh-kaan sphere (#225) teleports into the city,routing-issue-225,3213,3428,0,2703,5350,0,UNIT_TEST,10972:1,,,,,,useTeleportationItems=INVENTORY;useFairyRings=false,2,,true,Death to the Dorgeshuun=FINISHED
+Legends cavern (#244) NW rocks descent mapped,routing-issue-244,2820,2940,0,2790,9340,0,UNIT_TEST,,,,,139=50,AGILITY=99,useAgilityShortcuts=true;bypassVarPlayerChecks=false,,217,true,
+Shrimp and Parrot (#273) locked house unreachable through north door,routing-issue-273,2794,3201,0,2793,3195,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,7,true,
+Shrimp and Parrot (#273) locked house sealed from inside,routing-issue-273,2793,3195,0,2794,3184,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,28,true,
+Brimhaven street (#273) control pub south room to garden walk,routing-control,2794,3184,0,2786,3195,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,,true,
+Mogre camp (#354) anchor exit reaches dock,routing-issue-354,2963,9478,1,2663,3157,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,,true,
+Mogre camp (#354) Murphy dive enters camp,routing-issue-354,2664,3160,0,2971,9513,1,UNIT_TEST,,7534:1;7535:1,,,,,useTeleportationSpellsHome=false,,,true,Recipe for Disaster - Pirate Pete=FINISHED
+Mogre camp (#354) dive gated without gear or quest,routing-issue-354,2664,3160,0,2971,9513,1,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,,false,
+Mogre camp (#354) cavern sealed without rocks moved,routing-issue-354,2950,9515,1,2950,9526,1,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false;bypassVarbitChecks=false,,,false,
+Mogre camp (#354) cavern opens after rocks moved,routing-issue-354,2950,9515,1,2950,9526,1,UNIT_TEST,,,,1869=5,,,useTeleportationSpellsHome=false;bypassVarbitChecks=false,,,true,
+Waterfall island (#505) pre-quest raft should not reach,routing-issue-505,3160,3486,0,2512,3481,0,UNIT_TEST,,,,,65=0,,bypassVarbitChecks=false;bypassVarPlayerChecks=false,,,false,Waterfall Quest=NOT_STARTED
+Quetzal whistle (#537) works before Twilights Promise,routing-issue-537,3213,3428,0,1411,3361,0,UNIT_TEST,29271:1,,,,,,useQuetzals=true;useTeleportationItems=INVENTORY,,2,true,Twilight's Promise=NOT_STARTED
+Baxtorian falls clue (#568) dig ledge with rope descends falls,routing-issue-568,3505,3488,0,2512,3467,0,UNIT_TEST,954:1,,,,65=10,,bypassVarbitChecks=false;bypassVarPlayerChecks=false,,,true,Waterfall Quest=FINISHED
+Baxtorian falls clue (#568) dig ledge unroped with medium diary,routing-issue-568,3505,3488,0,2512,3467,0,UNIT_TEST,,,,4476=1,65=10,,bypassVarbitChecks=false;bypassVarPlayerChecks=false,,,true,Waterfall Quest=FINISHED
