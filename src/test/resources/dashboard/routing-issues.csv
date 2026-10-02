@@ -124,8 +124,8 @@ Baxtorian falls clue (#568) dig ledge unreachable,routing-issue-568,3505,3488,0,
 Baxtorian falls (#568) whirlpool shore reachable,routing-control,3505,3488,0,2511,3511,0,UNIT_TEST,,,,,,,,,,true,
 Dorgesh-kaan sphere (#225) teleports into the city,routing-issue-225,3213,3428,0,2703,5350,0,UNIT_TEST,10972:1,,,,,,useTeleportationItems=INVENTORY;useFairyRings=false,2,,true,Death to the Dorgeshuun=FINISHED
 Legends cavern (#244) NW rocks descent mapped,routing-issue-244,2820,2940,0,2790,9340,0,UNIT_TEST,,,,,139=50,AGILITY=99,useAgilityShortcuts=true;bypassVarPlayerChecks=false,,217,true,
-Shrimp and Parrot (#273) locked house unreachable through north door,routing-issue-273,2794,3201,0,2793,3195,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,7,true,
-Shrimp and Parrot (#273) locked house sealed from inside,routing-issue-273,2793,3195,0,2794,3184,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,28,true,
+Shrimp and Parrot (#273) locked house reachable through north door,routing-issue-273,2794,3201,0,2793,3195,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,7,true,
+Shrimp and Parrot (#273) locked house exits through west door,routing-issue-273,2793,3195,0,2794,3184,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,28,true,
 Brimhaven street (#273) control pub south room to garden walk,routing-control,2794,3184,0,2786,3195,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,,true,
 Mogre camp (#354) anchor exit reaches dock,routing-issue-354,2963,9478,1,2663,3157,0,UNIT_TEST,,,,,,,useTeleportationSpellsHome=false,,,true,
 Mogre camp (#354) Murphy dive enters camp,routing-issue-354,2664,3160,0,2971,9513,1,UNIT_TEST,,7534:1;7535:1,,,,,useTeleportationSpellsHome=false,,,true,Recipe for Disaster - Pirate Pete=FINISHED
@@ -136,3 +136,10 @@ Waterfall island (#505) pre-quest raft should not reach,routing-issue-505,3160,3
 Quetzal whistle (#537) works before Twilights Promise,routing-issue-537,3213,3428,0,1411,3361,0,UNIT_TEST,29271:1,,,,,,useQuetzals=true;useTeleportationItems=INVENTORY,,2,true,Twilight's Promise=NOT_STARTED
 Baxtorian falls clue (#568) dig ledge with rope descends falls,routing-issue-568,3505,3488,0,2512,3467,0,UNIT_TEST,954:1,,,,65=10,,bypassVarbitChecks=false;bypassVarPlayerChecks=false,,,true,Waterfall Quest=FINISHED
 Baxtorian falls clue (#568) dig ledge unroped with medium diary,routing-issue-568,3505,3488,0,2512,3467,0,UNIT_TEST,,,,4476=1,65=10,,bypassVarbitChecks=false;bypassVarPlayerChecks=false,,,true,Waterfall Quest=FINISHED
+MEP2 temple (#202) dodge trap crosses east alcove,routing-issue-202,1863,4657,2,1868,4657,2,UNIT_TEST,,,,,,AGILITY=50,useAgilityShortcuts=true,5,,,Mourning's End Part II=FINISHED
+MEP2 temple (#202) trap sealed without MEP2 quest,routing-issue-202,1863,4657,2,1868,4657,2,UNIT_TEST,,,,,,AGILITY=50,useAgilityShortcuts=true,,,false,Mourning's End Part II=NOT_STARTED
+MEP2 temple (#202) low wall crosses refuge alcove,routing-issue-202,1881,4620,1,1885,4620,1,UNIT_TEST,,,,,,AGILITY=50,useAgilityShortcuts=true,4,,,Mourning's End Part II=FINISHED
+MEP2 temple (#202) wall support crosses first-floor gap,routing-issue-202,1900,4612,1,1912,4612,1,UNIT_TEST,,,,,,AGILITY=50,useAgilityShortcuts=true,3,,,Mourning's End Part II=FINISHED
+Wilderness slayer cave (#79) 77 agility squeezes south crevice,routing-issue-79,3334,10117,0,3334,10122,0,UNIT_TEST,,,,,,AGILITY=77,useAgilityShortcuts=true,5,,,
+Wilderness slayer cave (#79) crevice detours below 77 agility,routing-issue-79,3334,10117,0,3334,10122,0,UNIT_TEST,,,,,,AGILITY=76,useAgilityShortcuts=true,,117,,
+Wilderness slayer cave (#79) 77 agility squeezes east crevice,routing-issue-79,3434,10089,0,3434,10094,0,UNIT_TEST,,,,,,AGILITY=77,useAgilityShortcuts=true,5,,,
