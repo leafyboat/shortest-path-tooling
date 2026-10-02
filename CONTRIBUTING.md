@@ -31,9 +31,19 @@ git remote add origin https://github.com/<you>/shortest-path.git
 git remote set-url --push upstream no-push   # belt and braces
 ```
 
-Then install Python deps (`pip install -r requirements.txt`) and fetch a
+Then install Python deps (`pip install -r requirements.txt`), fetch a
 local game cache once (`python3 scripts/maintenance.py cache`) — the
-dumpers and probes need `cache/` + `keys.json`, both gitignored.
+dumpers and probes need `cache/` + `keys.json`, both gitignored — and
+install the pre-push gate:
+
+```bash
+ln -sf ../../hooks/pre-push .git/hooks/pre-push
+```
+
+It runs the two fast CI tiers before every push (pytest ~2s +
+`compileTestJava`), so a red pipeline is caught on your machine instead
+of in review. Escape hatches: `SKIP_TESTS=1`, `SKIP_COMPILE=1`,
+`git push --no-verify`.
 
 ## The golden rule: two commit streams
 

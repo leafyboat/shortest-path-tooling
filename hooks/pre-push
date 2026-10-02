@@ -1,0 +1,28 @@
+#!/bin/sh
+# pre-push gate — the cheap tiers of `maintenance.py verify`.
+#
+# Catches the class of failures CI would flag before they leave the
+# machine: Python tests (~2s) and the compile gate (~seconds warm).
+# The dashboard sweep and collision diff stay in CI — they take
+# minutes, not seconds.
+#
+# Install:
+#   ln -sf ../../hooks/pre-push .git/hooks/pre-push
+#
+# Escape hatches (use sparingly — red CI costs a review round):
+#   SKIP_TESTS=1    skip pytest
+#   SKIP_COMPILE=1  skip compileTestJava
+#   git push --no-verify  skip everything
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+if [ -z "$SKIP_TESTS" ]; then
+    echo "pre-push: python3 -m pytest tests/ -x -q"
+    python3 -m pytest tests/ -x -q
+fi
+
+if [ -z "$SKIP_COMPILE" ]; then
+    echo "pre-push: ./gradlew compileTestJava"
+    ./gradlew compileTestJava -q
+fi
