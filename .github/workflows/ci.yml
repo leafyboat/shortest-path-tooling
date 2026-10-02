@@ -47,7 +47,7 @@ jobs:
           python-version: "3.14"
 
       - name: Install test dependencies
-        run: python3 -m pip install pytest pyyaml
+        run: python3 -m pip install -r requirements.txt
 
       - name: Run Python test suite
         run: python3 -m pytest tests/ -x

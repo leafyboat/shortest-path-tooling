@@ -37,12 +37,20 @@ Subcommands:
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
+import threading
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
+
+try:
+    from tqdm import tqdm
+except ImportError:  # progress bars degrade to raw line echo
+    tqdm = None
 
 REPO = Path(__file__).resolve().parent.parent
 SUBMODULE = REPO / "shortest-path"
@@ -57,14 +65,25 @@ JAVA_DUMPER_TIMEOUT_SECONDS = 1800
 
 def run(cmd: List[str], *, cwd: Optional[Path] = None,
         timeout: int = SCRIPT_TIMEOUT_SECONDS,
-        binary: bool = False) -> subprocess.CompletedProcess:
+        binary: bool = False,
+        stream: bool = False,
+        on_line: Optional[Callable[[str], bool]] = None) -> subprocess.CompletedProcess:
     """The only subprocess call site — injected/monkeypatched in tests.
 
     ``binary=True`` captures stdout/stderr as bytes (needed for ``git
     show`` of binary artifacts); otherwise output is decoded text.  The
     default cwd is the repo root so wrapped scripts write their scratch
     files where ``.gitignore`` already covers them.
+
+    ``stream=True`` tees merged stdout+stderr live to the console while
+    still capturing — used for multi-minute Gradle sweeps so a wedged
+    run is distinguishable from a slow one.  ``on_line`` is called for
+    every captured line; when it returns True the line is treated as
+    consumed (e.g. a progress heartbeat) and not echoed.
     """
+    if stream:
+        return _run_streamed(cmd, cwd=cwd, timeout=timeout,
+                             on_line=on_line)
     try:
         return subprocess.run(
             cmd, cwd=cwd if cwd is not None else REPO,
@@ -78,6 +97,48 @@ def run(cmd: List[str], *, cwd: Optional[Path] = None,
         # A missing binary (java, zip, ./gradlew, ...) must exit with a
         # diagnostic, not a raw traceback mid-pipeline.
         raise SystemExit(f"{cmd[0]}: command not found") from None
+
+
+def _run_streamed(cmd: List[str], *, cwd: Optional[Path],
+                  timeout: int,
+                  on_line: Optional[Callable[[str], bool]]) -> subprocess.CompletedProcess:
+    """Popen-backed ``run()`` that streams output live.
+
+    The drain loop runs on a daemon thread so the timeout still applies
+    when the child wedges without emitting output (daemon hang, network
+    stall) — the main thread would otherwise block on stdout forever.
+    """
+    try:
+        proc = subprocess.Popen(
+            cmd, cwd=cwd if cwd is not None else REPO,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, bufsize=1)
+    except FileNotFoundError:
+        raise SystemExit(f"{cmd[0]}: command not found") from None
+
+    lines: List[str] = []
+
+    def drain() -> None:
+        for line in proc.stdout:
+            lines.append(line)
+            if on_line is not None and on_line(line):
+                continue
+            sys.stdout.write(line)
+            sys.stdout.flush()
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    try:
+        returncode = proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        reader.join(timeout=5)
+        raise SystemExit(
+            f"{cmd[0]} timed out after {timeout}s") from None
+    reader.join()
+    return subprocess.CompletedProcess(cmd, returncode,
+                                       "".join(lines), "")
 
 
 def _stderr_tail(proc: subprocess.CompletedProcess, lines: int = 8) -> str:
@@ -873,6 +934,40 @@ def dashboard_datasets() -> List[str]:
         if line.strip().endswith(".csv"))
 
 
+_SCENARIO_PROGRESS = re.compile(r"^\s*\[\s*(\d+)\s*/\s*(\d+)\]")
+
+
+def _scenario_progress_hook(desc: str):
+    """Turn DashboardTest's ``[ i/N]`` heartbeat lines into a tqdm bar.
+
+    The returned object is a ``run(stream=True)`` line hook: heartbeat
+    lines update the bar and are consumed (not echoed), all other output
+    passes through.  ``close()`` finishes the bar after the run.  When
+    tqdm is not installed the hook is a no-op and heartbeats echo raw.
+    """
+    class _Hook:
+        def __init__(self):
+            self._bar = (tqdm(desc=desc, unit=" scenario", leave=True)
+                         if tqdm else None)
+
+        def __call__(self, line: str) -> bool:
+            m = _SCENARIO_PROGRESS.match(line)
+            if m is None or self._bar is None:
+                return False
+            done, total = int(m.group(1)), int(m.group(2))
+            if self._bar.total != total:
+                self._bar.total = total
+            self._bar.n = done
+            self._bar.refresh()
+            return True
+
+        def close(self) -> None:
+            if self._bar is not None:
+                self._bar.close()
+
+    return _Hook()
+
+
 def do_verify(args: argparse.Namespace) -> int:
     """Four-tier compatibility gate: compile -> submodule test ->
     dashboard sweep -> collision edge-diff.
@@ -888,21 +983,34 @@ def do_verify(args: argparse.Namespace) -> int:
     """
     tiers = {}  # name -> list of failure lines (only ran tiers)
 
+    def timed_tier(name: str):
+        print(f"=== verify: {name} ===", flush=True)
+        return time.monotonic()
+
+    def tier_done(name: str, t0: float):
+        print(f"--- {name} finished in {time.monotonic() - t0:.0f}s",
+              flush=True)
+
     if not args.skip_compile:
+        t0 = timed_tier("compile")
         proc = run(["./gradlew", "compileTestJava"], cwd=REPO,
-                   timeout=GRADLE_TIMEOUT_SECONDS)
+                   timeout=GRADLE_TIMEOUT_SECONDS, stream=True)
         tiers["compile"] = ([] if proc.returncode == 0 else [
             f"compileTestJava exited {proc.returncode}"])
+        tier_done("compile", t0)
 
     if not args.skip_lint:
+        t0 = timed_tier("lint")
         # The whole submodule test task — strictly more coverage than
         # *LintTest alone.
         proc = run(["./gradlew", "-p", "shortest-path", "test"],
-                   cwd=REPO, timeout=GRADLE_TIMEOUT_SECONDS)
+                   cwd=REPO, timeout=GRADLE_TIMEOUT_SECONDS, stream=True)
         tiers["lint"] = ([] if proc.returncode == 0 else [
             f"submodule test exited {proc.returncode}"])
+        tier_done("lint", t0)
 
     if not args.skip_dashboard:
+        t0 = timed_tier("dashboard")
         failures = []
         datasets = dashboard_datasets()
         if not datasets:
@@ -910,7 +1018,7 @@ def do_verify(args: argparse.Namespace) -> int:
             failures.append(
                 "no committed dashboard datasets found via "
                 "git ls-files")
-        for csv in datasets:
+        for idx, csv in enumerate(datasets, 1):
             argv = ["./gradlew", "dashboard",
                     f"-PdashboardDataset=/dashboard/{csv}",
                     "-PdashboardProfile=false"]
@@ -920,13 +1028,19 @@ def do_verify(args: argparse.Namespace) -> int:
                 argv.append("-PdashboardSeasonal=true")
             if csv.startswith("f2p_"):
                 argv.append("-PdashboardF2p=true")
-            run(argv, cwd=REPO, timeout=GRADLE_TIMEOUT_SECONDS)
+            slug = Path(csv).stem.lower().replace("_", "-")
+            print(f"--- dataset {idx}/{len(datasets)}: {csv}",
+                  flush=True)
+            hook = _scenario_progress_hook(slug)
+            run(argv, cwd=REPO, timeout=GRADLE_TIMEOUT_SECONDS,
+                stream=True, on_line=hook)
+            hook.close()
             # profile=false makes the bundle name equal the slug —
             # the same derivation dashboards.gradle applies.
-            slug = Path(csv).stem.lower().replace("_", "-")
             report = (REPO / "build" / "reports" / "pathfinder-dashboard" /
                       "bundles" / slug / "report.json")
             failures.extend(scan_report(report))
+        tier_done("dashboard", t0)
         tiers["dashboard"] = failures
 
     if not args.skip_diff:

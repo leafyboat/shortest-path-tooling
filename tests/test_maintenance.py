@@ -144,7 +144,7 @@ def test_cache_invokes_download_with_repo_cwd(tmp_path, monkeypatch):
     repo, _ = redirect_repo(tmp_path, monkeypatch)
     calls = []
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append((cmd, cwd, timeout))
         # The script drops ./cache and ./keys.json into its cwd.
         (repo / "cache").mkdir(exist_ok=True)
@@ -172,7 +172,7 @@ def test_cache_invokes_download_with_repo_cwd(tmp_path, monkeypatch):
 def test_cache_missing_keys_json_fails(tmp_path, monkeypatch, capsys):
     repo, _ = redirect_repo(tmp_path, monkeypatch)
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         # Download "succeeds" but never produces keys.json.
         return cp(cmd)
 
@@ -189,7 +189,7 @@ def test_cache_empty_dir_fails(tmp_path, monkeypatch, capsys):
     # dumper die inside the JVM later.
     repo, _ = redirect_repo(tmp_path, monkeypatch)
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         (repo / "cache").mkdir(exist_ok=True)
         (repo / "keys.json").write_text(
             (FIXTURES / "keys_raw.json").read_text())
@@ -205,7 +205,7 @@ def test_cache_empty_dir_fails(tmp_path, monkeypatch, capsys):
 def test_cache_download_failure_returns_1(tmp_path, monkeypatch, capsys):
     repo, _ = redirect_repo(tmp_path, monkeypatch)
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         return cp(cmd, stderr="curl: (6) could not resolve host", rc=22)
 
     monkeypatch.setattr(mm, "run", fake_run)
@@ -254,7 +254,7 @@ def make_collision_run(calls, *, status_out="", heads=("oldsha", "newsha"),
     """fake mm.run for the primary submodule-bump path."""
     remaining = list(heads)
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append(list(cmd))
         kind = collision_kind(cmd)
         if kind == "status":
@@ -460,7 +460,7 @@ def make_local_run(repo, calls, *, branch="maint-x",
     download_script = str(
         repo / "collision-map-update" / "download-latest-cache.sh")
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append((list(cmd), cwd))
         kind = local_kind(cmd)
         if kind == "branch":
@@ -854,7 +854,7 @@ def test_compare_only_requires_local(tmp_path, monkeypatch, capsys):
     repo, _ = redirect_repo(tmp_path, monkeypatch)
     calls = []
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append(list(cmd))
         raise AssertionError(f"unexpected argv: {cmd}")
 
@@ -898,7 +898,7 @@ def make_dump_run(repo, calls, *, branch="maint-x",
                   script_rc=0, script_stdout=""):
     """fake mm.run for the regions/bank subcommands: answers the
     write-gate git probes and fabricates each dumper's build/ output."""
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append((list(cmd), cwd, timeout))
         kind = write_gate_kind(cmd)
         if kind == "branch":
@@ -1182,7 +1182,7 @@ def test_seasonal_invokes_script(tmp_path, monkeypatch):
     repo, _ = redirect_repo(tmp_path, monkeypatch)
     calls = []
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append((list(cmd), cwd, timeout))
         return cp(cmd, "Summary: 0 Alacrity\n", rc=2)
 
@@ -1199,7 +1199,7 @@ def test_seasonal_does_not_require_branch(tmp_path, monkeypatch):
     repo, _ = redirect_repo(tmp_path, monkeypatch)
     calls = []
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append(list(cmd))
         # Even if asked, the submodule is on master — a read-only check
         # must not consult branch state at all.
@@ -1220,7 +1220,7 @@ def make_gate_run(calls, *, branch="maint-x", upstream="origin/maint-x",
                   upstream_rc=0, status_out=""):
     """fake mm.run answering only the write-gate git probes; any other
     argv fails the test."""
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append(list(cmd))
         kind = write_gate_kind(cmd)
         if kind == "branch":
@@ -1328,7 +1328,7 @@ def test_refresh_requires_write_branch_up_front(tmp_path, monkeypatch):
 def make_probe_run(calls, *, fail=()):
     """fake mm.run for the probes subcommand — records each gradle
     argv; tasks named in ``fail`` exit 1."""
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append((list(cmd), cwd, timeout))
         assert cmd[0] == "./gradlew", f"non-gradle argv: {cmd}"
         rc = 1 if cmd[1] in fail else 0
@@ -1589,7 +1589,7 @@ def make_verify_run(repo, calls, *, datasets=None, compile_rc=0,
     if datasets is None:
         datasets = DASHBOARD_CSVS
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append((list(cmd), cwd))
         if cmd[:2] == ["git", "ls-files"]:
             return cp(cmd, "".join(
@@ -1941,7 +1941,7 @@ def make_validate_run(repo, calls, *, check_rc=None, check_stdout=None,
         caches = [{"game": "oldschool", "environment": "live",
                    "id": 2695, "timestamp": "2026-09-08T10:30:08Z"}]
 
-    def fake_run(cmd, *, cwd=None, timeout=None, binary=False):
+    def fake_run(cmd, *, cwd=None, timeout=None, binary=False, stream=False, on_line=None):
         calls.append((list(cmd), cwd))
         if (cmd[0] == sys.executable and len(cmd) >= 3
                 and cmd[1].endswith("validate_data.py")):

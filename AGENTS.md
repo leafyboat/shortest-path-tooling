@@ -42,6 +42,7 @@ around it.
 ./gradlew test                     # JUnit suite incl. dashboard scenarios (8g heap configured)
 ./gradlew dashboard                # build dashboard → build/reports/pathfinder-dashboard
 python -m http.server --directory build/reports/pathfinder-dashboard 8000
+python3 -m pip install -r requirements.txt   # pytest, pyyaml, tqdm (homebrew python needs --break-system-packages or a venv)
 python3 -m pytest tests/           # Python script tests (no network, all mocked)
 python3 scripts/maintenance.py verify    # full gate: compile → submodule test → dashboard sweep → edge diff
 python3 scripts/maintenance.py validate  # data validation: hard gate + advisory tiers
@@ -55,6 +56,37 @@ back into the CSV) and the cache dumpers/probes in `gradle/cache-dumpers.gradle`
 (`bankTileDump`, `sailingAmenityVarbitDump`, `leagueRegionDump`,
 `f2pRegionDump`, `leagueIdProbe`, `transportAnchorDrift`, the `briefcase*`
 scans, …). Dumpers take `-P<name>CacheDir=` and `-P<name>XteaPath=` props.
+
+`verify` streams tier progress (per-dataset header + tqdm bar driven by the
+`[i/N]` scenario heartbeats in `DashboardTest`). Expect ~15–30 min: the
+dashboard tier launches one cold JVM per committed CSV (8+ datasets, the
+largest ~860 scenarios). `--skip-compile/--skip-lint/--skip-dashboard/
+--skip-diff` narrow the gate for fast iteration.
+
+`VarAccessProbeTest` scans cache clientscripts for var/operand access —
+`-Dtile.probe.vars=<ids>` (scripts reading/writing those varps/varbits),
+`-Dtile.probe.scripts=<ids>` (full disassembly), `-Dtile.probe.strings=<text>`
+(scripts containing a string operand), `-Dtile.probe.iops=<ints>` (raw int
+operands, e.g. packed coords). Opcodes: GET_VARP=1, SET_VARP=2,
+GET_VARBIT=25, SET_VARBIT=27; branch ops are `Opcodes.java` IF_ICMP*.
+Varbit/varplayer names are in
+`build/runelite-work/runelite/runelite-api/.../gameval/{VarbitID,VarPlayerID}.java`.
+This is how requirement candidates get confirmed without an account — e.g.
+the minigame-teleport eligibility script exposed MTA (varbit 1499) and the
+Keldagrim "visited" gate (varbit 571 ≥ 5).
+
+TSV requirement grammar: `Quests` means FINISHED only — partial quest
+progress must be expressed via the quest *varbit* in the `Varbits` column
+(`id>4`, `id=1`, `id<3`, `id&mask`; `VarPlayers` adds `@` cooldown minutes).
+If a requirement is not exposed in any client var, do not drop the data —
+it is gated via a config-option mechanism instead.
+
+Dev client: `./gradlew -p shortest-path run` launches RuneLite with the
+plugin bundled; on macOS it needs
+`JDK_JAVA_OPTIONS="--add-opens=java.desktop/com.apple.eawt=ALL-UNNAMED"`
+(else `OSXFullScreenAdapter` crashes at startup). In-game dev console
+commands `::getvarp <id>` / `::getvarb <id>` print values as chat lines that
+land in the Gradle log — usable when the Var Inspector panel can't copy.
 
 ## Scripts map
 
