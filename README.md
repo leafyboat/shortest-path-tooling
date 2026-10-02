@@ -6,6 +6,22 @@ This repo carries `shortest-path` as a git submodule and uses a Gradle [composit
 
 New here? [docs/system-overview.md](docs/system-overview.md) explains how the pieces fit together and the workflows they support.
 
+## Looking for the plugin?
+
+This repository contains **developer tooling** — it is not the plugin itself.
+
+- **To use the plugin:** install *Shortest Path* from the RuneLite Plugin
+  Hub. The [plugin repo](https://github.com/Skretzo/shortest-path) and its
+  [wiki](https://github.com/Skretzo/shortest-path/wiki) cover features,
+  examples, and options. Bugs and feature requests go to the plugin's
+  [issue tracker](https://github.com/Skretzo/shortest-path/issues), and
+  there's a [Discord server](https://discord.gg/uX47xg8u3M) for help and
+  discussion.
+- **To browse pathfinding results:** the published dashboard is at
+  `https://skretzo.github.io/shortest-path/` — no setup needed.
+- **To hack on the plugin or its data:** you're in the right place —
+  keep reading.
+
 ## Quick start
 
 ```bash
@@ -16,10 +32,6 @@ python -m http.server --directory build/reports/pathfinder-dashboard 8000
 ```
 
 Then open `http://localhost:8000`.
-
-The published dashboard is also available on GitHub Pages:
-
-`https://skretzo.github.io/shortest-path/`
 
 ## Available tasks
 
@@ -85,3 +97,12 @@ The `rebuild_bank_tsv.py` script merges the bankTileDump output into `shortest-p
 ```bash
 python3 scripts/rebuild_bank_tsv.py
 ```
+
+## Related repositories
+
+- [`shortest-path`](https://github.com/Skretzo/shortest-path) — the plugin
+  itself (carried here as the `shortest-path/` submodule).
+- [`shortest-path-corpus`](https://github.com/osrs-pathfinding/shortest-path-corpus)
+  — implementation-neutral benchmark corpus: canonical routes, account
+  profiles, and reachability expectations shared across pathfinding
+  implementations.
