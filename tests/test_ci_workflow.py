@@ -46,9 +46,10 @@ def test_ci_has_no_cron():
 
 def test_ci_installs_test_deps():
     runs = _run_commands(_validate_job())
-    assert "pip install" in runs
-    assert "pytest" in runs
-    assert "pyyaml" in runs
+    assert "pip install -r requirements.txt" in runs
+    deps = (ROOT / "requirements.txt").read_text().split()
+    for dep in ("pytest", "pyyaml", "tqdm"):
+        assert dep in deps
 
 
 def test_ci_checks_out_submodules():
