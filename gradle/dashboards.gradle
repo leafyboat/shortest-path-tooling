@@ -11,6 +11,8 @@ def dashboardSeasonal = providers.gradleProperty('dashboardSeasonal')
         .orElse('false')
 def dashboardF2p = providers.gradleProperty('dashboardF2p')
         .orElse('false')
+def dashboardThreads = providers.gradleProperty('dashboardThreads')
+        .orElse('')
 // Derive bundle name and title from the dataset filename + profile flag.
 // e.g. dataset=/dashboard/clue_locations_full.csv, profile=true
 //   → bundle: clue-locations-full-profiled, title: Clue Locations Full Profiled
@@ -40,7 +42,8 @@ tasks.register('dashboard', Test) {
             'dashboardBundle, dashboardTitle, dashboardSubtitle, dashboardProfile (default: true), ' +
             'dashboardSeasonal (default: false; tags the bundle so the frontend renders the ' +
             'Demonic Pacts League regions overlay), ' +
-            'dashboardF2p (default: false; tags the bundle so the frontend tints members-only chunks).'
+            'dashboardF2p (default: false; tags the bundle so the frontend tints members-only chunks), ' +
+            'dashboardThreads (parallel scenario workers, default: availableProcessors()-3).'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnit()
@@ -64,6 +67,9 @@ tasks.register('dashboard', Test) {
     if (!dashboardSubtitle.get().isEmpty()) {
         systemProperty 'dashboard.subtitle', dashboardSubtitle.get()
     }
+    if (!dashboardThreads.get().isEmpty()) {
+        systemProperty 'dashboard.threads', dashboardThreads.get()
+    }
     doLast { logDashboardLocation('dashboard') }
 }
 
@@ -71,7 +77,8 @@ tasks.register('captureExpectedLengths', Test) {
     doNotTrackState('Capture always re-runs to write updated expected lengths.')
     group = 'verification'
     description = 'Runs one dataset and writes actual path lengths into expected_length in the source CSV. ' +
-            'Options: dashboardDataset (default: /dashboard/routes.csv), dashboardProfile (default: true).'
+            'Options: dashboardDataset (default: /dashboard/routes.csv), dashboardProfile (default: true), ' +
+            'dashboardThreads (parallel scenario workers, default: availableProcessors()-3).'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnit()
@@ -94,6 +101,9 @@ tasks.register('captureExpectedLengths', Test) {
     }
     if (!dashboardSubtitle.get().isEmpty()) {
         systemProperty 'dashboard.subtitle', dashboardSubtitle.get()
+    }
+    if (!dashboardThreads.get().isEmpty()) {
+        systemProperty 'dashboard.threads', dashboardThreads.get()
     }
 }
 

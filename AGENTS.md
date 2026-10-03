@@ -51,7 +51,8 @@ python3 scripts/maintenance.py validate  # data validation: hard gate + advisory
 Dashboard options are `-P` properties: `dashboardDataset` (default
 `/dashboard/routes.csv`), `dashboardBundle`, `dashboardTitle`,
 `dashboardSubtitle`, `dashboardProfile` (default true), `dashboardSeasonal`,
-`dashboardF2p`. Other tasks: `captureExpectedLengths` (writes actual lengths
+`dashboardF2p`, `dashboardThreads` (parallel scenario workers; default
+`availableProcessors()-3`). Other tasks: `captureExpectedLengths` (writes actual lengths
 back into the CSV) and the cache dumpers/probes in `gradle/cache-dumpers.gradle`
 (`bankTileDump`, `sailingAmenityVarbitDump`, `leagueRegionDump`,
 `f2pRegionDump`, `leagueIdProbe`, `transportAnchorDrift`, the `briefcase*`
