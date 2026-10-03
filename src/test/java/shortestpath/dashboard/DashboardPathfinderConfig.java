@@ -180,7 +180,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int costWildernessObelisks() { return costWildernessObelisks; }
     @Override public int costSeasonalTransports() { return costSeasonalTransports; }
     @Override public int costBankVisit() { return costBankVisit; }
-    public boolean respawnPrifddinas() { return respawnPrifddinas; }
+    @Override public boolean respawnPrifddinas() { return respawnPrifddinas; }
 
     // =========================================================================
     // Abstract void setters required by the interface

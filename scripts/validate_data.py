@@ -125,7 +125,7 @@ SCENARIO_CONFIG_KEYS = frozenset({
     "costTeleportationPortals", "costTeleportationSpells",
     "costTeleportationSpellsHome",
     "costTeleportationMinigames", "costWildernessObelisks",
-    "costSeasonalTransports",
+    "costSeasonalTransports", "costBankVisit", "respawnPrifddinas",
 })
 
 # Optional-column cell grammars — mirrors the loader's parseItems /
