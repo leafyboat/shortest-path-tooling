@@ -35,6 +35,7 @@ public class ProfilingPathfinder {
     private final IntMinHeap pending = new IntMinHeap(graph, 256);
     private final VisitedTiles visited;
 
+    private final boolean collectHeatmap;
     private PathfinderProfile profile;
     private PathfinderResult result;
 
@@ -56,6 +57,12 @@ public class ProfilingPathfinder {
     private static final OrdinalDirection[] ORDINAL_VALUES = OrdinalDirection.values();
 
     public ProfilingPathfinder(PathfinderConfig config, int start, Set<Integer> targets) {
+        this(config, start, targets, true);
+    }
+
+    public ProfilingPathfinder(PathfinderConfig config, int start, Set<Integer> targets,
+        boolean collectHeatmap) {
+        this.collectHeatmap = collectHeatmap;
         this.config = config;
         this.map = config.getMap();
         this.start = start;
@@ -256,8 +263,10 @@ public class ProfilingPathfinder {
             }
         }
 
-        // Tile visit counting for tile nodes
-        if (nodeIsTile) {
+        // Tile visit counting for tile nodes — the boxed tile→count map is the
+        // dominant profiling allocation on heavy searches, so it is opt-out
+        // per run rather than baked into profiling.
+        if (collectHeatmap && nodeIsTile) {
             profile.incrementTileVisit(nodePacked);
         }
 

@@ -73,15 +73,17 @@ public class ProfilerReportWriter extends PathfinderDashboardReportWriter {
             run.timeSeries.add(s);
         }
 
-        // Tile heatmap
-        run.tileHeatmap = new PathfinderDashboardModels.TileHeatmap();
-        run.tileHeatmap.tiles = new ArrayList<>();
-        for (Map.Entry<Integer, int[]> entry : profile.getTileVisitCounts().entrySet()) {
-            PathfinderDashboardModels.TileVisit tv = new PathfinderDashboardModels.TileVisit();
-            tv.x = WorldPointUtil.unpackWorldX(entry.getKey());
-            tv.y = WorldPointUtil.unpackWorldY(entry.getKey());
-            tv.count = entry.getValue()[0];
-            run.tileHeatmap.tiles.add(tv);
+        // Tile heatmap — absent entirely when collection was disabled for the run.
+        if (!profile.getTileVisitCounts().isEmpty()) {
+            run.tileHeatmap = new PathfinderDashboardModels.TileHeatmap();
+            run.tileHeatmap.tiles = new ArrayList<>();
+            for (Map.Entry<Integer, int[]> entry : profile.getTileVisitCounts().entrySet()) {
+                PathfinderDashboardModels.TileVisit tv = new PathfinderDashboardModels.TileVisit();
+                tv.x = WorldPointUtil.unpackWorldX(entry.getKey());
+                tv.y = WorldPointUtil.unpackWorldY(entry.getKey());
+                tv.count = entry.getValue()[0];
+                run.tileHeatmap.tiles.add(tv);
+            }
         }
     }
 }

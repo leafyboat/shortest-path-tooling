@@ -7,6 +7,8 @@ def dashboardSubtitle = providers.gradleProperty('dashboardSubtitle')
         .orElse('')
 def dashboardProfile = providers.gradleProperty('dashboardProfile')
         .orElse('true')
+def dashboardHeatmap = providers.gradleProperty('dashboardHeatmap')
+        .orElse('true')
 def dashboardSeasonal = providers.gradleProperty('dashboardSeasonal')
         .orElse('false')
 def dashboardF2p = providers.gradleProperty('dashboardF2p')
@@ -40,6 +42,9 @@ tasks.register('dashboard', Test) {
     description = 'Builds the pathfinder dashboard from DashboardTest scenarios. ' +
             'Options (all via -P): dashboardDataset (default: /dashboard/routes.csv), ' +
             'dashboardBundle, dashboardTitle, dashboardSubtitle, dashboardProfile (default: true), ' +
+            'dashboardHeatmap (default: true; only applies when profiling is on — ' +
+            'set false to skip the per-tile visit map that dominates profiling ' +
+            'memory on big datasets), ' +
             'dashboardSeasonal (default: false; tags the bundle so the frontend renders the ' +
             'Demonic Pacts League regions overlay), ' +
             'dashboardF2p (default: false; tags the bundle so the frontend tints members-only chunks), ' +
@@ -59,6 +64,7 @@ tasks.register('dashboard', Test) {
     systemProperty 'dashboard.bundleName', dashboardBundle.get()
     systemProperty 'dashboard.dataset', dashboardDataset.get()
     systemProperty 'dashboard.profile', dashboardProfile.get()
+    systemProperty 'dashboard.heatmap', dashboardHeatmap.get()
     systemProperty 'dashboard.seasonal', dashboardSeasonal.get()
     systemProperty 'dashboard.f2p', dashboardF2p.get()
     if (!dashboardTitle.get().isEmpty()) {
@@ -78,6 +84,7 @@ tasks.register('captureExpectedLengths', Test) {
     group = 'verification'
     description = 'Runs one dataset and writes actual path lengths into expected_length in the source CSV. ' +
             'Options: dashboardDataset (default: /dashboard/routes.csv), dashboardProfile (default: true), ' +
+            'dashboardHeatmap (default: true), ' +
             'dashboardThreads (parallel scenario workers, default: availableProcessors()-3).'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
@@ -94,6 +101,7 @@ tasks.register('captureExpectedLengths', Test) {
     systemProperty 'dashboard.bundleName', dashboardBundle.get()
     systemProperty 'dashboard.dataset', dashboardDataset.get()
     systemProperty 'dashboard.profile', dashboardProfile.get()
+    systemProperty 'dashboard.heatmap', dashboardHeatmap.get()
     systemProperty 'dashboard.f2p', dashboardF2p.get()
     systemProperty 'dashboard.sourceResourcesDir', sourceSets.test.resources.srcDirs.first().absolutePath
     if (!dashboardTitle.get().isEmpty()) {

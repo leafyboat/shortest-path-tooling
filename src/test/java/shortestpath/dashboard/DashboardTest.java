@@ -73,6 +73,7 @@ import shortestpath.pathfinder.Pathfinder;
  *   <tr><td>{@code dashboard.title}</td><td>{@code Dashboard}</td></tr>
  *   <tr><td>{@code dashboard.subtitle}</td><td>dataset label</td></tr>
  *   <tr><td>{@code dashboard.profile}</td><td>{@code true}</td></tr>
+ *   <tr><td>{@code dashboard.heatmap}</td><td>{@code true} (profiling only)</td></tr>
  *   <tr><td>{@code dashboard.threads}</td><td>{@code availableProcessors() - 3}</td></tr>
  *   <tr><td>{@code reachability.maxTargets}</td><td>{@code 10000}</td></tr>
  * </table>
@@ -179,6 +180,11 @@ public class DashboardTest {
     public void run() throws IOException, InterruptedException {
         String dataset = System.getProperty(DATASET_PROPERTY, DEFAULT_DATASET);
         boolean profile = Boolean.parseBoolean(System.getProperty("dashboard.profile", "true"));
+        // The per-tile heatmap rides on the profiler's visit counting; it only
+        // exists when profiling is on, and its boxed tile→count map is the
+        // dominant profiling allocation, so it gets its own off switch.
+        boolean heatmap = profile
+            && Boolean.parseBoolean(System.getProperty("dashboard.heatmap", "true"));
         String bundleName = System.getProperty(BUNDLE_NAME_PROPERTY, "routes");
         String reportTitle = System.getProperty("dashboard.title", "Dashboard");
         String reportSubtitle = System.getProperty("dashboard.subtitle", datasetLabel(dataset));
@@ -218,7 +224,7 @@ public class DashboardTest {
                 try {
                     runScenarioWorker(
                         scenarios, results, capturedLengths, nextIndex, completed,
-                        dataset, bundleName, profile);
+                        dataset, bundleName, profile, heatmap);
                 } catch (Throwable t) {
                     System.err.println("Dashboard worker terminated abnormally: " + t);
                     t.printStackTrace();
@@ -295,7 +301,8 @@ public class DashboardTest {
             AtomicInteger completed,
             String dataset,
             String bundleName,
-            boolean profile) {
+            boolean profile,
+            boolean heatmap) {
         WorkerContext ctx = newWorkerContext();
         int n = scenarios.size();
         for (int i = nextIndex.getAndIncrement(); i < n; i = nextIndex.getAndIncrement()) {
@@ -317,7 +324,7 @@ public class DashboardTest {
                 PathfinderProfile profileData = null;
                 if (profile) {
                     ProfilingPathfinder profiler = new ProfilingPathfinder(
-                        applied.pathfinderConfig, start, Set.of(end));
+                        applied.pathfinderConfig, start, Set.of(end), heatmap);
                     profiler.run();
                     result = profiler.getResult();
                     profileData = profiler.getProfile();
