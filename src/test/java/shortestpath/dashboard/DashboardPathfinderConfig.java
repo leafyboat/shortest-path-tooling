@@ -108,6 +108,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private int costTeleportationMinigames = 0;
     private int costWildernessObelisks = 0;
     private int costSeasonalTransports = 0;
+    private int costBankVisit = 20;
 
     // =========================================================================
     // Getters (implements ShortestPathConfig)
@@ -177,6 +178,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int costTeleportationMinigames() { return costTeleportationMinigames; }
     @Override public int costWildernessObelisks() { return costWildernessObelisks; }
     @Override public int costSeasonalTransports() { return costSeasonalTransports; }
+    @Override public int costBankVisit() { return costBankVisit; }
 
     // =========================================================================
     // Abstract void setters required by the interface
@@ -261,4 +263,5 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setCostTeleportationMinigames(int v) { costTeleportationMinigames = v; }
     public void setCostWildernessObelisks(int v) { costWildernessObelisks = v; }
     public void setCostSeasonalTransports(int v) { costSeasonalTransports = v; }
+    public void setCostBankVisit(int v) { costBankVisit = v; }
 }
