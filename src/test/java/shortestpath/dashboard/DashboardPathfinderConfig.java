@@ -178,7 +178,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int costTeleportationMinigames() { return costTeleportationMinigames; }
     @Override public int costWildernessObelisks() { return costWildernessObelisks; }
     @Override public int costSeasonalTransports() { return costSeasonalTransports; }
-    @Override public int costBankVisit() { return costBankVisit; }
+    public int costBankVisit() { return costBankVisit; }
 
     // =========================================================================
     // Abstract void setters required by the interface
