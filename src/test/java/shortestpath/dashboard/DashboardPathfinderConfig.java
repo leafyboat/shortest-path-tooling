@@ -188,7 +188,10 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int costSeasonalTransports() { return costSeasonalTransports; }
     @Override public int costBankVisit() { return costBankVisit; }
     @Override public boolean respawnPrifddinas() { return respawnPrifddinas; }
-    @Override public boolean unlockCanoeAxe() { return unlockCanoeAxe; }
+    // No @Override: the interface method only exists on the pending upstream
+    // branch, so the annotation would break compilation at the pin. The parity
+    // lint detects twins by declared method, so the surface still counts.
+    public boolean unlockCanoeAxe() { return unlockCanoeAxe; }
 
     // =========================================================================
     // Abstract void setters required by the interface
