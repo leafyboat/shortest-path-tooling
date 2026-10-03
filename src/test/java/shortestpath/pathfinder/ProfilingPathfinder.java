@@ -60,7 +60,7 @@ public class ProfilingPathfinder {
         this.map = config.getMap();
         this.start = start;
         this.targets = targets;
-        this.visited = new VisitedTiles(map);
+        this.visited = new VisitedTiles(map, config.getBankVisitCost());
         this.targetInWilderness = WildernessChecker.isInWilderness(targets);
         this.targetInBlockedRegion = anyInBlockedRegion(config.getLeagueModeState(), targets);
         this.wildernessLevel = 31;
@@ -277,14 +277,17 @@ public class ProfilingPathfinder {
         // ── Bank check sub-phase ──
         long subStart = System.nanoTime();
 
-        boolean nodeBankVisited = graph.bankVisited(node);
-        boolean pathBankVisited = nodeBankVisited
-            || (config.isBankPathEnabled() && config.bankAccessible(packedPosition));
-
-        profile.bankCheckNanos += System.nanoTime() - subStart;
-        if (pathBankVisited && !nodeBankVisited) {
+        // Mirrors CollisionMap.getTileNeighbors: the banked state is only entered through an
+        // explicit, costed transition — a bank-accessible tile emits a bank-visit edge carrying
+        // the configured penalty once, on the decision to bank.
+        boolean pathBankVisited = graph.bankVisited(node);
+        if (!pathBankVisited && config.isBankPathEnabled() && config.bankAccessible(packedPosition)
+            && !visited.get(packedPosition, true)) {
+            neighbors.add(graph.createBankVisit(packedPosition, node, config.getBankVisitCost()));
             profile.bankTransitions++;
         }
+
+        profile.bankCheckNanos += System.nanoTime() - subStart;
 
         // ── Transport lookup sub-phase ──
         subStart = System.nanoTime();
@@ -307,7 +310,8 @@ public class ProfilingPathfinder {
                 transport.getDuration(), config.getAdditionalTransportCost(transport) + chainPenalty,
                 pathBankVisited,
                 delayedVisit,
-                delayedVisit ? config.getDifferentialCost(transport) : 0));
+                delayedVisit ? config.getDifferentialCost(transport) : 0,
+                transport));
         }
 
         profile.transportLookupNanos += System.nanoTime() - subStart;
@@ -420,7 +424,8 @@ public class ProfilingPathfinder {
                 transport.getDuration(), config.getAdditionalTransportCost(transport),
                 bankVisited,
                 delayedVisit,
-                differentialCost));
+                differentialCost,
+                transport));
         }
         return neighbors;
     }
