@@ -1,7 +1,6 @@
 package shortestpath.dashboard;
 
 import java.util.ArrayList;
-import java.util.Map;
 import shortestpath.WorldPointUtil;
 import shortestpath.pathfinder.PathfinderProfile;
 
@@ -77,13 +76,13 @@ public class ProfilerReportWriter extends PathfinderDashboardReportWriter {
         if (!profile.getTileVisitCounts().isEmpty()) {
             run.tileHeatmap = new PathfinderDashboardModels.TileHeatmap();
             run.tileHeatmap.tiles = new ArrayList<>();
-            for (Map.Entry<Integer, int[]> entry : profile.getTileVisitCounts().entrySet()) {
+            profile.getTileVisitCounts().forEach((packed, count) -> {
                 PathfinderDashboardModels.TileVisit tv = new PathfinderDashboardModels.TileVisit();
-                tv.x = WorldPointUtil.unpackWorldX(entry.getKey());
-                tv.y = WorldPointUtil.unpackWorldY(entry.getKey());
-                tv.count = entry.getValue()[0];
+                tv.x = WorldPointUtil.unpackWorldX(packed);
+                tv.y = WorldPointUtil.unpackWorldY(packed);
+                tv.count = count;
                 run.tileHeatmap.tiles.add(tv);
-            }
+            });
         }
     }
 }

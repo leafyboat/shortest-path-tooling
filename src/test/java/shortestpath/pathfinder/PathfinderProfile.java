@@ -1,9 +1,7 @@
 package shortestpath.pathfinder;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Collects detailed profiling data during a pathfinding run.
@@ -47,7 +45,7 @@ public class PathfinderProfile {
     private final List<ProfileSample> samples = new ArrayList<>(400);
 
     // ── Tile visit heatmap (sparse: packedPosition -> visit count) ────
-    private final Map<Integer, int[]> tileVisitCounts = new HashMap<>();
+    private final IntCounterMap tileVisitCounts = new IntCounterMap();
 
     public PathfinderProfile() {
     }
@@ -75,7 +73,7 @@ public class PathfinderProfile {
     }
 
     void incrementTileVisit(int packedPosition) {
-        tileVisitCounts.computeIfAbsent(packedPosition, k -> new int[1])[0]++;
+        tileVisitCounts.increment(packedPosition);
     }
 
     // ── Getters ─────────────────────────────────────────────────────────
@@ -106,7 +104,7 @@ public class PathfinderProfile {
     public int getPeakBoundarySize() { return peakBoundarySize; }
     public int getPeakPendingSize() { return peakPendingSize; }
     public List<ProfileSample> getSamples() { return samples; }
-    public Map<Integer, int[]> getTileVisitCounts() { return tileVisitCounts; }
+    public IntCounterMap getTileVisitCounts() { return tileVisitCounts; }
 
     public static class ProfileSample {
         private final int iteration;
