@@ -10,11 +10,14 @@ import java.util.Map;
 import net.runelite.api.Client;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.WorldType;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarbitID;
 import shortestpath.TeleportationItem;
+import shortestpath.WorldPointUtil;
 import shortestpath.pathfinder.TestPathfinderConfig;
 
 /**
@@ -102,6 +105,17 @@ public final class DashboardScenarioRunner {
         for (int slot = 0; slot < 6; slot++) {
             when(client.getVarbitValue(10662 + slot)).thenReturn(0);
         }
+
+        // Step 3c: player-location stub. Region-scoped detection (planted
+        // spirit trees sample their patch varbit only while standing in that
+        // patch's region) needs a player position; the scenario's own start
+        // tile is the honest stand-in, same "derive from existing columns"
+        // shape as the seasonal stub above. Inert on plugin code that never
+        // reads getLocalPlayer() during refresh.
+        Player localPlayer = mock(Player.class);
+        WorldPoint startWorldPoint = WorldPointUtil.unpackWorldPoint(scenario.getStartPoint());
+        when(localPlayer.getWorldLocation()).thenReturn(startWorldPoint);
+        when(client.getLocalPlayer()).thenReturn(localPlayer);
 
         // Step 4: per-scenario varbit overrides
         for (Map.Entry<Integer, Integer> entry : scenario.getVarbits().entrySet()) {
