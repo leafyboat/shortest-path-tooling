@@ -101,6 +101,14 @@ public class DashboardTest {
     private final DashboardBundlePublisher bundlePublisher = new DashboardBundlePublisher();
 
     /**
+     * Serializes the heartbeat increment together with its printf. The
+     * counter alone would still tick monotonically, but two workers could
+     * both increment and then print out of order — the [i/N] lines must be
+     * emitted in strictly increasing order for the tqdm progress hook.
+     */
+    private static final Object HEARTBEAT_LOCK = new Object();
+
+    /**
      * Reset {@code client} and re-apply the baseline stubs every scenario
      * starts from. Must run on the thread that will execute the scenario:
      * the {@code getClientThread()} stub captures {@code Thread.currentThread()}
@@ -320,8 +328,10 @@ public class DashboardTest {
                 }
 
                 if (result == null) {
-                    System.out.printf("[%2d/%-2d] ✖ %s  NO_RESULT%n",
-                        completed.incrementAndGet(), n, scenario.getName());
+                    synchronized (HEARTBEAT_LOCK) {
+                        System.out.printf("[%2d/%-2d] ✖ %s  NO_RESULT%n",
+                            completed.incrementAndGet(), n, scenario.getName());
+                    }
                     continue;
                 }
 
@@ -396,18 +406,22 @@ public class DashboardTest {
                 bundlePublisher.externalizeRunHeatmap(bundleName, i, run);
                 results[i] = run;
 
-                System.out.printf("[%2d/%-2d] %s %s  %.0fms  %d steps%n",
-                    completed.incrementAndGet(), n,
-                    reached ? "✔" : "✖",
-                    scenario.getName(),
-                    result.getElapsedNanos() / 1_000_000.0,
-                    pathLength);
+                synchronized (HEARTBEAT_LOCK) {
+                    System.out.printf("[%2d/%-2d] %s %s  %.0fms  %d steps%n",
+                        completed.incrementAndGet(), n,
+                        reached ? "✔" : "✖",
+                        scenario.getName(),
+                        result.getElapsedNanos() / 1_000_000.0,
+                        pathLength);
+                }
             } catch (Throwable t) {
                 // A crashing scenario must still surface in report.json (the
                 // sweep's only pass/fail surface — scan_report flags
                 // assertionPassed: false) instead of aborting the whole run.
-                System.out.printf("[%d/%d] ✖ %s FAILED (%s)%n",
-                    completed.incrementAndGet(), n, scenario.getName(), t);
+                synchronized (HEARTBEAT_LOCK) {
+                    System.out.printf("[%d/%d] ✖ %s FAILED (%s)%n",
+                        completed.incrementAndGet(), n, scenario.getName(), t);
+                }
                 PathfinderDashboardModels.RunRecord failure = new PathfinderDashboardModels.RunRecord();
                 failure.name = scenario.getName();
                 failure.category = scenario.getCategory() != null && !scenario.getCategory().isEmpty()
