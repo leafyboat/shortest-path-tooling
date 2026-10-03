@@ -110,7 +110,12 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private int costWildernessObelisks = 0;
     private int costSeasonalTransports = 0;
     private int costBankVisit = 0;
+
+    // -------------------------------------------------------------------------
+    // Unlocks (config-declared states the game does not expose)
+    // -------------------------------------------------------------------------
     private boolean respawnPrifddinas = false;
+    private boolean unlockCanoeAxe = false;
 
     // =========================================================================
     // Getters (implements ShortestPathConfig)
@@ -183,6 +188,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int costSeasonalTransports() { return costSeasonalTransports; }
     @Override public int costBankVisit() { return costBankVisit; }
     @Override public boolean respawnPrifddinas() { return respawnPrifddinas; }
+    @Override public boolean unlockCanoeAxe() { return unlockCanoeAxe; }
 
     // =========================================================================
     // Abstract void setters required by the interface
@@ -270,4 +276,5 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setCostSeasonalTransports(int v) { costSeasonalTransports = v; }
     public void setCostBankVisit(int v) { costBankVisit = v; }
     public void setRespawnPrifddinas(boolean v) { respawnPrifddinas = v; }
+    public void setUnlockCanoeAxe(boolean v) { unlockCanoeAxe = v; }
 }
