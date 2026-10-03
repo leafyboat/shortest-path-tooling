@@ -116,6 +116,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     // -------------------------------------------------------------------------
     private boolean respawnPrifddinas = false;
     private boolean unlockCanoeAxe = false;
+    private boolean unlockXericsHonour = false;
 
     // =========================================================================
     // Getters (implements ShortestPathConfig)
@@ -192,6 +193,8 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     // branch, so the annotation would break compilation at the pin. The parity
     // lint detects twins by declared method, so the surface still counts.
     public boolean unlockCanoeAxe() { return unlockCanoeAxe; }
+    // Same in-flight state as unlockCanoeAxe — no @Override until merge + re-pin.
+    public boolean unlockXericsHonour() { return unlockXericsHonour; }
 
     // =========================================================================
     // Abstract void setters required by the interface
@@ -280,4 +283,5 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setCostBankVisit(int v) { costBankVisit = v; }
     public void setRespawnPrifddinas(boolean v) { respawnPrifddinas = v; }
     public void setUnlockCanoeAxe(boolean v) { unlockCanoeAxe = v; }
+    public void setUnlockXericsHonour(boolean v) { unlockXericsHonour = v; }
 }
