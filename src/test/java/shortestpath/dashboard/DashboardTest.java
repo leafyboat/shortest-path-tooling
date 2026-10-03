@@ -72,7 +72,9 @@ import shortestpath.pathfinder.Pathfinder;
  *   <tr><td>{@code dashboard.bundleName}</td><td>{@code routes}</td></tr>
  *   <tr><td>{@code dashboard.title}</td><td>{@code Dashboard}</td></tr>
  *   <tr><td>{@code dashboard.subtitle}</td><td>dataset label</td></tr>
- *   <tr><td>{@code dashboard.profile}</td><td>{@code true}</td></tr>
+ *   <tr><td>{@code dashboard.profile}</td><td>auto — on for datasets up to
+ *       {@value #PROFILE_AUTO_MAX_SCENARIOS} scenarios, off above; an explicit
+ *       {@code true}/{@code false} always wins</td></tr>
  *   <tr><td>{@code dashboard.heatmap}</td><td>{@code true} (profiling only)</td></tr>
  *   <tr><td>{@code dashboard.threads}</td><td>{@code availableProcessors() - 3}</td></tr>
  *   <tr><td>{@code reachability.maxTargets}</td><td>{@code 10000}</td></tr>
@@ -95,6 +97,13 @@ public class DashboardTest {
     private static final String BUNDLE_NAME_PROPERTY = DashboardBundlePublisher.BUNDLE_NAME_PROPERTY;
     private static final String DEFAULT_DATASET = "/dashboard/routes.csv";
     private static final int MAX_SCENARIOS = Integer.getInteger("reachability.maxTargets", 10000);
+    /**
+     * Profiling is auto-disabled above this scenario count unless
+     * {@code dashboard.profile} is set explicitly — instrumented searches run
+     * ~30–50x slower on heavy datasets, so large sweeps stay cheap while small
+     * debugging datasets keep the profiler by default.
+     */
+    private static final int PROFILE_AUTO_MAX_SCENARIOS = 200;
 
     private final DashboardScenarioLoader loader = new DashboardScenarioLoader();
     private final ProfilerReportWriter profilerReportWriter = new ProfilerReportWriter();
@@ -179,12 +188,7 @@ public class DashboardTest {
     @Test
     public void run() throws IOException, InterruptedException {
         String dataset = System.getProperty(DATASET_PROPERTY, DEFAULT_DATASET);
-        boolean profile = Boolean.parseBoolean(System.getProperty("dashboard.profile", "true"));
-        // The per-tile heatmap rides on the profiler's visit counting; it only
-        // exists when profiling is on, and its boxed tile→count map is the
-        // dominant profiling allocation, so it gets its own off switch.
-        boolean heatmap = profile
-            && Boolean.parseBoolean(System.getProperty("dashboard.heatmap", "true"));
+        String profileProp = System.getProperty("dashboard.profile");
         String bundleName = System.getProperty(BUNDLE_NAME_PROPERTY, "routes");
         String reportTitle = System.getProperty("dashboard.title", "Dashboard");
         String reportSubtitle = System.getProperty("dashboard.subtitle", datasetLabel(dataset));
@@ -194,10 +198,22 @@ public class DashboardTest {
         List<DashboardScenario> scenarios = allScenarios.subList(0, Math.min(MAX_SCENARIOS, allScenarios.size()));
 
         int n = scenarios.size();
+        // An explicit dashboard.profile always wins; unset means auto — profile
+        // only datasets small enough that the instrumentation stays cheap.
+        boolean profile = profileProp != null
+            ? Boolean.parseBoolean(profileProp)
+            : n <= PROFILE_AUTO_MAX_SCENARIOS;
+        // The per-tile heatmap rides on the profiler's visit counting; it only
+        // exists when profiling is on, and it is the dominant profiling
+        // allocation, so it gets its own off switch.
+        boolean heatmap = profile
+            && Boolean.parseBoolean(System.getProperty("dashboard.heatmap", "true"));
+
         int workers = resolveWorkerCount(n);
         // Deliberately not an [i/N] heartbeat line — maintenance.py's progress
         // hook consumes anything matching that shape.
-        System.out.printf("Running %d scenario(s) on %d worker(s)%n", n, workers);
+        System.out.printf("Running %d scenario(s) on %d worker(s) [%s]%n", n, workers,
+            profile ? (heatmap ? "profiled, heatmap" : "profiled") : "unprofiled");
 
         // Indexed by scenario position so report.json's run list stays in
         // dataset order regardless of completion order. A null slot means the

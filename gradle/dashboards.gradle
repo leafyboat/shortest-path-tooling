@@ -5,8 +5,9 @@ def dashboardDataset = providers.gradleProperty('dashboardDataset')
         .orElse('/dashboard/routes.csv')
 def dashboardSubtitle = providers.gradleProperty('dashboardSubtitle')
         .orElse('')
+// Empty when not set: the test then auto-decides profiling by dataset size.
 def dashboardProfile = providers.gradleProperty('dashboardProfile')
-        .orElse('true')
+        .orElse('')
 def dashboardHeatmap = providers.gradleProperty('dashboardHeatmap')
         .orElse('true')
 def dashboardSeasonal = providers.gradleProperty('dashboardSeasonal')
@@ -41,7 +42,9 @@ tasks.register('dashboard', Test) {
     group = 'verification'
     description = 'Builds the pathfinder dashboard from DashboardTest scenarios. ' +
             'Options (all via -P): dashboardDataset (default: /dashboard/routes.csv), ' +
-            'dashboardBundle, dashboardTitle, dashboardSubtitle, dashboardProfile (default: true), ' +
+            'dashboardBundle, dashboardTitle, dashboardSubtitle, dashboardProfile ' +
+            '(default: auto — on for datasets up to 200 scenarios, off above; ' +
+            'pass true/false to force), ' +
             'dashboardHeatmap (default: true; only applies when profiling is on — ' +
             'set false to skip the per-tile visit map that dominates profiling ' +
             'memory on big datasets), ' +
@@ -63,7 +66,9 @@ tasks.register('dashboard', Test) {
     systemProperty 'dashboard.outputRoot', dashboardOutputRoot.get().asFile.absolutePath
     systemProperty 'dashboard.bundleName', dashboardBundle.get()
     systemProperty 'dashboard.dataset', dashboardDataset.get()
-    systemProperty 'dashboard.profile', dashboardProfile.get()
+    if (!dashboardProfile.get().isEmpty()) {
+        systemProperty 'dashboard.profile', dashboardProfile.get()
+    }
     systemProperty 'dashboard.heatmap', dashboardHeatmap.get()
     systemProperty 'dashboard.seasonal', dashboardSeasonal.get()
     systemProperty 'dashboard.f2p', dashboardF2p.get()
@@ -83,7 +88,8 @@ tasks.register('captureExpectedLengths', Test) {
     doNotTrackState('Capture always re-runs to write updated expected lengths.')
     group = 'verification'
     description = 'Runs one dataset and writes actual path lengths into expected_length in the source CSV. ' +
-            'Options: dashboardDataset (default: /dashboard/routes.csv), dashboardProfile (default: true), ' +
+            'Options: dashboardDataset (default: /dashboard/routes.csv), ' +
+            'dashboardProfile (default: auto — off above 200 scenarios; pass true/false to force), ' +
             'dashboardHeatmap (default: true), ' +
             'dashboardThreads (parallel scenario workers, default: availableProcessors()-3).'
     testClassesDirs = sourceSets.test.output.classesDirs
@@ -100,7 +106,9 @@ tasks.register('captureExpectedLengths', Test) {
     systemProperty 'dashboard.outputRoot', dashboardOutputRoot.get().asFile.absolutePath
     systemProperty 'dashboard.bundleName', dashboardBundle.get()
     systemProperty 'dashboard.dataset', dashboardDataset.get()
-    systemProperty 'dashboard.profile', dashboardProfile.get()
+    if (!dashboardProfile.get().isEmpty()) {
+        systemProperty 'dashboard.profile', dashboardProfile.get()
+    }
     systemProperty 'dashboard.heatmap', dashboardHeatmap.get()
     systemProperty 'dashboard.f2p', dashboardF2p.get()
     systemProperty 'dashboard.sourceResourcesDir', sourceSets.test.resources.srcDirs.first().absolutePath

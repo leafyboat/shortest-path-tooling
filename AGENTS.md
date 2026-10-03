@@ -50,28 +50,32 @@ python3 scripts/maintenance.py validate  # data validation: hard gate + advisory
 
 Dashboard options are `-P` properties: `dashboardDataset` (default
 `/dashboard/routes.csv`), `dashboardBundle`, `dashboardTitle`,
-`dashboardSubtitle`, `dashboardProfile` (default true), `dashboardHeatmap`
-(default true; only applies when profiling is on), `dashboardSeasonal`,
-`dashboardF2p`, `dashboardThreads` (parallel scenario workers; default
-`availableProcessors()-3`). Other tasks: `captureExpectedLengths` (writes actual lengths
+`dashboardSubtitle`, `dashboardProfile` (default: **auto** — profiling runs
+only for datasets of ≤ 200 scenarios; pass `true`/`false` to force),
+`dashboardHeatmap` (default true; only applies when profiling is on),
+`dashboardSeasonal`, `dashboardF2p`, `dashboardThreads` (parallel scenario
+workers; default `availableProcessors()-3`). Other tasks: `captureExpectedLengths` (writes actual lengths
 back into the CSV) and the cache dumpers/probes in `gradle/cache-dumpers.gradle`
 (`bankTileDump`, `sailingAmenityVarbitDump`, `leagueRegionDump`,
 `f2pRegionDump`, `leagueIdProbe`, `transportAnchorDrift`, the `briefcase*`
 scans, …). Dumpers take `-P<name>CacheDir=` and `-P<name>XteaPath=` props.
 
-Profiling is expensive — pick flags deliberately for dev runs:
+Profiling is expensive — check the `[profiled|unprofiled]` tag on the
+"Running N scenario(s)" banner to confirm what a run is doing:
 
-- **Default to `-PdashboardProfile=false` for development/verification runs.**
-  Profiling adds ~30–50× per-search cost on heavy datasets (866 scenarios:
-  ~1 min unprofiled vs tens of minutes profiled) and `nanoTime()` calls sit
-  in the search hot loop.
-- **`dashboardHeatmap=false`** drops the per-tile visit map
-  (`HashMap<Integer,int[]>` — millions of boxed entries × worker count),
-  which is the dominant profiling memory cost. Use it when you need the
-  profiler's counters/timing/heatmap-less data but not the tile map.
-- Keep `dashboardProfile=true` (with heatmap) only when producing profiled
-  bundles for the dashboard site or when investigating search internals
-  (phase timings, boundary sizes, tile visit counts).
+- **Large datasets auto-run unprofiled** (>200 scenarios, e.g.
+  `clue_locations_full.csv` — ~1 min vs tens of minutes). Pass
+  `-PdashboardProfile=true` only when you specifically need profiled data
+  for a big dataset.
+- **Small datasets stay profiled by default** (debugging keeps its
+  counters); force `-PdashboardProfile=false` for quick A/B determinism
+  runs on any dataset.
+- **`dashboardHeatmap=false`** drops the per-tile visit map — the dominant
+  profiling allocation — while keeping the profiler's counters, phase
+  timings, and time series. Use it when you need profiling on a dataset
+  where the heatmap itself isn't the point.
+- Produce profiled bundles for the dashboard site explicitly with
+  `-PdashboardProfile=true` — don't rely on the auto default.
 
 `verify` streams tier progress (per-dataset header + tqdm bar driven by the
 `[i/N]` scenario heartbeats in `DashboardTest`). Expect ~15–30 min: the
