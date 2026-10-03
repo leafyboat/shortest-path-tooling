@@ -11,11 +11,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.EnumSet;
 import net.runelite.api.Client;
@@ -28,7 +33,6 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarbitID;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 import shortestpath.WorldPointUtil;
@@ -69,6 +73,7 @@ import shortestpath.pathfinder.Pathfinder;
  *   <tr><td>{@code dashboard.title}</td><td>{@code Dashboard}</td></tr>
  *   <tr><td>{@code dashboard.subtitle}</td><td>dataset label</td></tr>
  *   <tr><td>{@code dashboard.profile}</td><td>{@code true}</td></tr>
+ *   <tr><td>{@code dashboard.threads}</td><td>{@code availableProcessors() - 3}</td></tr>
  *   <tr><td>{@code reachability.maxTargets}</td><td>{@code 10000}</td></tr>
  * </table>
  */
@@ -95,13 +100,15 @@ public class DashboardTest {
     private final PathfinderDashboardReportWriter reportWriter = new PathfinderDashboardReportWriter();
     private final DashboardBundlePublisher bundlePublisher = new DashboardBundlePublisher();
 
-    private Client client;
-    private ItemContainer universalBankContainer;
-    private Runnable clientBaseline;
-
-    @Before
-    public void setUp() {
-        client = mock(Client.class);
+    /**
+     * Reset {@code client} and re-apply the baseline stubs every scenario
+     * starts from. Must run on the thread that will execute the scenario:
+     * the {@code getClientThread()} stub captures {@code Thread.currentThread()}
+     * at invocation time, which is what lets each worker pass the
+     * client-thread gate inside the pathfinder config refresh.
+     */
+    private static void stubClientBaseline(Client client) {
+        reset(client);
         when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
         when(client.getClientThread()).thenReturn(Thread.currentThread());
         when(client.getBoostedSkillLevel(any(Skill.class))).thenReturn(99);
@@ -111,27 +118,57 @@ public class DashboardTest {
         when(client.getWorldType()).thenReturn(EnumSet.noneOf(WorldType.class));
         when(client.getItemContainer(InventoryID.INV)).thenReturn(null);
         when(client.getItemContainer(InventoryID.WORN)).thenReturn(null);
+    }
 
-        universalBankContainer = mock(ItemContainer.class);
+    /**
+     * Per-worker Mockito fixtures. {@code DashboardScenarioRunner.apply} mutates
+     * the passed {@link Client} (the baseline resets and re-stubs it per
+     * scenario), so a mock must never be shared across workers — each worker
+     * thread builds and owns its own set.
+     */
+    private static final class WorkerContext {
+        final Client client;
+        final Runnable clientBaseline;
+        final ItemContainer universalBankContainer;
+
+        WorkerContext(Client client, Runnable clientBaseline, ItemContainer universalBankContainer) {
+            this.client = client;
+            this.clientBaseline = clientBaseline;
+            this.universalBankContainer = universalBankContainer;
+        }
+    }
+
+    /**
+     * Build a worker's Mockito fixtures. MUST be invoked on the worker thread
+     * itself so the initial {@code getClientThread()} stub captures the worker,
+     * not the main thread.
+     */
+    private static WorkerContext newWorkerContext() {
+        Client client = mock(Client.class);
+        Runnable clientBaseline = () -> stubClientBaseline(client);
+        clientBaseline.run();
+
+        ItemContainer universalBankContainer = mock(ItemContainer.class);
         when(universalBankContainer.getItems()).thenReturn(UNIVERSAL_BANK_ITEMS);
 
-        // Capture current stub state as the per-scenario baseline Runnable
-        clientBaseline = () -> {
-            reset(client);
-            when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
-            when(client.getClientThread()).thenReturn(Thread.currentThread());
-            when(client.getBoostedSkillLevel(any(Skill.class))).thenReturn(99);
-            when(client.getTotalLevel()).thenReturn(2277);
-            when(client.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE)).thenReturn(1);
-            when(client.getVarbitValue(VarbitID.FAIRY2_QUEENCURE_QUEST)).thenReturn(100);
-            when(client.getWorldType()).thenReturn(EnumSet.noneOf(WorldType.class));
-            when(client.getItemContainer(InventoryID.INV)).thenReturn(null);
-            when(client.getItemContainer(InventoryID.WORN)).thenReturn(null);
-        };
+        return new WorkerContext(client, clientBaseline, universalBankContainer);
+    }
+
+    /**
+     * Resolve the scenario worker count: the {@code dashboard.threads} system
+     * property when set to a positive value, otherwise
+     * {@code max(1, availableProcessors() - 3)}, clamped to the scenario count.
+     */
+    private static int resolveWorkerCount(int scenarioCount) {
+        Integer configured = Integer.getInteger("dashboard.threads");
+        int workers = configured != null && configured > 0
+            ? configured
+            : Math.max(1, Runtime.getRuntime().availableProcessors() - 3);
+        return Math.max(1, Math.min(workers, scenarioCount));
     }
 
     @Test
-    public void run() throws IOException {
+    public void run() throws IOException, InterruptedException {
         String dataset = System.getProperty(DATASET_PROPERTY, DEFAULT_DATASET);
         boolean profile = Boolean.parseBoolean(System.getProperty("dashboard.profile", "true"));
         String bundleName = System.getProperty(BUNDLE_NAME_PROPERTY, "routes");
@@ -142,121 +179,58 @@ public class DashboardTest {
         List<DashboardScenario> allScenarios = loadScenarios(dataset);
         List<DashboardScenario> scenarios = allScenarios.subList(0, Math.min(MAX_SCENARIOS, allScenarios.size()));
 
-        List<PathfinderDashboardModels.RunRecord> runs = new ArrayList<>();
-        Map<String, Integer> capturedLengths = new LinkedHashMap<>();
+        int n = scenarios.size();
+        int workers = resolveWorkerCount(n);
+        // Deliberately not an [i/N] heartbeat line — maintenance.py's progress
+        // hook consumes anything matching that shape.
+        System.out.printf("Running %d scenario(s) on %d worker(s)%n", n, workers);
+
+        // Indexed by scenario position so report.json's run list stays in
+        // dataset order regardless of completion order. A null slot means the
+        // scenario produced no result (same as the old `continue`).
+        PathfinderDashboardModels.RunRecord[] results = new PathfinderDashboardModels.RunRecord[n];
+        Map<String, Integer> capturedLengths = new ConcurrentHashMap<>();
+        // Shared work queue: workers pull the next scenario index, so a slow
+        // scenario can't strand a worker the way pre-partitioned ranges would.
+        AtomicInteger nextIndex = new AtomicInteger(0);
+        // Heartbeat numerator: counts finished scenarios, not scenario indexes,
+        // so the [i/N] lines stay monotonic under completion-order execution.
+        AtomicInteger completed = new AtomicInteger(0);
         long started = System.currentTimeMillis();
 
-        int scenarioIndex = 0;
-        for (DashboardScenario scenario : scenarios) {
-            scenarioIndex++;
-
-            DashboardScenarioRunner.ApplyResult applied = DashboardScenarioRunner.apply(
-                scenario, client, clientBaseline, universalBankContainer);
-
-            // Default to the Grand Exchange bank when no explicit start is set (e.g. clue-step CSV rows)
-            int start = scenario.getStartPoint() != WorldPointUtil.UNDEFINED
-                ? scenario.getStartPoint()
-                : WorldPointUtil.packWorldPoint(3185, 3436, 0);
-            int end = scenario.getEndPoint();
-            String category = scenario.getCategory() != null && !scenario.getCategory().isEmpty()
-                ? scenario.getCategory()
-                : "dashboard";
-
-            PathfinderResult result;
-            PathfinderProfile profileData = null;
-            if (profile) {
-                ProfilingPathfinder profiler = new ProfilingPathfinder(
-                    applied.pathfinderConfig, start, Set.of(end));
-                profiler.run();
-                result = profiler.getResult();
-                profileData = profiler.getProfile();
-            } else {
-                Pathfinder pathfinder = new Pathfinder(applied.pathfinderConfig, start, Set.of(end));
-                pathfinder.run();
-                result = pathfinder.getResult();
-            }
-
-            if (result == null) {
-                System.out.printf("[%2d/%-2d] \u2716 %s  NO_RESULT%n",
-                    scenarioIndex, scenarios.size(), scenario.getName());
-                continue;
-            }
-
-            List<PathStep> path = result.getPathSteps();
-            int pathLength = path.size();
-            boolean reached = isReachedOrAdjacent(result, end);
-            if (reached) {
-                capturedLengths.put(scenario.getName(), pathLength);
-            }
-
-            // Evaluate assertions — the reachability expectation takes
-            // precedence over length assertions: an expect_reachable=true row
-            // that fails to reach fails here, and an expect_reachable=false row
-            // passes only when no path is found.
-            Boolean assertionPassed = null;
-            String assertionMessage = null;
-            boolean expectedReachable = scenario.isExpectedReachable();
-            OptionalInt expectedLength = scenario.getExpectedLength();
-            OptionalInt minimumLength = scenario.getMinimumLength();
-            if (reached != expectedReachable) {
-                assertionPassed = false;
-                assertionMessage = expectedReachable
-                    ? "Expected reachable but no path found"
-                    : "Expected unreachable but path found (" + pathLength + " steps)";
-            } else if (!expectedReachable) {
-                assertionPassed = true;
-                assertionMessage = "Expected unreachable";
-            } else if (expectedLength.isPresent()) {
-                int expected = expectedLength.getAsInt();
-                if (pathLength == expected) {
-                    assertionPassed = true;
-                } else {
-                    assertionPassed = false;
-                    assertionMessage = "Expected path length " + expected + " but got " + pathLength;
+        AtomicInteger workerIds = new AtomicInteger(0);
+        ThreadFactory threadFactory = r -> {
+            Thread t = new Thread(r, "dashboard-worker-" + workerIds.incrementAndGet());
+            t.setDaemon(false);
+            return t;
+        };
+        ExecutorService pool = Executors.newFixedThreadPool(workers, threadFactory);
+        for (int w = 0; w < workers; w++) {
+            pool.submit(() -> {
+                try {
+                    runScenarioWorker(
+                        scenarios, results, capturedLengths, nextIndex, completed,
+                        dataset, bundleName, profile);
+                } catch (Throwable t) {
+                    System.err.println("Dashboard worker terminated abnormally: " + t);
+                    t.printStackTrace();
                 }
-            } else if (minimumLength.isPresent()) {
-                int minimum = minimumLength.getAsInt();
-                if (pathLength >= minimum) {
-                    assertionPassed = true;
-                } else {
-                    assertionPassed = false;
-                    assertionMessage = "Expected minimum path length " + minimum + " but got " + pathLength;
-                }
+            });
+        }
+        pool.shutdown();
+        try {
+            pool.awaitTermination(1, TimeUnit.HOURS);
+        } catch (InterruptedException e) {
+            pool.shutdownNow();
+            Thread.currentThread().interrupt();
+            throw e;
+        }
+
+        List<PathfinderDashboardModels.RunRecord> runs = new ArrayList<>(n);
+        for (PathfinderDashboardModels.RunRecord r : results) {
+            if (r != null) {
+                runs.add(r);
             }
-
-            List<String> details = List.of(
-                "Dataset: " + datasetLabel(dataset),
-                "Scenario: " + scenario.getName(),
-                "Preset: " + scenario.getPreset(),
-                "Expected reachable: " + expectedReachable);
-
-            PathfinderDashboardModels.RunRecord run = reportWriter.createRunRecord(
-                scenario.getName(),
-                category,
-                details,
-                result,
-                applied.pathfinderConfig,
-                reached,
-                assertionPassed,
-                assertionMessage);
-            run.expectedReachable = expectedReachable;
-
-            DashboardRunMetadata.apply(run, scenario.getPreset(), applied.dashboardConfig,
-                applied.lumbridgeDiaryEliteStub);
-
-            if (profileData != null) {
-                profilerReportWriter.populateProfilerData(run, profileData);
-            }
-            bundlePublisher.externalizeRunHeatmap(bundleName, runs.size(), run);
-            runs.add(run);
-
-            System.out.printf("[%2d/%-2d] %s %s  %.0fms  %d steps%n",
-                scenarioIndex, scenarios.size(),
-                reached ? "\u2714" : "\u2716",
-                scenario.getName(),
-                result.getElapsedNanos() / 1_000_000.0,
-                pathLength);
-
         }
 
         PathfinderDashboardModels.Report report = reportWriter.createReport(
@@ -294,6 +268,157 @@ public class DashboardTest {
         long unreachable = runs.stream().filter(r -> !r.reached).count();
         if (unreachable > 0) {
             System.out.printf("%d unreachable target(s). See %s%n", unreachable, siteRoot.resolve("index.html"));
+        }
+    }
+
+    /**
+     * Worker loop: pull scenario indexes off the shared queue and run each
+     * scenario with this thread's own Mockito fixtures. Every per-scenario
+     * mutable input to {@link DashboardScenarioRunner#apply} lives in the
+     * worker's {@link WorkerContext}; everything shared (the scenario list,
+     * the results array, the writers and publisher) is either immutable or
+     * written under an index unique to this scenario.
+     */
+    private void runScenarioWorker(
+            List<DashboardScenario> scenarios,
+            PathfinderDashboardModels.RunRecord[] results,
+            Map<String, Integer> capturedLengths,
+            AtomicInteger nextIndex,
+            AtomicInteger completed,
+            String dataset,
+            String bundleName,
+            boolean profile) {
+        WorkerContext ctx = newWorkerContext();
+        int n = scenarios.size();
+        for (int i = nextIndex.getAndIncrement(); i < n; i = nextIndex.getAndIncrement()) {
+            DashboardScenario scenario = scenarios.get(i);
+            try {
+                DashboardScenarioRunner.ApplyResult applied = DashboardScenarioRunner.apply(
+                    scenario, ctx.client, ctx.clientBaseline, ctx.universalBankContainer);
+
+                // Default to the Grand Exchange bank when no explicit start is set (e.g. clue-step CSV rows)
+                int start = scenario.getStartPoint() != WorldPointUtil.UNDEFINED
+                    ? scenario.getStartPoint()
+                    : WorldPointUtil.packWorldPoint(3185, 3436, 0);
+                int end = scenario.getEndPoint();
+                String category = scenario.getCategory() != null && !scenario.getCategory().isEmpty()
+                    ? scenario.getCategory()
+                    : "dashboard";
+
+                PathfinderResult result;
+                PathfinderProfile profileData = null;
+                if (profile) {
+                    ProfilingPathfinder profiler = new ProfilingPathfinder(
+                        applied.pathfinderConfig, start, Set.of(end));
+                    profiler.run();
+                    result = profiler.getResult();
+                    profileData = profiler.getProfile();
+                } else {
+                    Pathfinder pathfinder = new Pathfinder(applied.pathfinderConfig, start, Set.of(end));
+                    pathfinder.run();
+                    result = pathfinder.getResult();
+                }
+
+                if (result == null) {
+                    System.out.printf("[%2d/%-2d] ✖ %s  NO_RESULT%n",
+                        completed.incrementAndGet(), n, scenario.getName());
+                    continue;
+                }
+
+                List<PathStep> path = result.getPathSteps();
+                int pathLength = path.size();
+                boolean reached = isReachedOrAdjacent(result, end);
+                if (reached) {
+                    capturedLengths.put(scenario.getName(), pathLength);
+                }
+
+                // Evaluate assertions — the reachability expectation takes
+                // precedence over length assertions: an expect_reachable=true row
+                // that fails to reach fails here, and an expect_reachable=false row
+                // passes only when no path is found.
+                Boolean assertionPassed = null;
+                String assertionMessage = null;
+                boolean expectedReachable = scenario.isExpectedReachable();
+                OptionalInt expectedLength = scenario.getExpectedLength();
+                OptionalInt minimumLength = scenario.getMinimumLength();
+                if (reached != expectedReachable) {
+                    assertionPassed = false;
+                    assertionMessage = expectedReachable
+                        ? "Expected reachable but no path found"
+                        : "Expected unreachable but path found (" + pathLength + " steps)";
+                } else if (!expectedReachable) {
+                    assertionPassed = true;
+                    assertionMessage = "Expected unreachable";
+                } else if (expectedLength.isPresent()) {
+                    int expected = expectedLength.getAsInt();
+                    if (pathLength == expected) {
+                        assertionPassed = true;
+                    } else {
+                        assertionPassed = false;
+                        assertionMessage = "Expected path length " + expected + " but got " + pathLength;
+                    }
+                } else if (minimumLength.isPresent()) {
+                    int minimum = minimumLength.getAsInt();
+                    if (pathLength >= minimum) {
+                        assertionPassed = true;
+                    } else {
+                        assertionPassed = false;
+                        assertionMessage = "Expected minimum path length " + minimum + " but got " + pathLength;
+                    }
+                }
+
+                List<String> details = List.of(
+                    "Dataset: " + datasetLabel(dataset),
+                    "Scenario: " + scenario.getName(),
+                    "Preset: " + scenario.getPreset(),
+                    "Expected reachable: " + expectedReachable);
+
+                PathfinderDashboardModels.RunRecord run = reportWriter.createRunRecord(
+                    scenario.getName(),
+                    category,
+                    details,
+                    result,
+                    applied.pathfinderConfig,
+                    reached,
+                    assertionPassed,
+                    assertionMessage);
+                run.expectedReachable = expectedReachable;
+
+                DashboardRunMetadata.apply(run, scenario.getPreset(), applied.dashboardConfig,
+                    applied.lumbridgeDiaryEliteStub);
+
+                if (profileData != null) {
+                    profilerReportWriter.populateProfilerData(run, profileData);
+                }
+                // The scenario index is a valid unique heatmap name — the
+                // frontend resolves heatmaps via the recorded heatmapFile
+                // path, not by run position.
+                bundlePublisher.externalizeRunHeatmap(bundleName, i, run);
+                results[i] = run;
+
+                System.out.printf("[%2d/%-2d] %s %s  %.0fms  %d steps%n",
+                    completed.incrementAndGet(), n,
+                    reached ? "✔" : "✖",
+                    scenario.getName(),
+                    result.getElapsedNanos() / 1_000_000.0,
+                    pathLength);
+            } catch (Throwable t) {
+                // A crashing scenario must still surface in report.json (the
+                // sweep's only pass/fail surface — scan_report flags
+                // assertionPassed: false) instead of aborting the whole run.
+                System.out.printf("[%d/%d] ✖ %s FAILED (%s)%n",
+                    completed.incrementAndGet(), n, scenario.getName(), t);
+                PathfinderDashboardModels.RunRecord failure = new PathfinderDashboardModels.RunRecord();
+                failure.name = scenario.getName();
+                failure.category = scenario.getCategory() != null && !scenario.getCategory().isEmpty()
+                    ? scenario.getCategory()
+                    : "dashboard";
+                failure.reached = false;
+                failure.expectedReachable = scenario.isExpectedReachable();
+                failure.assertionPassed = false;
+                failure.assertionMessage = "Scenario threw " + t;
+                results[i] = failure;
+            }
         }
     }
 
