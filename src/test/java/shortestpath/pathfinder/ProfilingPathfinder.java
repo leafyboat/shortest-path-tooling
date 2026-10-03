@@ -60,7 +60,7 @@ public class ProfilingPathfinder {
         this.map = config.getMap();
         this.start = start;
         this.targets = targets;
-        this.visited = new VisitedTiles(map);
+        this.visited = new VisitedTiles(map, config.getBankVisitCost());
         this.targetInWilderness = WildernessChecker.isInWilderness(targets);
         this.targetInBlockedRegion = anyInBlockedRegion(config.getLeagueModeState(), targets);
         this.wildernessLevel = 31;
@@ -285,6 +285,9 @@ public class ProfilingPathfinder {
         if (pathBankVisited && !nodeBankVisited) {
             profile.bankTransitions++;
         }
+        // Mirrors CollisionMap.getTileNeighbors: the first transition into the banked
+        // state charges the configured bank visit cost on every emitted neighbour.
+        int bankVisitCost = (pathBankVisited && !nodeBankVisited) ? config.getBankVisitCost() : 0;
 
         // ── Transport lookup sub-phase ──
         subStart = System.nanoTime();
@@ -304,7 +307,7 @@ public class ProfilingPathfinder {
             int chainPenalty = (delayedVisit && inheritedDifferential > 0) ? inheritedDifferential : 0;
             neighbors.add(graph.createTransport(
                 transport.getDestination(), node,
-                transport.getDuration(), config.getAdditionalTransportCost(transport) + chainPenalty,
+                transport.getDuration(), config.getAdditionalTransportCost(transport) + chainPenalty + bankVisitCost,
                 pathBankVisited,
                 delayedVisit,
                 delayedVisit ? config.getDifferentialCost(transport) : 0));
@@ -317,7 +320,7 @@ public class ProfilingPathfinder {
 
         AbstractNodeKind abstractKind = AbstractNodeKind.fromWildernessLevel(wildernessLevel);
         if (!visited.getAbstract(abstractKind, pathBankVisited)) {
-            neighbors.add(graph.createAbstract(abstractKind, node, pathBankVisited));
+            neighbors.add(graph.createAbstract(abstractKind, node, pathBankVisited, bankVisitCost));
             profile.abstractNodesExpanded++;
         }
 
@@ -366,7 +369,7 @@ public class ProfilingPathfinder {
             if (visited.get(neighborPacked, pathBankVisited)) continue;
 
             if (traversable[i]) {
-                neighbors.add(graph.createTile(neighborPacked, node, pathBankVisited));
+                neighbors.add(graph.createTile(neighborPacked, node, pathBankVisited, bankVisitCost));
             } else if (Math.abs(d.x + d.y) == 1 && map.isBlocked(x + d.x, y + d.y, z)) {
                 // Blocked-tile transport fallback
                 profile.walkableTileNanos += System.nanoTime() - subStart;
@@ -381,7 +384,7 @@ public class ProfilingPathfinder {
                         || visited.get(transport.getOrigin(), pathBankVisited)) {
                         continue;
                     }
-                    neighbors.add(graph.createTile(transport.getOrigin(), node, pathBankVisited));
+                    neighbors.add(graph.createTile(transport.getOrigin(), node, pathBankVisited, bankVisitCost));
                 }
 
                 profile.blockedTileTransportNanos += System.nanoTime() - subStart;

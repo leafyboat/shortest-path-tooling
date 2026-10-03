@@ -179,7 +179,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int costTeleportationMinigames() { return costTeleportationMinigames; }
     @Override public int costWildernessObelisks() { return costWildernessObelisks; }
     @Override public int costSeasonalTransports() { return costSeasonalTransports; }
-    public int costBankVisit() { return costBankVisit; }
+    @Override public int costBankVisit() { return costBankVisit; }
     public boolean respawnPrifddinas() { return respawnPrifddinas; }
 
     // =========================================================================
