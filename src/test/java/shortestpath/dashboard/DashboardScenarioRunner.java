@@ -16,6 +16,7 @@ import net.runelite.api.WorldType;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarbitID;
+import shortestpath.JewelleryBoxTier;
 import shortestpath.TeleportationItem;
 import shortestpath.WorldPointUtil;
 import shortestpath.pathfinder.TestPathfinderConfig;
@@ -257,6 +258,12 @@ public final class DashboardScenarioRunner {
                 case "costTeleportationMinigames": config.setCostTeleportationMinigames(Integer.parseInt(value)); break;
                 case "costWildernessObelisks": config.setCostWildernessObelisks(Integer.parseInt(value)); break;
                 case "costSeasonalTransports": config.setCostSeasonalTransports(Integer.parseInt(value)); break;
+                case "costQuetzalWhistle": config.setCostQuetzalWhistle(Integer.parseInt(value)); break;
+                case "costTeleportationBoxes": config.setCostTeleportationBoxes(Integer.parseInt(value)); break;
+                case "pohJewelleryBoxTier": config.setPohJewelleryBoxTier(JewelleryBoxTier.valueOf(value)); break;
+                case "unreachableTargetDistanceThreshold": config.setUnreachableTargetDistance(Integer.parseInt(value)); break;
+                case "builtTeleportationBoxes": config.setBuiltTeleportationBoxes(value); break;
+                case "builtTeleportationPortalsPoh": config.setBuiltTeleportationPortalsPoh(value); break;
                 default:
                     throw new IllegalArgumentException("Unknown config_override key: '" + key + "'");
             }

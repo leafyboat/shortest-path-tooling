@@ -62,6 +62,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private boolean bypassVarPlayerChecks = true;
     private int currencyThreshold = 10_000_000;
     private int calculationCutoff = 500;
+    private int unreachableTargetDistance = 2;
 
     // -------------------------------------------------------------------------
     // POH settings
@@ -96,7 +97,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private int costMagicMushtrees = 0;
     private int costMinecarts = 0;
     private int costQuetzals = 0;
-    private int costQuetzalWhistle = 0;
+    private int costQuetzalWhistle = 15;
     private int costSpiritTrees = 0;
     private int costNonConsumableTeleportationItems = 0;
     private int costConsumableTeleportationItems = 0;
@@ -142,6 +143,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public boolean includeBankPath() { return includeBankPath; }
     @Override public int currencyThreshold() { return currencyThreshold; }
     @Override public int calculationCutoff() { return calculationCutoff; }
+    @Override public int unreachableTargetDistance() { return unreachableTargetDistance; }
 
     @Override public boolean usePoh() { return usePoh; }
     @Override public boolean usePohFairyRing() { return usePohFairyRing; }
@@ -231,6 +233,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setBypassVarPlayerChecks(boolean v) { bypassVarPlayerChecks = v; }
     public void setCurrencyThreshold(int v) { currencyThreshold = v; }
     public void setCalculationCutoff(int v) { calculationCutoff = v; }
+    public void setUnreachableTargetDistance(int v) { unreachableTargetDistance = v; }
 
     public void setUsePoh(boolean v) { usePoh = v; }
     public void setUsePohFairyRing(boolean v) { usePohFairyRing = v; }
