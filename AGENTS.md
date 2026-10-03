@@ -130,6 +130,43 @@ belong to the submodule's branch/PR flow, not this repo.
   from `shortest-path/src/test/java` into `compileTestJava`.
 - Run submodule tests with `./gradlew -p shortest-path test`.
 
+## Upstream PR workflow
+
+The upstream maintainer reviews at a deliberate pace and has flagged
+the submission pace as rushed — requirement-satisfaction logic is
+spread across several places, so subtle changes are expensive to review.
+
+- Changes to requirement satisfaction, eligibility, or
+  `usable()`/`useTransport` semantics must include adversarial tests:
+  null/empty requirement branches, OR-vs-AND combinations, and every
+  teleportation-item mode — not just the happy path.
+- Transport/quest availability varbits are usually recoverable by
+  decompiling cache clientscripts (`VarAccessProbeTest`,
+  `-Dtile.probe.*` flags); cross-check with the Quest Helper plugin.
+  If a condition genuinely isn't var-exposed, use the config-option
+  mechanism rather than dropping the data.
+
+## Verify-command rules
+
+Checks that cannot fail get written every cycle — audit before shipping:
+
+- A verify/check command must be able to fail. No `; cmd` after an `&&`
+  chain (the trailing command discards the chain's status). When piping,
+  assert the source exit code — capture `out=$(cmd 2>&1); rc=$?` and
+  require both `rc -eq 0` and no error lines in `$out`. A crashed
+  checker must never read as green.
+- Greps must target identifiers the change introduces (new constants,
+  enum values, tokens), never pre-existing symbols — a presence check
+  that passes on the untouched tree is not a check.
+- `gh` invocations must be real: `gh pr list --head` takes a bare
+  branch name (filter fork owner via `headRepositoryOwner.login`);
+  `gh pr view` has no `--head` flag.
+- Every file an action step creates or edits must be declared in that
+  step's file list.
+- After adding `@ConfigItem`s, `position` values must stay unique:
+  `grep -o 'position = [0-9]*' ShortestPathConfig.java | sort | uniq -d`
+  → empty. `renumber_config_positions.py` fixes collisions.
+
 ## Benchmark corpus (related repo)
 
 [`shortest-path-corpus`](https://github.com/osrs-pathfinding/shortest-path-corpus)
