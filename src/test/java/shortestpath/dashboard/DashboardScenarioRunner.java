@@ -233,7 +233,6 @@ public final class DashboardScenarioRunner {
                 case "usePohMountedItems": config.setUsePohMountedItems(parseBoolean(value)); break;
                 case "usePohObelisk": config.setUsePohObelisk(parseBoolean(value)); break;
                 case "costConsumableTeleportationItems": config.setCostConsumableTeleportationItems(Integer.parseInt(value)); break;
-                case "costBankVisit": config.setCostBankVisit(Integer.parseInt(value)); break;
                 case "respawnPrifddinas": config.setRespawnPrifddinas(parseBoolean(value)); break;
                 case "costNonConsumableTeleportationItems": config.setCostNonConsumableTeleportationItems(Integer.parseInt(value)); break;
                 case "costAgilityShortcuts": config.setCostAgilityShortcuts(Integer.parseInt(value)); break;
