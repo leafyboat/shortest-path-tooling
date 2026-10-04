@@ -22,3 +22,5 @@
 1533 9445 0	Hunter Guild cave "Exit Cave" origin — same exit-object tile mechanic as 1533 9447 0
 1860 4639 0	"Enter Portal" destination — portal arrival tile is unwalkable in the committed map; the transport places the player directly
 3240 4832 0	"Use Portal" origin — the portal object tile is unwalkable in the committed map; the player interacts at object range (walkable diagonal neighbours exist)
+1638 3808 1	Jump-down Railing origin (Stalker Den, 52 Agility) — the railing object tile is unwalkable; the player interacts at object range rather than standing on it
+1638 3806 2	Jump-down Railing origin (Stalker Den, 62 Agility) — same railing-object tile mechanic as 1638 3808 1
