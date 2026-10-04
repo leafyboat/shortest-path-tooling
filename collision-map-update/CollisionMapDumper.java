@@ -707,6 +707,11 @@ public class CollisionMapDumper
 		DRAYNOR_MANOR_LARGE_DOOR_134(134),
 		DRAYNOR_MANOR_LARGE_DOOR_135(135),
 
+		// Broken fence on the west side of Draynor Manor (issue #622). It is a
+		// wallOrDoor=1 wall so the dumper treats it as a passable door, but the
+		// Squeeze-through action requires 49 Agility and membership.
+		DRAYNOR_MANOR_BROKEN_FENCE_62422(62422, 3085, 3352, 0),
+
 		DRUIDS_ROBES_4035(4035),
 		DRUIDS_ROBES_4036(4036),
 
