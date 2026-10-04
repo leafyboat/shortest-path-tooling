@@ -92,6 +92,14 @@ public class TileObjectProbeTest {
                         }
                         if (!idMatch) continue;
                     }
+                    String typeFilter = System.getProperty("tile.probe.types", "");
+                    if (!typeFilter.isEmpty()) {
+                        boolean typeMatch = false;
+                        for (String s : typeFilter.split(",")) {
+                            if (loc.getType() == Integer.parseInt(s.trim())) { typeMatch = true; break; }
+                        }
+                        if (!typeMatch) continue;
+                    }
                     ObjectDefinition def = objectManager.getObject(loc.getId());
                     String name = def != null ? def.getName() : "?";
                     StringBuilder extra = new StringBuilder();

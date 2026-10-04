@@ -485,6 +485,17 @@ public class CollisionMapDumper
 						{
 							if (object.getInteractType() != INTERACT_TYPE_NONE && (object.getWallOrDoor() == WALL_OR_DOOR_PRESENT || (type >= OBJECT_TYPE_DIAGONAL_INTERACTABLE_MIN && type <= OBJECT_TYPE_GAME_OBJECT_MAX)))
 							{
+								// A non-blocking decal contributes no collision of its
+								// own, so it must write nothing at all. Unlike an ordinary
+								// TILE_DEFAULT exclusion — which actively reopens the
+								// object's edges and is needed for markers painted onto
+								// blocking walls (hunter trails) — skipping the write also
+								// keeps the blocks that neighbouring objects and floor
+								// settings place on the shared edges.
+								if (type == OBJECT_TYPE_GROUND_DECORATION && isNonBlockingDecal(loc.getId()))
+								{
+									continue;
+								}
 								if (exclusion != null)
 								{
 									tile = exclusion;
@@ -590,6 +601,22 @@ public class CollisionMapDumper
 	private static boolean isBlockedTile(int x, int y, int z)
 	{
 		return z == 0 && BLOCKED_TILES.contains(((long) x << 32) | (y & 0xffffffffL));
+	}
+
+	/**
+	 * Ground decorations that are painted on top of the floor and carry no
+	 * collision of their own, even though the cache definition flags them
+	 * {@code wallOrDoor=1}. Unlike an ordinary {@code TILE_DEFAULT} exclusion
+	 * these objects must be skipped rather than written open: a skip leaves
+	 * every flag untouched, so edges the decal shares with real blockers
+	 * (walls, altars, floor settings) stay blocked.
+	 */
+	private static boolean isNonBlockingDecal(int id)
+	{
+		// Bloodsplatter decals (issue #621): blood stains defined with
+		// wallOrDoor=1, which the blocking branch otherwise treats as solid.
+		// The cluster around the Chaos altar seals the Ourania Cave entrance.
+		return id >= 652 && id <= 654;
 	}
 
 	private static class FlagMap

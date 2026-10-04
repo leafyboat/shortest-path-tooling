@@ -13,3 +13,4 @@ Fossil Island Hunter trail (#233) along trail,collision-issue-233,3700,3870,0,37
 Fossil Island Hunter trail (#233) cross trail,collision-issue-233,3700,3880,0,3700,3868,0,UNIT_TEST,,,,,,useAgilityShortcuts=true;useTeleportationItems=NONE,,
 Varrock palace trellis (control),collision-control,3220,3471,0,3232,3475,0,UNIT_TEST,,,,,,useAgilityShortcuts=true,,
 GE centre walk (control),collision-control,3160,3486,0,3170,3492,0,UNIT_TEST,,,,,,useAgilityShortcuts=true,,
+Ourania Cave entrance (#621) rim -> Chaos altar dig spot,collision-issue-621,2454,3234,0,2454,3230,0,UNIT_TEST,,,,,,useAgilityShortcuts=false;useTeleportationItems=NONE,,
