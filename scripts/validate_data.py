@@ -129,6 +129,7 @@ SCENARIO_CONFIG_KEYS = frozenset({
     "costQuetzalWhistle", "costTeleportationBoxes",
     "builtTeleportationBoxes", "builtTeleportationPortalsPoh",
     "pohJewelleryBoxTier", "unreachableTargetDistanceThreshold",
+    "unlockCanoeAxe", "unlockXericsHonour", "unlockDragontoothPassage",
 })
 
 # Optional-column cell grammars — mirrors the loader's parseItems /

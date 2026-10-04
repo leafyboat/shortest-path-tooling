@@ -8,6 +8,7 @@ submodule, git, or the committed zip.
 """
 
 import importlib.util
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -652,6 +653,22 @@ def test_scenario_csv_quests_grammar_rejects(tmp_path, monkeypatch):
                and "DONE" in f for f in findings)
     assert any(f.startswith(f"{rel}:4") and "quests" in f
                and "65=10" in f for f in findings)
+
+
+# ---------- config-keys parity ----------
+
+
+def test_scenario_config_keys_mirror_java_dispatch():
+    # SCENARIO_CONFIG_KEYS claims to mirror every case label of the
+    # applyConfigOverrides switch in DashboardScenarioRunner.java —
+    # enforce it so a new dispatch key can never land without its
+    # whitelist entry (or vice versa).  The file's only switch is that
+    # dispatch, so every `case "..."` label is a config_overrides key.
+    vd = load_vd()
+    runner = (ROOT / "src" / "test" / "java" / "shortestpath"
+              / "dashboard" / "DashboardScenarioRunner.java")
+    labels = set(re.findall(r'case "([^"]+)"', runner.read_text()))
+    assert labels == vd.SCENARIO_CONFIG_KEYS
 
 
 # ---------- region-override check ----------
