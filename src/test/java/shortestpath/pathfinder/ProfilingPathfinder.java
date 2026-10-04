@@ -45,6 +45,8 @@ public class ProfilingPathfinder {
     private int bestX = Integer.MAX_VALUE;
     private int bestY = Integer.MAX_VALUE;
     private int reachedTarget = WorldPointUtil.UNDEFINED;
+    private int shortestAcceptedNode = NodeGraph.NO_NODE;
+    private int shortestAcceptedTarget = WorldPointUtil.UNDEFINED;
     private PathTerminationReason terminationReason;
     private int wildernessLevel;
 
@@ -149,6 +151,10 @@ public class ProfilingPathfinder {
                 if (targets.contains(nodePacked)) {
                     bestLastNode = node;
                     reachedTarget = nodePacked;
+                    if (shortestAcceptedNode != NodeGraph.NO_NODE) {
+                        bestLastNode = shortestAcceptedNode;
+                        reachedTarget = shortestAcceptedTarget;
+                    }
                     terminationReason = PathTerminationReason.TARGET_REACHED;
                     profile.targetCheckNanos += System.nanoTime() - phaseStart;
                     break;
@@ -157,6 +163,7 @@ public class ProfilingPathfinder {
                 if (updateBestPathWhenUnreachable(node, nodePacked)) {
                     cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
                 }
+                updateCustomPathWhenUnreachable(node, nodePacked);
 
                 profile.targetCheckNanos += System.nanoTime() - phaseStart;
             }
@@ -200,6 +207,7 @@ public class ProfilingPathfinder {
         // Materialise the path/closest tile from the graph before releasing it.
         int closestReached = bestLastNode != NodeGraph.NO_NODE ? graph.getClosestTilePosition(bestLastNode) : start;
         List<PathStep> path = bestLastNode != NodeGraph.NO_NODE ? graph.getPathSteps(bestLastNode) : List.of();
+        int pathCost = bestLastNode != NodeGraph.NO_NODE ? graph.cost(bestLastNode) : PathfinderResult.NO_PATH_COST;
 
         long elapsedNanos = System.nanoTime() - startNanos;
 
@@ -208,7 +216,7 @@ public class ProfilingPathfinder {
         pending.clear();
         graph.release();
 
-        result = new PathfinderResult(start, target, reached, path, closestReached,
+        result = new PathfinderResult(start, target, reached, path, closestReached, pathCost,
             nodesChecked, transportsChecked, elapsedNanos, terminationReason);
     }
 
@@ -459,6 +467,20 @@ public class ProfilingPathfinder {
             }
         }
         return update;
+    }
+
+    private void updateCustomPathWhenUnreachable(int node, int packedPosition) {
+        if (targets.size() <= 1 || shortestAcceptedNode != NodeGraph.NO_NODE) {
+            return;
+        }
+        for (int target : targets) {
+            if (WorldPointUtil.distanceBetween(target, packedPosition, WorldPointUtil.MANHATTAN_DISTANCE_METRIC)
+                <= config.getUnreachableTargetDistance()) {
+                shortestAcceptedNode = node;
+                shortestAcceptedTarget = target;
+                return;
+            }
+        }
     }
 
     private void updateWildernessLevel(int packedPosition) {
