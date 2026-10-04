@@ -117,6 +117,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private boolean respawnPrifddinas = false;
     private boolean unlockCanoeAxe = false;
     private boolean unlockXericsHonour = false;
+    private boolean unlockDragontoothPassage = false;
 
     // =========================================================================
     // Getters (implements ShortestPathConfig)
@@ -195,6 +196,8 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public boolean unlockCanoeAxe() { return unlockCanoeAxe; }
     // Same in-flight state as unlockCanoeAxe — no @Override until merge + re-pin.
     public boolean unlockXericsHonour() { return unlockXericsHonour; }
+    // Same in-flight state as unlockCanoeAxe — no @Override until merge + re-pin.
+    public boolean unlockDragontoothPassage() { return unlockDragontoothPassage; }
 
     // =========================================================================
     // Abstract void setters required by the interface
@@ -284,4 +287,5 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setRespawnPrifddinas(boolean v) { respawnPrifddinas = v; }
     public void setUnlockCanoeAxe(boolean v) { unlockCanoeAxe = v; }
     public void setUnlockXericsHonour(boolean v) { unlockXericsHonour = v; }
+    public void setUnlockDragontoothPassage(boolean v) { unlockDragontoothPassage = v; }
 }
