@@ -29,11 +29,16 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.runelite.cache.definitions.ObjectDefinition;
 import net.runelite.cache.fs.Store;
@@ -194,6 +199,12 @@ public class CollisionMapDumper
 	private final RegionLoader regionLoader;
 	private final ObjectManager objectManager;
 
+	/**
+	 * Per-source-region index of locations keyed by packed absolute position,
+	 * shared across the repeated addCollisions passes over the same region.
+	 */
+	private final Map<Integer, Map<Long, List<Location>>> locationsByRegion = new ConcurrentHashMap<>();
+
 	public CollisionMapDumper(Store store, KeyProvider keyProvider)
 	{
 		this(store, new RegionLoader(store, keyProvider));
@@ -318,10 +329,34 @@ public class CollisionMapDumper
 		addCollisions(flagMap, neighbor);
 	}
 
+	private static long packPos(int x, int y, int z)
+	{
+		return ((long) x << 32) | ((long) y << 4) | (long) z;
+	}
+
+	private Map<Long, List<Location>> indexLocations(Region region)
+	{
+		Map<Long, List<Location>> map = new HashMap<>();
+		List<Location> locations = region.getLocations();
+		if (locations == null)
+		{
+			return map;
+		}
+		for (Location loc : locations)
+		{
+			Position pos = loc.getPosition();
+			map.computeIfAbsent(packPos(pos.getX(), pos.getY(), pos.getZ()), k -> new ArrayList<>()).add(loc);
+		}
+		return map;
+	}
+
 	private void addCollisions(FlagMap flagMap, Region region)
 	{
 		int baseX = region.getBaseX();
 		int baseY = region.getBaseY();
+
+		Map<Long, List<Location>> byPos = locationsByRegion.computeIfAbsent(
+			(region.getRegionX() << 16) | region.getRegionY(), k -> indexLocations(region));
 
 		for (int z = 0; z < Region.Z; z++)
 		{
@@ -335,14 +370,9 @@ public class CollisionMapDumper
 					boolean isBridge = (region.getTileSetting(BRIDGE_CHECK_PLANE, localX, localY) & TILE_SETTING_BRIDGE_FLAG) != 0;
 					int tileZ = z + (isBridge ? 1 : 0);
 
-					for (Location loc : region.getLocations())
+					for (Location loc : byPos.getOrDefault(packPos(regionX, regionY, tileZ), Collections.emptyList()))
 					{
 						Position pos = loc.getPosition();
-						if (pos.getX() != regionX || pos.getY() != regionY || pos.getZ() != tileZ)
-						{
-							continue;
-						}
-
 						boolean tile = FlagMap.TILE_BLOCKED;
 						Boolean exclusion = Exclusion.matches(loc.getId(), pos.getX(), pos.getY(), pos.getZ());
 
@@ -474,13 +504,15 @@ public class CollisionMapDumper
 						}
 					}
 
+					int floorZ = z < MAX_PLANE_FOR_TILE_Z_ADJUSTMENT ? tileZ : z;
+
 					// Tile without floor / floating in the air ("noclip" tiles, typically found where z > 0)
-					int underlayId = region.getUnderlayId(z < MAX_PLANE_FOR_TILE_Z_ADJUSTMENT ? tileZ : z, localX, localY);
-					int overlayId = region.getOverlayId(z < MAX_PLANE_FOR_TILE_Z_ADJUSTMENT ? tileZ : z, localX, localY);
+					int underlayId = region.getUnderlayId(floorZ, localX, localY);
+					int overlayId = region.getOverlayId(floorZ, localX, localY);
 					boolean noFloor = underlayId == NO_UNDERLAY_OVERLAY_ID && overlayId == NO_UNDERLAY_OVERLAY_ID;
 
 					// Nomove
-					int floorType = region.getTileSetting(z < MAX_PLANE_FOR_TILE_Z_ADJUSTMENT ? tileZ : z, localX, localY);
+					int floorType = region.getTileSetting(floorZ, localX, localY);
 					if (floorType == TILE_SETTING_BLOCKED || // water, rooftop wall
 						floorType == TILE_SETTING_BRIDGE_WALL || // bridge wall
 						floorType == TILE_SETTING_HOUSE_ROOF || // house wall/roof
@@ -631,11 +663,7 @@ public class CollisionMapDumper
 
 		private int index(int x, int y, int z, int flag)
 		{
-			if (isValidIndex(x, y, z, flag))
-			{
-				return (z * width * height + (y - minY) * width + (x - minX)) * FLAG_COUNT + flag;
-			}
-			throw new IndexOutOfBoundsException(x + " " + y + " " + z);
+			return (z * width * height + (y - minY) * width + (x - minX)) * FLAG_COUNT + flag;
 		}
 	}
 
@@ -859,6 +887,20 @@ public class CollisionMapDumper
 		 */
 		private static final Set<Exclusion> MATCHED = Collections.synchronizedSet(new HashSet<>());
 
+		/**
+		 * Exclusions grouped by object id, preserving declaration order within
+		 * each bucket so first-match semantics are unchanged.
+		 */
+		private static final Map<Integer, List<Exclusion>> BY_ID = new HashMap<>();
+
+		static
+		{
+			for (Exclusion exclusion : values())
+			{
+				BY_ID.computeIfAbsent(exclusion.id, k -> new ArrayList<>()).add(exclusion);
+			}
+		}
+
 		Exclusion(int id)
 		{
 			this(id, FlagMap.TILE_BLOCKED);
@@ -901,12 +943,8 @@ public class CollisionMapDumper
 			{
 				return FlagMap.TILE_BLOCKED;
 			}
-			for (Exclusion exclusion : values())
+			for (Exclusion exclusion : BY_ID.getOrDefault(id, Collections.emptyList()))
 			{
-				if (exclusion.id != id)
-				{
-					continue;
-				}
 				if (exclusion.x >= 0
 					&& (exclusion.x != x || exclusion.y != y || exclusion.z != z))
 				{
