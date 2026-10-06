@@ -90,7 +90,36 @@ same gate:
 
 ## Remediation adjudication
 
-Remediation adjudication pending — the fold-vs-decimal outcome is recorded here by the roadmap-sync step
+Remediation adjudication (2026-10-06): fold — every re-audit finding is a
+localized domain leak or placement wrinkle with a named fold target; the
+middleware idiom (injected services, immutable snapshot, named gates,
+hooks seam) is not defective and no remediation phase is created.
+
+Each finding lands inside the extraction row that redefines its file's
+boundary — every file moves at most once more:
+
+- The POH gates' domain logic (`pohDisabled`, `pohVariant`,
+  `jewelleryBoxTier`) and the `JewelleryBoxTier` model type fold into the
+  POH extraction — the gates keep their verdicts; the POH reading moves.
+- The `plantedSpiritTree` patch-tile mapping folds into the spirit-tree
+  extraction — the gate keeps reading the published tree set.
+- The `leagueRegion` gate's region classification folds into the deferred
+  leagues boundary when it extracts; the gate keeps the verdict.
+- The `skillLevel` gate's layout/index knowledge folds into the
+  `PlayerSkills` value type; the gate stays thin delegation.
+- `RoutingPolicy` production (`buildRoutingPolicy`) and the
+  `TeleportationItem` mode enum fold into the settings extraction.
+- `collectEligibility`/`collectItems` and the `RUNE_POUCH*`/
+  `BankPickupRequirements` config edges fold into the item-state
+  extraction.
+- `BankPickupRequirements` display-phrase building folds into the
+  transport-presentation boundary.
+
+Watch items — recorded, no standalone remediation: display-info string
+matching as requirement evidence (the `respawn`/`unlockGate` gates), and
+policy params living inside `TransportEligibility` alongside the item
+pools. Both are observed-noted in the survey; neither corrupts the
+zero-delta evidence later extractions produce.
 
 ## Tracking
 
