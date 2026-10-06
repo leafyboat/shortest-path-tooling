@@ -1,6 +1,22 @@
 rootProject.name = 'shortest-path-tooling'
 
-includeBuild('shortest-path') {
+def shortestPathDir = providers.gradleProperty('shortestPathDir')
+        .orElse('shortest-path')
+        .get()
+def shortestPathProjectDir = file(shortestPathDir)
+
+if (!shortestPathProjectDir.isDirectory() || !new File(shortestPathProjectDir, 'build.gradle').isFile()) {
+    throw new GradleException("""Invalid shortest-path checkout: ${shortestPathDir}
+Resolved path: ${shortestPathProjectDir.canonicalPath}
+
+The default is ./shortest-path. Set -PshortestPathDir=<path-to-shortest-path>,
+for example: ./gradlew -PshortestPathDir=../shortest-path test
+or initialize the default ./shortest-path submodule.""")
+}
+
+gradle.ext.shortestPathProjectDir = shortestPathProjectDir
+
+includeBuild(shortestPathProjectDir) {
     dependencySubstitution {
         substitute module('shortestpath:shortest-path') using project(':')
     }

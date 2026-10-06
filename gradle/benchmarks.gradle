@@ -1,0 +1,65 @@
+// --- Canonical corpus benchmarks ---
+//
+// The canonical corpus lives in its own repository. The commands below take it as an explicit
+// --corpus argument; tests read -PcorpusDir (default: ../shortest-path-corpus).
+def testCorpusDir = providers.gradleProperty('corpusDir')
+
+def git = { File directory, List<String> arguments ->
+    def output = new ByteArrayOutputStream()
+    try {
+        def result = exec {
+            commandLine(['git', '-C', directory.absolutePath] + arguments)
+            standardOutput = output
+            errorOutput = new ByteArrayOutputStream()
+            ignoreExitValue = true
+        }
+        if (result.exitValue == 0) {
+            return output.toString('UTF-8').trim()
+        }
+    } catch (Exception ignored) {
+        // Source archives and non-Git checkouts still run; provenance is reported as unknown.
+    }
+    return null
+}
+def commitOf = { File directory -> git(directory, ['rev-parse', 'HEAD']) ?: 'unknown' }
+def dirtyOf = { File directory -> !(git(directory, ['status', '--porcelain']) ?: '').isEmpty() }
+
+tasks.named('test') {
+    if (testCorpusDir.isPresent()) {
+        systemProperty 'benchmark.corpusDir', file(testCorpusDir.get()).absolutePath
+    }
+}
+
+// Runs the case list of a shortest-path-benchmarks manifest in one JVM and writes the
+// protocol-v1 result envelope. Arguments are passed with --args by the benchmarks adapter.
+tasks.register('benchmarkCanonical', JavaExec) {
+    group = 'verification'
+    description = 'Runs the exact resolved canonical manifest in one Java process.'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'shortestpath.benchmark.canonical.BenchmarkMain'
+    jvmArgs = ['-Xms1g', '-Xmx8g']
+    doFirst {
+        File plugin = gradle.ext.shortestPathProjectDir
+        systemProperty 'benchmark.toolingCommit', commitOf(rootProject.projectDir)
+        systemProperty 'benchmark.toolingDirty', dirtyOf(rootProject.projectDir).toString()
+        systemProperty 'benchmark.shortestPathCommit', commitOf(plugin)
+        systemProperty 'benchmark.shortestPathDirty', dirtyOf(plugin).toString()
+    }
+}
+
+// Runs one canonical route for one account profile and prints the selected path.
+tasks.register('route', JavaExec) {
+    group = 'verification'
+    description = 'Runs one canonical route query and prints its selected path.'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'shortestpath.benchmark.canonical.CanonicalRouteCli'
+    def routeArgs = providers.gradleProperty('routeArgs')
+    doFirst {
+        if (!routeArgs.isPresent()) {
+            throw new GradleException('route requires -ProuteArgs="--corpus DIR PROFILE START_X START_Y START_PLANE TARGET_X TARGET_Y TARGET_PLANE"')
+        }
+        args routeArgs.get().trim().split(/\s+/) as List
+    }
+}

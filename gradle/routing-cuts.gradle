@@ -1,0 +1,53 @@
+// --- Exact routing cuts ---
+//
+// Generates routing-cuts.bin for the plugin's exact backend: KaHIP node separators over the
+// plugin's own walking graph (from the plugin checkout's collision-map.zip and transports).
+//
+// Usage:
+//   ./gradlew routingCuts -PshortestPathDir=../shortest-path \
+//       -PkahipNodeSeparator=/path/to/node_separator \
+//       -ProutingCutsOutput=../shortest-path/src/main/resources/routing-cuts.bin
+//
+// node_separator defaults to the one on PATH. The upstream ExtractCollisionMap workflow runs this
+// task after dumping a new collision map and commits both files together.
+def routingCutsDefaultOutput = layout.buildDirectory.file('routing-cuts/routing-cuts.bin').get().asFile.absolutePath
+def routingCutsOutput = providers.gradleProperty('routingCutsOutput').orElse(routingCutsDefaultOutput)
+def kahipNodeSeparator = providers.gradleProperty('kahipNodeSeparator').orElse('node_separator')
+def routingCutsWorkDir = layout.buildDirectory.dir('routing-cuts/work').get().asFile.absolutePath
+
+tasks.register('routingCuts', JavaExec) {
+    group = 'routing'
+    description = 'Generates routing-cuts.bin with KaHIP. Optional: -ProutingCutsOutput=<path>, ' +
+            '-PkahipNodeSeparator=<node_separator path>.'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'shortestpath.routingcuts.RoutingCutsGenerator'
+    outputs.upToDateWhen { false }
+    jvmArgs = ['-Xms1g', '-Xmx8g']
+    doFirst {
+        args = [
+            file(routingCutsOutput.get()).absolutePath,
+            "--kahip=${kahipNodeSeparator.get()}",
+            "--work-dir=${routingCutsWorkDir}",
+        ]
+    }
+}
+
+// Reports how many cuts in a routing-cuts.bin no longer apply to the plugin's current collision
+// map, the resulting component sizes, and the exact routing data build time.
+//   ./gradlew routingCutsReport -PshortestPathDir=../shortest-path [-ProutingCutsFile=<path>]
+def routingCutsFile = providers.gradleProperty('routingCutsFile').orElse('')
+
+tasks.register('routingCutsReport', JavaExec) {
+    group = 'routing'
+    description = 'Reports how well routing-cuts.bin fits the current collision map. ' +
+            'Optional: -ProutingCutsFile=<path> (default: the plugin resource).'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'shortestpath.routingcuts.RoutingCutsReport'
+    outputs.upToDateWhen { false }
+    jvmArgs = ['-Xms1g', '-Xmx8g']
+    doFirst {
+        args = routingCutsFile.get().isEmpty() ? [] : [file(routingCutsFile.get()).absolutePath]
+    }
+}

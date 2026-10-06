@@ -1,8 +1,13 @@
 package shortestpath.dashboard;
 
+import java.util.EnumSet;
+import java.util.Set;
 import shortestpath.JewelleryBoxTier;
 import shortestpath.ShortestPathConfig;
 import shortestpath.TeleportationItem;
+import shortestpath.pathfinder.PathfinderBackend;
+import shortestpath.transport.PohNexusPortal;
+import shortestpath.transport.PohMountedItem;
 
 /**
  * Mutable POJO implementation of {@link ShortestPathConfig} for the dashboard test harness.
@@ -63,6 +68,8 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private int currencyThreshold = 10_000_000;
     private int calculationCutoff = 500;
     private int unreachableTargetDistance = 2;
+    private PathfinderBackend pathfinderBackend = PathfinderBackend.LEGACY;
+    private int exactHeuristicWeight = 100;
 
     // -------------------------------------------------------------------------
     // POH settings
@@ -71,8 +78,9 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private boolean usePohFairyRing = false;
     private boolean usePohSpiritTree = false;
     private boolean useTeleportationPortalsPoh = false;
+    private Set<PohNexusPortal> pohNexusPortals = EnumSet.noneOf(PohNexusPortal.class);
     private JewelleryBoxTier pohJewelleryBoxTier = JewelleryBoxTier.ORNATE;
-    private boolean usePohMountedItems = true;
+    private Set<PohMountedItem> pohMountedItems = EnumSet.allOf(PohMountedItem.class);
     private boolean usePohObelisk = false;
 
     // -------------------------------------------------------------------------
@@ -151,13 +159,17 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int currencyThreshold() { return currencyThreshold; }
     @Override public int calculationCutoff() { return calculationCutoff; }
     @Override public int unreachableTargetDistance() { return unreachableTargetDistance; }
+    @Override public PathfinderBackend pathfinderBackend() { return pathfinderBackend; }
+    @Override public int exactHeuristicWeight() { return exactHeuristicWeight; }
 
     @Override public boolean usePoh() { return usePoh; }
     @Override public boolean usePohFairyRing() { return usePohFairyRing; }
     @Override public boolean usePohSpiritTree() { return usePohSpiritTree; }
     @Override public boolean useTeleportationPortalsPoh() { return useTeleportationPortalsPoh; }
+    @Override public Set<PohNexusPortal> pohNexusPortals() { return pohNexusPortals; }
     @Override public JewelleryBoxTier pohJewelleryBoxTier() { return pohJewelleryBoxTier; }
-    @Override public boolean usePohMountedItems() { return usePohMountedItems; }
+    @Override public boolean usePohMountedItems() { return !pohMountedItems.isEmpty(); }
+    @Override public Set<PohMountedItem> pohMountedItems() { return pohMountedItems; }
     @Override public boolean usePohObelisk() { return usePohObelisk; }
 
     @Override public String builtTeleportationBoxes() { return builtTeleportationBoxes; }
@@ -249,13 +261,28 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setCurrencyThreshold(int v) { currencyThreshold = v; }
     public void setCalculationCutoff(int v) { calculationCutoff = v; }
     public void setUnreachableTargetDistance(int v) { unreachableTargetDistance = v; }
+    public void setPathfinderBackend(PathfinderBackend v) { pathfinderBackend = v; }
+    public void setExactHeuristicWeight(int v) { exactHeuristicWeight = v; }
 
     public void setUsePoh(boolean v) { usePoh = v; }
     public void setUsePohFairyRing(boolean v) { usePohFairyRing = v; }
     public void setUsePohSpiritTree(boolean v) { usePohSpiritTree = v; }
-    public void setUseTeleportationPortalsPoh(boolean v) { useTeleportationPortalsPoh = v; }
+    public void setUseTeleportationPortalsPoh(boolean v) {
+        useTeleportationPortalsPoh = v;
+        pohNexusPortals = v ? EnumSet.allOf(PohNexusPortal.class) : EnumSet.noneOf(PohNexusPortal.class);
+    }
+    public void setPohNexusPortals(Set<PohNexusPortal> v) {
+        pohNexusPortals = v == null || v.isEmpty()
+            ? EnumSet.noneOf(PohNexusPortal.class) : EnumSet.copyOf(v);
+    }
     public void setPohJewelleryBoxTier(JewelleryBoxTier v) { pohJewelleryBoxTier = v; }
-    public void setUsePohMountedItems(boolean v) { usePohMountedItems = v; }
+    public void setUsePohMountedItems(boolean v) {
+        pohMountedItems = v ? EnumSet.allOf(PohMountedItem.class) : EnumSet.noneOf(PohMountedItem.class);
+    }
+    public void setPohMountedItems(Set<PohMountedItem> v) {
+        pohMountedItems = v == null || v.isEmpty()
+            ? EnumSet.noneOf(PohMountedItem.class) : EnumSet.copyOf(v);
+    }
     public void setUsePohObelisk(boolean v) { usePohObelisk = v; }
 
     public void setCostAgilityShortcuts(int v) { costAgilityShortcuts = v; }

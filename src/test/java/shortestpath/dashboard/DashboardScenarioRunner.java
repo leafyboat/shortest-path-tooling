@@ -19,6 +19,7 @@ import net.runelite.api.gameval.VarbitID;
 import shortestpath.JewelleryBoxTier;
 import shortestpath.TeleportationItem;
 import shortestpath.WorldPointUtil;
+import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.pathfinder.TestPathfinderConfig;
 
 /**
@@ -227,6 +228,8 @@ public final class DashboardScenarioRunner {
                 case "bypassVarPlayerChecks": config.setBypassVarPlayerChecks(parseBoolean(value)); break;
                 case "currencyThreshold": config.setCurrencyThreshold(Integer.parseInt(value)); break;
                 case "calculationCutoff": config.setCalculationCutoff(Integer.parseInt(value)); break;
+                case "pathfinderBackend": config.setPathfinderBackend(PathfinderBackend.valueOf(value)); break;
+                case "exactHeuristicWeight": config.setExactHeuristicWeight(Integer.parseInt(value)); break;
                 case "usePoh": config.setUsePoh(parseBoolean(value)); break;
                 case "usePohFairyRing": config.setUsePohFairyRing(parseBoolean(value)); break;
                 case "usePohSpiritTree": config.setUsePohSpiritTree(parseBoolean(value)); break;

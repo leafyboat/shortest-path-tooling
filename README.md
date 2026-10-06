@@ -37,6 +37,21 @@ The published dashboard is also available on GitHub Pages:
 
 `https://skretzo.github.io/shortest-path/`
 
+## Using a separate shortest-path checkout
+
+Developers working on the plugin and tooling side by side can point the tooling
+build at an external checkout:
+
+```bash
+./gradlew -PshortestPathDir=../shortest-path test
+./gradlew -PshortestPathDir=../shortest-path dashboard
+```
+
+Paths are resolved relative to `shortest-path-tooling`. The `shortestPathDir`
+property controls both the Gradle composite build for
+`shortestpath:shortest-path` and the directly compiled plugin test helpers.
+The default remains the `./shortest-path` Git submodule.
+
 ## Available tasks
 
 | Task | Description |
@@ -46,6 +61,41 @@ The published dashboard is also available on GitHub Pages:
 | `./gradlew captureExpectedLengths` | Write actual path lengths back into the source CSV as `expected_length` |
 | `./gradlew bankTileDump -PbankTileCacheDir=<dir> -PbankTileXteaPath=<keys.json>` | Dump bank-object placements from an OSRS cache to TSV |
 | `./gradlew sailingAmenityVarbitDump -PsailingAmenityCacheDir=<dir> -PsailingAmenityXteaPath=<keys.json>` | Dump Sailing island amenity varbits from an OSRS cache |
+| `./gradlew routingCuts -PkahipNodeSeparator=<path>` | Generate the exact pathfinder's `routing-cuts.bin` with KaHIP (see below) |
+| `./gradlew routingCutsReport` | Report how many committed cuts still apply to the current collision map |
+| `./gradlew benchmarkCanonical --args="..."` | Run a resolved benchmark manifest (used by shortest-path-benchmarks) |
+| `./gradlew route -ProuteArgs="..."` | Query one canonical route and print its selected path |
+
+The route query uses the same canonical account compiler and adapter as
+`benchmarkCanonical`. Pass the corpus checkout with `--corpus`; add
+`--algorithm exact`, `--json` or `--counters` as needed. Routes can be given by
+corpus ID (`--route ID --profile PROFILE`) or by coordinates:
+
+```bash
+./gradlew \
+  -ProuteArgs='--corpus ../shortest-path-corpus maxed 2411 4434 0 2995 3114 0 --json' \
+  route
+```
+
+## Exact routing cuts
+
+The plugin's exact pathfinder derives its routing data from `collision-map.zip`
+at runtime, using a small list of separator cut edges (`routing-cuts.bin`) to
+split large walking areas. `routingCuts` regenerates that file with KaHIP's
+`node_separator`, using the plugin's own walking graph:
+
+```bash
+./gradlew routingCuts \
+  -PshortestPathDir=../shortest-path \
+  -PkahipNodeSeparator=$(command -v node_separator) \
+  -ProutingCutsOutput=../shortest-path/src/main/resources/routing-cuts.bin
+```
+
+KaHIP is not a Gradle dependency. Use `nix-shell -p kahip` or build KaHIP with
+CMake (`-DNOMPI=On`) and pass the binary path. The plugin's weekly
+`ExtractCollisionMap` workflow runs this task after dumping a new collision map
+and commits both files together. Stale cuts only slow preparation down; they
+never make exact routes wrong.
 
 ## Maintenance
 
@@ -68,6 +118,35 @@ All options are passed via `-P`:
 | `dashboardProfile` | `true` | Whether to enable the profiler |
 
 For the datasets and when to use each, see [docs/dashboard-design.md](docs/dashboard-design.md).
+
+## Canonical corpus benchmark
+
+The canonical corpus (routes and account profiles) lives in the
+[shortest-path-corpus](https://github.com/osrs-pathfinding/shortest-path-corpus)
+repository. The commands that use it take the checkout as an explicit `--corpus`
+argument. Tests that use it read `-PcorpusDir` (default
+`../shortest-path-corpus`); nothing else needs it.
+
+`benchmarkCanonical` is the integration point for the
+[shortest-path-benchmarks](https://github.com/osrs-pathfinding/shortest-path-benchmarks)
+harness. It runs exactly the route/profile/repetition cases of a resolved
+manifest in one JVM, for the legacy or exact backend:
+
+```bash
+./gradlew benchmarkCanonical \
+  --args="--manifest /path/to/resolved-experiment.json \
+          --corpus ../shortest-path-corpus \
+          --output build/benchmarks/java-adapter.json"
+```
+
+The output is one protocol-v1 JSON envelope with execution metadata, the Java
+VM identity, dependency Git identities, the synthetic benchmark clock, and v2
+observations. Expected reachability comes from each route's curated
+`negativeProfiles`; there is no expected cost.
+
+Accounts are compiled from the corpus profiles into a plugin configuration
+(`CanonicalAccountCompiler`). The rune pouch is flattened into carried
+inventory, and selected POH mounted items and nexus portals are passed through.
 
 ## Keeping up with the plugin
 
