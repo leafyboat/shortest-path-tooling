@@ -251,6 +251,172 @@ Package neighbours deliberately outside this cluster: `OwnedItems` collects
 player items and is partitioned to player item state; `TeleportRestriction`
 is the config panel's write contract.
 
+### Config access & settings
+
+Lives on the god objects today: `ShortestPathConfig` declares the
+`@ConfigGroup`/`@ConfigItem` surface, `ShortestPathPlugin` carries the static
+`configOverride` map and the typed `override()` overloads, and
+`PathfinderConfig.cacheConfigValues()` copies roughly twenty settings into
+public fields every refresh.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | Typed config access plus the plugin-message override mechanism; `ShortestPathConfig` declarations; `TransportTypeConfig` per-type enablement incl. `disableUnless` derivations; `cacheConfigValues()` cached-field maintenance; `TRANSPORT_OPTIONS_REGEX` deciding which keys invalidate a path |
+| Owned state | `configOverride` (volatile `Map<String,Object>`, swapped under `pathfinderMutex`); the ~20 cached public fields on `PathfinderConfig`; per-type enablement inside `TransportTypeConfig` |
+| Subscribed events | `ConfigChanged` — today the shell handler re-caches and restarts; post-extraction the coordinator declares "config key changed" to producers instead |
+| Published facts | Immutable typed settings views — the `RoutingPolicy` precedent — plus a read/write/listen consumer contract: the config panel writes and observes per key, so read-only views are insufficient |
+| Injected dependencies | `ConfigManager` and the `ShortestPathConfig` interface instance (both already injected into the shell) |
+| Consumers | ~19 `override()` call sites (16 in `PathfinderConfig.cacheConfigValues()`, 3 in `TransportTypeConfig`); overlay display-field reads (`plugin.colourPath`, `plugin.drawTiles`, `plugin.showTransportInfo`, …); `onConfigChanged`'s `TRANSPORT_OPTIONS_REGEX` match; the plugin-message `config` payload path (`onPluginMessage` → `configOverride` → `cacheConfigValues()`); the panel's `writeConfig`/`registerSync`/`onExternalConfigChanged` |
+| Killed seams | Public mutable config-mirror fields on `PathfinderConfig`; stringly-typed `override()` keys scattered across leaf packages; per-site caching duplicated between `cacheConfigValues()` and `TransportTypeConfig` |
+| Seam anchors | The settings view's read/write/listen consumer contract is pinned — it is the real crossing both the gates and the panel sit on; the `config` override payload grammar is pinned with the plugin-message protocol record; intra-service method surface provisional |
+| Extraction PR | Future — the settings service extraction (first in the sequence; the panel contract shapes it) |
+| Blast radius | `ShortestPathConfig`, `TransportTypeConfig`, the override/config responsibility rows on `ShortestPathPlugin` and `PathfinderConfig`; every cached-field consumer re-points; harness twins (`TestPathfinderConfig`, `DashboardPathfinderConfig`) keep `new`-able config |
+| Known violations | `TransportTypeConfig` (3 sites) and `PathfinderConfig` (16 sites) call `ShortestPathPlugin.override` — leaf packages reaching into shell statics; migrate to the settings service when it lands |
+
+### Config panel (writer)
+
+`ShortestPathPanel`, `RestrictionListPanel`, `TransportFamilyCard` and
+`requirement/TeleportRestriction` exist only on the `feat/config-panel-rework`
+branch tip. The panel is the plugin's only config *writer* — a sixth
+config-access mechanism alongside reads, overrides, cached fields, per-type
+config and the plugin-message `config` payload.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | Render and mutate the settings UI: reflection-built `configMethods` map over `@ConfigItem` metadata; the `writeConfig(keyName, value)` funnel through `ConfigManager.setConfiguration`; `suppressConfigSync` echo-guard so panel writes do not re-trigger sync; per-key `registerSync`/`syncControl` observers; `onExternalConfigChanged` re-sync for out-of-panel writes; `TeleportRestriction` is the `blockedTeleportItems` CSV contract it writes |
+| Owned state | Presentation residue only — search text, expand/collapse, the owned-items snapshot the restrictions UI renders; no domain state |
+| Subscribed events | None directly — the shell forwards `ConfigChanged` into `onExternalConfigChanged` |
+| Published facts | The `TeleportRestriction` restriction model (`parseBlocked`/`toCsv`/`loadFamilies`); the per-key write + listen contract the settings service must offer it |
+| Injected dependencies | `ConfigManager`, `ShortestPathConfig`, `Client`; reads owned items to annotate restriction rows — an external edge into player item state |
+| Consumers | The user, via the plugin panel; `RestrictionListPanel` and `TransportFamilyCard` ride `ShortestPathPanel`'s `writeConfig`/`registerSync`/`suppressConfigSync` |
+| Killed seams | Direct `ConfigManager.setConfiguration` calls, reflection over `@ConfigItem` methods, and hand-rolled echo suppression — all absorbed by the settings service's write/listen contract |
+| Seam anchors | Both edges external and pinned: config read/write/listen against the settings-service contract; owned-items read against player item state |
+| Extraction PR | None dedicated — the revisit folds into the settings extraction's pre-flight; residual Swing glue rides the presentation-boundary work |
+| Blast radius | The four panel-branch files only — they never touch the engine or other clusters |
+| Known violations | None — the files sit in the top-level package (plus `TeleportRestriction` under `requirement/` on that branch), outside the leaf-package rule |
+
+### Player item state
+
+`OwnedItems` lives under `requirement/` but is owned by this cluster; the
+rest is responsibility rows on the god objects — container/varbit handlers,
+the `bank` field, `accessibleBankTiles`/`bankRequirements` and the bank-pickup
+cache on `ShortestPathPlugin`.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | Collect owned-item pools (`OwnedItems.addContainer`/`addRunePouchContents`); track the open bank (`pathfinderConfig.bank` written by `onItemContainerChanged`); invalidate eligibility on container and rune-pouch/diary varbit changes (`invalidateEligibility`, `bankPickupDirty`); own the bank-pickup cache (`bankPickupCache`, `bankPickupCachePath`, `bankPickupCacheIndex`) behind `getBankPickup`; `accessibleBankTiles` + `bankRequirements` decide which tiles flip a path into bank-visited state |
+| Owned state | `pathfinderConfig.bank` (`ItemContainer` ref); `bankPickupCache*` fields + `bankPickupDirty`; `accessibleBankTiles`; the carried/bank-path/bank item pools inside `TransportEligibility` (built today by `RequirementContext.collectEligibility`/`collectItems`) |
+| Subscribed events | `ItemContainerChanged` (BANK/INV/WORN), `VarbitChanged` filtered to `LUMBRIDGE_DIARY_ELITE_COMPLETE` + `PathfinderConfig.RUNE_POUCH_RUNE_VARBITS`/`RUNE_POUCH_AMOUNT_VARBITS` |
+| Published facts | Carried pool, bank-path pool, bank contents, banked rune-pouch contents and the fairy-ring-staff rule — the `TransportEligibility` snapshot shape; `BankPickupResult` phrases + item ids for display; the "items changed" declaration to the coordinator |
+| Injected dependencies | `PlayerStateSource` for container/rune-pouch reads (the sole `Client` seam); the bank `ItemContainer` event payload |
+| Consumers | `RequirementContext.capture`/`collectEligibility` (the eligibility snapshot); `getBankPickup` callers (`PathTileOverlay` bank-pickup display); `BankPickupRequirements.BankPickupResult.compute` |
+| Killed seams | `pathfinderConfig.bank` public field; `bankPickupCache*` plugin fields; eligibility invalidation scattered across shell handlers; the `RequirementContext`/`OwnedItems` reads of `PathfinderConfig.RUNE_POUCHES`/`RUNE_POUCH_RUNE_VARBITS`/`RUNE_POUCH_AMOUNT_VARBITS` constants |
+| Seam anchors | Pinned — the item-pool fact set `RequirementContext` consumes is a declared input, and the "items changed" declaration to the coordinator is a real crossing; collection method surface provisional |
+| Extraction PR | Future — the player-items producer extraction (lands beside the spirit-tree producer; both feed the context) |
+| Blast radius | `OwnedItems`; the item/bank responsibility rows on `ShortestPathPlugin` and `PathfinderConfig`; the `BankPickupRequirements(PathfinderConfig)` adapter edge; harness config twins |
+| Known violations | Leaf-to-leaf constant reads, not shell violations: `RequirementContext` imports `PathfinderConfig.RUNE_POUCHES`, `OwnedItems` reads the same constants, and `BankPickupRequirements.compute` takes a `PathfinderConfig` parameter — all migrate with this extraction |
+
+### Spirit trees
+
+`SpiritTreePatchState` is already an `@Singleton` service precedent; the rest
+is widget scraping and availability writes in the shell plus the resolved-set
+field on `PathfinderConfig`.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | Persist and track planted spirit-tree patches (`SpiritTreePatchState`: `notePlayerRegion`, `applyVarbitSample`, `getTravelableTrees`/`getTravelableTreesOrNull`, `loadFromProfile`, `persistIfDirty`, `modalWidgetOpen`, `patchNameForRegion`/`patchNameForTile`, `varbitForPatch`); scrape the spirit-tree menu (`parseSpiritTreeWidget`, `parseSpiritTreeMenuRows`, `SpiritTreeMenuSnapshot`); maintain `availableSpiritTrees` on `PathfinderConfig` (`refreshSpiritTreeAvailability`); the ~5 write sites to `pathfinderConfig.availableSpiritTrees` |
+| Owned state | Per-profile persisted patch state and varbit samples inside `SpiritTreePatchState`; the resolved `availableSpiritTrees` set (null = unresolved) |
+| Subscribed events | `WidgetLoaded` (`InterfaceID.MENU`/`MENU_NEW` → `parseSpiritTreeWidget`); the region-settled varbit sampling inside `onGameTick`; `RuneScapeProfileChanged` (`loadFromProfile` + set refresh) |
+| Published facts | The travelable tree set (or unresolved) consumed by `RequirementContext.capture` → `context.getAvailableSpiritTrees()`; the "tree set changed" declaration to the coordinator (today's writers call `restartPathfinding` directly); `SpiritTreeMenuSnapshot` parse result |
+| Injected dependencies | `ConfigManager` (patch persistence — the existing `@Inject` ctor); `Client` for widget/varbit reads on the client thread; widget geometry helpers for menu scraping |
+| Consumers | `Requirements.plantedSpiritTree`/`isUnavailablePlantedSpiritTree` (via `SpiritTreePatchState.patchNameForTile` + the context's set); `TransportAvailability` tree availability; `refreshSpiritTreeAvailability` inside `PathfinderConfig` |
+| Killed seams | The five scattered `pathfinderConfig.availableSpiritTrees` write sites; direct widget scraping in the shell; restart calls issued by producers |
+| Seam anchors | Pinned — the context's spirit-tree input (the `Set<String>` with null-unresolved semantics) and the producer's "tree set changed" declaration to the coordinator; widget-scrape internals provisional |
+| Extraction PR | Future — the spirit-tree producer extraction |
+| Blast radius | `SpiritTreePatchState` plus the spirit-tree responsibility rows on `ShortestPathPlugin` and `PathfinderConfig`; `Requirements.plantedSpiritTree` re-points at the published fact |
+| Known violations | None against the leaf rule — `SpiritTreePatchState` reads `ShortestPathPlugin.CONFIG_GROUP` (top-level, shell-internal) and `Requirements` reads the patch-name mapping leaf-to-leaf, which the spirit-tree boundary formalises rather than invents |
+
+### POH
+
+Player-owned-house knowledge is spread across shell statics, two `transport/`
+domain types, a persistence helper and four `isInsidePoh` call sites inside
+the middleware's POH gates.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | POH region predicate and landing tile (`isInsidePoh`, `POH_MIN_X`/`POH_MAX_X`/`POH_MIN_Y`/`POH_MAX_Y`, `POH_LANDING_X`/`POH_LANDING_Y`); transport remapping (`remapPohDestinations`, `remapPohTransports`); exit-info display (`getPohExitInfo`); nexus keybind persistence (`PortalNexusKeybinds`: `refreshFromDialog`, `putFromDialogLine`, `persistIfDirty`, `loadFromProfile`, `TELENEXUS_CREATE_TELELINE`); `PohNexusPortal`/`PohMountedItem` domain types incl. `fromDisplayInfo`/`fromObjectInfo` parsing; the POH gates currently inside `Requirements` (`pohDisabled`, `pohVariant`, `jewelleryBoxTier` and the `isPohNexusPortalEnabled`/`isPohMountedItemEnabled` helpers) are a recorded domain leak |
+| Owned state | `PortalNexusKeybinds` per-profile keybind persistence; the POH bounds/landing constants; enabled-portal/mounted-item/tier policy arrives via `RoutingPolicy` |
+| Subscribed events | `ScriptPostFired` (`TELENEXUS_CREATE_TELELINE` dialog line), `WidgetLoaded` (TELENEXUS groups → dialog refresh), `GameTick` (keybind refresh + `persistIfDirty`), `RuneScapeProfileChanged` (`loadFromProfile`) |
+| Published facts | The `isInsidePoh` region predicate; the POH landing tile; enabled nexus portals/mounted items/jewellery tier (from the settings view); `getPohExitInfo` display info; the "POH facts changed" declaration to the coordinator |
+| Injected dependencies | `ConfigManager` (keybind persistence — the `@Singleton` precedent); the settings view for portal/item/tier enablement; `Client` for dialog widgets |
+| Consumers | `Requirements` POH gates (4 `isInsidePoh` call sites), `TransportAvailability.Builder.remapPohTransports`, `PathfinderConfig.remapPohDestinations` + `POH_LANDING_*` reads, `PathTileOverlay` (6 `isInsidePoh` sites + portal display), `getPohExitInfo` callers in tooltip/presentation paths |
+| Killed seams | `ShortestPathPlugin.isInsidePoh`/`POH_*` static reads from leaf packages (~16 references across `Requirements`, `TransportAvailability`, `PathTileOverlay`, `PathfinderConfig`); display-info/object-info string matching scattered through the gates |
+| Seam anchors | Pinned — the `isInsidePoh` predicate and the nexus-portal/mounted-item enablement contract are real crossings consumed across package lines; remap internals provisional |
+| Extraction PR | Future — the POH service extraction |
+| Blast radius | `PortalNexusKeybinds`, `PohNexusPortal`, `PohMountedItem` plus the `isInsidePoh`/`POH_*`/remap responsibility rows on `ShortestPathPlugin` and `PathfinderConfig`; `Requirements` POH gates move with it; `TransportAvailability` and `PathTileOverlay` retarget |
+| Known violations | The record's own leaf files stay clean; the violations this extraction retires are inbound — `Requirements`, `TransportAvailability`, `PathTileOverlay` and `PathfinderConfig` all reach `ShortestPathPlugin.isInsidePoh`/`POH_LANDING_*` today |
+
+### Path scheduler
+
+Owns the cross-thread machinery that runs searches: the single-thread
+executor, the mutex, in-flight queries, deferred work and the published
+search handle.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | `pathfindingExecutor` (single-thread `ExecutorService` — the displayed path wins over pending queries); `pathfinderMutex`; `queries`/`QueryTask` (in-flight plugin-message query map, guarded by the mutex); `pendingTasks` + `PendingTask` (client-thread deferred work item, tick-scheduled via `PendingTask.check`); `restartPathfinding` overloads (incl. `canReviveFiltered`); `setTarget`/`setTargets`/`setStart`/`marker`; `ActiveSearch` publication — `pathfinder`/`legacyPathfinder`/`exactPathfinder`/`exactRoutingSession` volatile refs behind `getActiveSearch()`; `pathfinderFuture` |
+| Owned state | The `queries` map and `pendingTasks` list (mutex-guarded, cross-thread); the volatile `ActiveSearch` handle written on the client/worker boundary and read on the render thread; `PendingTask` named here explicitly — it is the scheduler's deferred-work type, not a loose shell class |
+| Subscribed events | None directly — the coordinator invokes it; menu verbs and the plugin-message API call its entry points today |
+| Published facts | `ActiveSearch` — the immutable-ish published handle (path, reachability, cancellation) read by overlays and the debug panel on the render thread; query results delivered through `postQueryResult`/`postQueryFailure` callbacks |
+| Injected dependencies | `PathfinderConfig` and the captured `RequirementContext` as engine inputs; the executor it constructs |
+| Consumers | The coordinator (sole `restartPathfinding` caller in target shape); menu verbs (`setTarget`/`setStart`); the plugin-message API (`queryPath`/`runQuery`, `restartPathfinding("plugin message", …)`); overlays via `getActiveSearch()`; the off-route/target-reached logic in `onGameTick` (`isNearPath`, `reachedDistance`) |
+| Killed seams | Executor/mutex/query internals leave the shell; the ~10 scattered `restartPathfinding` call sites in event handlers collapse to coordinator declarations |
+| Seam anchors | Pinned — `ActiveSearch` is the render-thread read contract, and `restartPathfinding(reason, start, ends, canReviveFiltered)` is the coordinator's sole call in; query/callback plumbing provisional |
+| Extraction PR | Future — the scheduler extraction (lands with the refresh coordinator) |
+| Blast radius | `PendingTask`, `ActiveSearch` plus the executor/mutex/query/target responsibility rows on `ShortestPathPlugin`; `Pathfinder`/`ExactPathfinder` construction sites; harness mirrors (`ProfilingPathfinder`) |
+| Known violations | None — the violation is inward: everything this cluster owns is scattered across the shell today |
+
+### Diagnostics
+
+`DebugState` is owned here as cross-thread state — the partition already
+pairs it with the scheduler's concurrency domain; `DebugOverlayPanel` is this
+record's consuming panel only (its presentation seam gets its own record —
+one owner per file).
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | `DebugState` — volatile publication of the last restart attempt (`Restart` snapshot: count/reason/tick/outcome via `restartRequested`/`restartOutcome`), the current and cancelled `ActiveSearch` refs, and client/search error tallies (`clientError*`, `searchError*`) with `DebugState.describe` for outcome text; writers are the restart/query paths (`debugState.restartOutcome("failed: " + DebugState.describe(error))`) |
+| Owned state | `DebugState`'s volatile fields — written on client and worker threads, read on the render thread; the immutable `Restart` snapshot exists so renders never see a torn reason/tick/outcome mix |
+| Subscribed events | None — written by scheduler/restart call sites, never by RuneLite events |
+| Published facts | The `Restart` snapshot, `search`/`cancelledSearch` handles and error counters exposed through `@Getter` — the render-thread read contract |
+| Injected dependencies | None beyond `ActiveSearch` references it holds |
+| Consumers | `DebugOverlayPanel` (`plugin.getDebugState()` reads on the render thread); the shell's restart/query paths write it |
+| Killed seams | Ad-hoc debug state on the plugin; torn multi-field reads across threads |
+| Seam anchors | Pinned — the `DebugState` field set is the state-vs-presentation contract the debug-overlay record cross-references |
+| Extraction PR | Future — lands alongside the scheduler work that produces most of its facts |
+| Blast radius | `DebugState.java` plus its writer call sites in restart/query paths |
+| Known violations | None. Recorded note: per-gate rejection tallies rendered in `DebugOverlayPanel` are the cheapest legitimate future consumer of the gate-verdict contract — its own post-milestone PR, not current scope |
+
+### Refresh & invalidation coordination
+
+The decision layer that turns RuneLite events into refresh/restart/invalidate
+work — today ~10 handler bodies on the shell plus `PathfinderConfig`'s
+refresh orchestration.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | The refresh-deciding handlers: `onGameStateChanged` (LOGGING_IN→LOADING→LOGGED_IN queues a `PendingTask` refresh), `onWorldChanged` (world hop → refresh — league mode derives from world type), `onRuneScapeProfileChanged` (keybind/tree profile load + restart), `onConfigChanged` (`TRANSPORT_OPTIONS_REGEX` → restart; `drawDebugPanel`/`pathfinderBackend` side effects), `onItemContainerChanged`/`onVarbitChanged` (eligibility invalidation), `onWidgetLoaded`/`onWidgetClosed`/`onPostClientTick` (tree/nexus/fairy-ring observation), `onScriptPostFired` (nexus keybind line), `onGameTick` (`pendingTasks` drain, off-route/`reachedDistance` restarts); `PathfinderConfig.refresh()`/`refreshTransports()` orchestration and the `eligibilityStale` flag |
+| Owned state | `lastGameState`/`lastLastGameState` transition memory; the `pendingTasks` deferral list (shared with the scheduler); `eligibilityStale`; `fairyRingPanelOpen` observation flag |
+| Subscribed events | The full `@Subscribe` set above — today subscription and decision live in the same handler bodies |
+| Published facts | The "what changed" declaration set producers call: config-key-changed, container-changed, varbit-changed, world-changed, profile-changed, tree-set-changed, nexus-changed, tick-elapsed, target-reached/off-route |
+| Injected dependencies | The producer services declaring changes; the scheduler — the coordinator is its sole caller |
+| Consumers | `PathfinderConfig.refresh`/`refreshTransports`, `restartPathfinding`, `invalidateEligibility` — the actual work this layer triggers |
+| Killed seams | ~10 handler bodies deciding refresh policy inline; the `pendingTasks.add(new PendingTask(tick, pathfinderConfig::refresh))` deferred-refresh idiom; event-ordering assumptions smeared across `onGameTick` |
+| Seam anchors | Pinned — the coordinator's declared-facts seam is a real contract crossing: producers declare "what changed" as method calls, and the coordinator is the sole caller of the scheduler |
+| Extraction PR | Future — lands with the scheduler extraction |
+| Blast radius | The refresh-decision responsibility rows on `ShortestPathPlugin`; the `refresh()`/`refreshTransports()`/`eligibilityStale` rows on `PathfinderConfig` |
+| Known violations | None — every site sits in the shell/top-level package today |
+
 ## Coherent units
 
 Units that are already internally coherent get a one-line defer record —
