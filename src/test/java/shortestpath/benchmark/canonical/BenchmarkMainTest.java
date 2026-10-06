@@ -99,6 +99,67 @@ public class BenchmarkMainTest {
         Assert.assertEquals("exact", plan.algorithm);
     }
 
+    @Test
+    public void exactSessionDefaultsToColdAndIsValidated() throws Exception {
+        Assert.assertEquals("cold", BenchmarkMain.loadPlan(exactManifest(null, false), CORPUS).exactSession);
+        Assert.assertEquals("account", BenchmarkMain.loadPlan(exactManifest("account", false), CORPUS).exactSession);
+        Assert.assertEquals("target", BenchmarkMain.loadPlan(exactManifest("target", false), CORPUS).exactSession);
+        expectFailure(exactManifest("warm", false));
+        Path legacy = manifest(firstRoute().getId(), "early", 1, 100000000L);
+        JsonObject json = JsonParser.parseString(Files.readString(legacy)).getAsJsonObject();
+        json.getAsJsonObject("policy").getAsJsonObject("adapter_args").addProperty("exact_session", "target");
+        Files.writeString(legacy, new Gson().toJson(json), StandardCharsets.UTF_8);
+        expectFailure(legacy);
+    }
+
+    @Test
+    public void exactSessionModesReuseTheStagesTheyDescribe() throws Exception {
+        JsonObject cold = onlyObservation(exactManifest("cold", true));
+        JsonObject account = onlyObservation(exactManifest("account", true));
+        JsonObject target = onlyObservation(exactManifest("target", true));
+
+        Assert.assertFalse(cold.get("graph_reused").getAsBoolean());
+        Assert.assertFalse(cold.get("target_reused").getAsBoolean());
+        Assert.assertTrue(cold.get("reverse_search_ns").getAsLong() > 0);
+        Assert.assertTrue(account.get("graph_reused").getAsBoolean());
+        Assert.assertFalse(account.get("target_reused").getAsBoolean());
+        Assert.assertTrue(account.get("reverse_search_ns").getAsLong() > 0);
+        Assert.assertTrue(target.get("graph_reused").getAsBoolean());
+        Assert.assertTrue(target.get("target_reused").getAsBoolean());
+        Assert.assertEquals(0, target.get("reverse_search_ns").getAsLong());
+        Assert.assertEquals("target", target.get("exact_session").getAsString());
+        Assert.assertEquals(cold.get("path_cost"), account.get("path_cost"));
+        Assert.assertEquals(cold.get("path_cost"), target.get("path_cost"));
+    }
+
+    private static Path exactManifest(String session, boolean warmup) throws Exception {
+        CanonicalRoute route = firstRoute();
+        Path manifest = writeManifest(List.of(caseJson(route, "early", 0, expectedReachable(route, "early"))),
+            1, warmup, 100000000L, true);
+        JsonObject json = JsonParser.parseString(Files.readString(manifest)).getAsJsonObject();
+        json.addProperty("project", "shortest-path-exact");
+        JsonObject adapterArgs = json.getAsJsonObject("policy").getAsJsonObject("adapter_args");
+        adapterArgs.addProperty("algorithm", "exact");
+        if (session != null) {
+            adapterArgs.addProperty("exact_session", session);
+        }
+        Files.writeString(manifest, new Gson().toJson(json), StandardCharsets.UTF_8);
+        return manifest;
+    }
+
+    private static JsonObject onlyObservation(Path manifest) throws Exception {
+        Path output = Files.createTempFile("benchmark-main-result", ".json");
+        System.setProperty("benchmark.runId", "java-test-run");
+        try {
+            BenchmarkMain.run(manifest, CORPUS, output);
+        } finally {
+            System.clearProperty("benchmark.runId");
+        }
+        JsonObject result = JsonParser.parseString(Files.readString(output)).getAsJsonObject();
+        Assert.assertEquals(1, result.getAsJsonArray("observations").size());
+        return result.getAsJsonArray("observations").get(0).getAsJsonObject();
+    }
+
     private static CanonicalRoute firstRoute() throws Exception {
         return CanonicalCorpusLoader.loadRoutes(CORPUS.resolve("corpus/routes-v1.json")).get(0);
     }

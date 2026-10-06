@@ -21,14 +21,23 @@ import java.util.Map;
 import java.util.Set;
 import shortestpath.pathfinder.ExactPathfinder;
 import shortestpath.pathfinder.PathfinderResult;
+import shortestpath.pathfinder.PathfinderConfig;
 import shortestpath.pathfinder.exact.ExactForwardSearch;
+import shortestpath.pathfinder.exact.ExactRoutingSession;
 import shortestpath.pathfinder.exact.RoutingStatic;
+import shortestpath.pathfinder.exact.SiteGraph;
 
 /** Stable, manifest-driven Java adapter entry point. */
 public final class BenchmarkMain {
     private static final int FORMAT_VERSION = 1;
     private static final int PROTOCOL_VERSION = 1;
     private static final String IMPLEMENTATION = "shortest-path-java";
+    /** New session per query: every stage is prepared inside the timed region. */
+    static final String SESSION_COLD = "cold";
+    /** Session per account; targets are dropped before each query, as when picking a new destination. */
+    static final String SESSION_ACCOUNT = "account";
+    /** Session per account; the target is prepared before timing, as when recalculating towards it. */
+    static final String SESSION_TARGET = "target";
 
     private BenchmarkMain() { }
 
@@ -66,10 +75,12 @@ public final class BenchmarkMain {
             }
         }
 
+        Map<String, ExactRoutingSession> sessions = new HashMap<>();
+
         if (plan.warmup) {
             progressPhase("warming up");
             for (Case current : plan.logicalCases) {
-                execute(current, plan, accounts, accountFailures, routingStatic, false, runId);
+                execute(current, plan, accounts, accountFailures, routingStatic, sessions, false, runId);
             }
         }
 
@@ -77,7 +88,8 @@ public final class BenchmarkMain {
         progressPhase("running");
         for (Case current : plan.cases) {
             progressStart(current);
-            JsonObject observation = execute(current, plan, accounts, accountFailures, routingStatic, true, runId);
+            JsonObject observation = execute(current, plan, accounts, accountFailures, routingStatic, sessions,
+                true, runId);
             observations.add(observation);
             progressComplete(observation);
         }
@@ -144,18 +156,25 @@ public final class BenchmarkMain {
         JsonObject adapterArgs = requiredObject(policy, "adapter_args");
         boolean diagnostic = false;
         String algorithm = "legacy";
+        String exactSession = SESSION_COLD;
         for (String key : adapterArgs.keySet()) {
-            if (!key.equals("diagnostic") && !key.equals("algorithm")) {
-                throw new IllegalArgumentException("unsupported Java adapter argument: " + key);
-            }
             if (key.equals("diagnostic")) diagnostic = requireBoolean(adapterArgs, key);
-            else algorithm = requireString(adapterArgs, key);
+            else if (key.equals("algorithm")) algorithm = requireString(adapterArgs, key);
+            else if (key.equals("exact_session")) exactSession = requireString(adapterArgs, key);
+            else throw new IllegalArgumentException("unsupported Java adapter argument: " + key);
+        }
+        if (!exactSession.equals(SESSION_COLD) && !exactSession.equals(SESSION_ACCOUNT)
+                && !exactSession.equals(SESSION_TARGET)) {
+            throw new IllegalArgumentException("exact_session must be cold, account or target");
         }
         if (!algorithm.equals("legacy") && !algorithm.equals("exact")) {
             throw new IllegalArgumentException("algorithm must be legacy or exact");
         }
         if (project.equals("shortest-path-exact") != algorithm.equals("exact")) {
             throw new IllegalArgumentException("benchmark project and algorithm disagree");
+        }
+        if (!algorithm.equals("exact") && !exactSession.equals(SESSION_COLD)) {
+            throw new IllegalArgumentException("exact_session requires the exact algorithm");
         }
 
         Map<String, CanonicalRoute> routes = new LinkedHashMap<>();
@@ -227,7 +246,7 @@ public final class BenchmarkMain {
             }
         }
         return new Plan(project, cases, logicalCases, profiles, transportModes, repetitions, warmup,
-            syntheticTime, diagnostic, algorithm);
+            syntheticTime, diagnostic, algorithm, exactSession);
     }
 
     private static JsonObject executionMetadata(Plan plan, long routingStaticBuildNanos) {
@@ -252,6 +271,9 @@ public final class BenchmarkMain {
         JsonObject adapterArgs = new JsonObject();
         adapterArgs.addProperty("diagnostic", plan.diagnostic);
         adapterArgs.addProperty("algorithm", plan.algorithm);
+        if (plan.algorithm.equals("exact")) {
+            adapterArgs.addProperty("exact_session", plan.exactSession);
+        }
         metadata.add("adapter_args", adapterArgs);
         return metadata;
     }
@@ -265,7 +287,8 @@ public final class BenchmarkMain {
 
     private static JsonObject execute(Case current, Plan plan,
             Map<String, CanonicalAccountCompiler.CompiledAccount> accounts,
-            Map<String, String> accountFailures, RoutingStatic routingStatic, boolean measured, String runId) {
+            Map<String, String> accountFailures, RoutingStatic routingStatic,
+            Map<String, ExactRoutingSession> sessions, boolean measured, String runId) {
         CanonicalAccountCompiler.CompiledAccount account = accounts.get(
             accountKey(current.profile, current.route.isAllowTransports()));
         String accountFailure = accountFailures.get(accountKey(current.profile, current.route.isAllowTransports()));
@@ -276,10 +299,14 @@ public final class BenchmarkMain {
             throw new IllegalStateException("no compiled account for " + current.profile);
         }
         try {
+            ExactRoutingSession session = plan.algorithm.equals("exact")
+                ? prepareSession(plan.exactSession, sessions, accountKey(current.profile, current.route.isAllowTransports()),
+                    account.getConfig(), routingStatic, current.route.getTargetPacked())
+                : null;
             long start = System.nanoTime();
             ExactPathfinder exact = plan.algorithm.equals("exact")
                 ? CanonicalRouteAdapter.runExact(current.route.getStartPacked(), current.route.getTargetPacked(),
-                    account, routingStatic)
+                    account, routingStatic, session)
                 : null;
             PathfinderResult result = exact == null
                 ? CanonicalRouteAdapter.runLegacy(current.route.getStartPacked(), current.route.getTargetPacked(), account)
@@ -315,6 +342,9 @@ public final class BenchmarkMain {
                     row.addProperty("seed_table_ns", exact.getHeuristicPrepareNanos());
                     row.addProperty("heuristic_prepare_ns",
                         exact.getReverseSearchNanos() + exact.getHeuristicPrepareNanos());
+                    row.addProperty("exact_session", plan.exactSession);
+                    row.addProperty("graph_reused", exact.isGraphReused());
+                    row.addProperty("target_reused", exact.isTargetReused());
                     row.addProperty("unique_states_reached", counters.uniqueStatesReached());
                     row.addProperty("pq_pushes", counters.pqPushes());
                     row.addProperty("stale_entries", counters.staleEntries());
@@ -346,6 +376,25 @@ public final class BenchmarkMain {
             return failure(current, runId, plan.project, plan.algorithm,
                 exception.getClass().getName() + ": " + exception.getMessage());
         }
+    }
+
+    /**
+     * The session a query runs with, brought to the state its mode describes before timing starts:
+     * {@code null} (cold), the account's session without targets, or with this target prepared.
+     */
+    static ExactRoutingSession prepareSession(String mode, Map<String, ExactRoutingSession> sessions,
+            String accountKey, PathfinderConfig config, RoutingStatic routingStatic, int target) {
+        if (mode.equals(SESSION_COLD)) {
+            return null;
+        }
+        ExactRoutingSession session = sessions.computeIfAbsent(accountKey, ignored -> new ExactRoutingSession());
+        if (mode.equals(SESSION_ACCOUNT)) {
+            session.clearTargets();
+        } else {
+            SiteGraph graph = session.graph(routingStatic, config.prepareExactRoutingAccount(true)).value();
+            session.target(graph, config.getMap(), target);
+        }
+        return session;
     }
 
     private static JsonObject failure(Case current, String runId, String project, String algorithm,
@@ -476,11 +525,12 @@ public final class BenchmarkMain {
         final long syntheticBenchmarkTime;
         final boolean diagnostic;
         final String algorithm;
+        final String exactSession;
 
         Plan(String project, List<Case> cases, List<Case> logicalCases,
                 Map<String, CanonicalAccountProfile> profiles, Set<Boolean> transportModes,
                 int repetitions, boolean warmup, long syntheticBenchmarkTime, boolean diagnostic,
-                String algorithm) {
+                String algorithm, String exactSession) {
             this.project = project;
             this.cases = List.copyOf(cases);
             this.logicalCases = List.copyOf(logicalCases);
@@ -491,6 +541,7 @@ public final class BenchmarkMain {
             this.syntheticBenchmarkTime = syntheticBenchmarkTime;
             this.diagnostic = diagnostic;
             this.algorithm = algorithm;
+            this.exactSession = exactSession;
         }
     }
 

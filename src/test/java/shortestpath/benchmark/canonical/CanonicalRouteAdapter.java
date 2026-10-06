@@ -8,6 +8,7 @@ import shortestpath.pathfinder.Pathfinder;
 import shortestpath.pathfinder.PathfinderConfig;
 import shortestpath.pathfinder.PathfinderResult;
 import shortestpath.pathfinder.SplitFlagMap;
+import shortestpath.pathfinder.exact.ExactRoutingSession;
 import shortestpath.pathfinder.exact.RoutingStatic;
 
 /** The single production execution path shared by the benchmark and route query. */
@@ -25,10 +26,12 @@ final class CanonicalRouteAdapter {
         return pathfinder.getResult();
     }
 
+    /** Runs through {@code session} so prepared stages are reused; {@code null} prepares everything. */
     static ExactPathfinder runExact(int start, int target,
-            CanonicalAccountCompiler.CompiledAccount account, RoutingStatic routingStatic) {
+            CanonicalAccountCompiler.CompiledAccount account, RoutingStatic routingStatic,
+            ExactRoutingSession session) {
         PathfinderConfig config = account.getConfig();
-        ExactPathfinder pathfinder = new ExactPathfinder(config, routingStatic, null,
+        ExactPathfinder pathfinder = new ExactPathfinder(config, routingStatic, session,
             start, Set.of(target), null, config.getExactHeuristicWeight());
         pathfinder.run();
         return pathfinder;

@@ -84,7 +84,7 @@ public final class CanonicalRouteCli {
         CanonicalAccountCompiler.CompiledAccount account = new CanonicalAccountCompiler()
             .compileAtTime(profileName, profile, allowTransports, profile.getBenchmarkNowMinutes());
         ExactPathfinder exact = arguments.algorithm.equals("exact")
-            ? CanonicalRouteAdapter.runExact(start, target, account, routingStatic) : null;
+            ? CanonicalRouteAdapter.runExact(start, target, account, routingStatic, null) : null;
         PathfinderResult result = exact == null
             ? CanonicalRouteAdapter.runLegacy(start, target, account) : exact.getResult();
         List<MatchedTransport> transports = result.isReached()
