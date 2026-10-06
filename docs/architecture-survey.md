@@ -417,6 +417,179 @@ refresh orchestration.
 | Blast radius | The refresh-decision responsibility rows on `ShortestPathPlugin`; the `refresh()`/`refreshTransports()`/`eligibilityStale` rows on `PathfinderConfig` |
 | Known violations | None — every site sits in the shell/top-level package today |
 
+### Plugin-message API
+
+The plugin's external input surface: other RuneLite plugins drive it through
+namespaced `PluginMessage` events.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | The `PLUGIN_MESSAGE_*` protocol constants (`path`, `clear`, `start`, `target`, `config`, `transports`, `query`, `result`, `getTarget`, `currentTarget`, `id`); `onPluginMessage` dispatch gated on the `CONFIG_GROUP` namespace; payload parsing via `parseStart`/`parseTargets`; async queries through `queryPath`/`runQuery`/`QueryTask`; result publication via `postQueryResult`/`postQueryFailure`/`postCurrentTarget`/`postPluginMessages`; the `config` payload → `configOverride` write + `cacheConfigValues()` re-read |
+| Owned state | None of its own — query handles belong to the scheduler's `queries`/`QueryTask`; the `config` payload hands off to the override mechanism |
+| Subscribed events | `PluginMessage` (namespace-gated to `CONFIG_GROUP`) |
+| Published facts | The protocol contract itself: inbound messages `path` (start/target/config payload), `query` (id + start/target), `getTarget` (id echo), `clear`; outbound `transports`, `result`/`currentTarget` payloads and `postQueryFailure` reason strings (`INVALID`, `SHUTDOWN`, `ERROR`) |
+| Injected dependencies | The scheduler (`queryPath`, `restartPathfinding`, `setTarget`); the settings service (`configOverride` write path) |
+| Consumers | Third-party RuneLite plugins sending `path`/`query`/`config`/`getTarget`/`clear` messages |
+| Killed seams | Payload parsing, dispatch and result serialization inline in the shell; the duplicated edge-walk + transport serialization between `postPluginMessages` and `postQueryResult` folds under the shared annotator the presentation record describes |
+| Seam anchors | Pinned — the protocol contract (message names + payload field shapes) is the plugin's public API; `parseStart`/`parseTargets` and `config`-payload handling are the plugin's external input-validation seam and the trust boundary for the override mechanism — documented as such, not changed this milestone |
+| Extraction PR | Future — the API extraction (lands with the presentation boundary work) |
+| Blast radius | The `PLUGIN_MESSAGE_*`/dispatch/parsing/serialization responsibility rows on `ShortestPathPlugin`; `QueryTask` is shared with the scheduler record |
+| Known violations | None structurally; the input-validation seam is recorded deliberately — external plugins can push `config` overrides, the only remote write path into the override mechanism |
+
+### Menu & target-setting verbs
+
+The right-click verb layer — a cluster distinct from widget geometry (verbs,
+not math): it decides what the user *can* ask for and delegates the rest.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | `onMenuEntryAdded` (the SET TARGET/SET START/CLEAR PATH/FIND_CLOSEST option rows, incl. colour-tagged target names), `onMenuOpened`, `addMenuEntry` (menu-entry construction with `onClick` wiring), `onMenuOptionClicked` (verb dispatch → `setTarget`/`setStart`); shift-click on the minimap hit-tested against `getMinimapClipArea` |
+| Owned state | The menu option constants and verb semantics; selected-point resolution delegates to widget geometry (`getSelectedWorldPoint`, `calculateMapPoint`) |
+| Subscribed events | `MenuEntryAdded`, `MenuOpened`; option clicks arrive through the entry's `onClick` callback |
+| Published facts | User intent as verbs — set-target / set-start / clear-path / find-closest — delegated to the scheduler and API in target shape |
+| Injected dependencies | The scheduler (`setTarget`, `setStart`, `marker`); widget geometry (`getSelectedWorldPoint`, `getMinimapClipArea`) |
+| Consumers | The user via right-click menus and minimap clicks |
+| Killed seams | Menu wiring and target mutation inline in the shell |
+| Seam anchors | Provisional method surface — but the verb set itself (option strings + semantics) is the contract worth pinning at extraction, since menu placement rules interact with RuneLite's entry ordering |
+| Extraction PR | Future — folds into the API/presentation extraction |
+| Blast radius | The menu/target responsibility row on `ShortestPathPlugin` |
+| Known violations | None |
+
+### Transport presentation
+
+The edge→display-string layer shared by the plugin-message serializers and
+the overlays — folds into the API cluster's presentation boundary.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | `transportsForEdge` (path-step pair → transports connecting it), `formatTransportDisplay` (transport → display string), `getPohExitInfo` (POH portal exit info for a destination), `BankPickupRequirements` display phrases (`BankPickupResult.phrases`) — the text every presentation surface shares |
+| Owned state | None — pure formatting over scheduler output and POH/item facts |
+| Subscribed events | None |
+| Published facts | Per-edge display strings: `displayInfo` fields in the `transports`/`result` payloads, POH exit info, bank-pickup phrases |
+| Injected dependencies | POH facts (`getPohExitInfo`), item state (pickup phrases), the scheduler's `ActiveSearch` path |
+| Consumers | `postPluginMessages`, `postQueryResult`; `PathTileOverlay`, `PathMapTooltipOverlay`, `SpellbookHighlightOverlay` (`plugin.transportsForEdge`, `plugin.formatTransportDisplay`, `plugin.getPohExitInfo`) |
+| Killed seams | The duplicated edge-walk + display-string serialization between `postPluginMessages` and `postQueryResult`; overlays walking `plugin.transportsForEdge` themselves — a shared annotator ends both |
+| Seam anchors | Provisional method surface; the phrase/serialization format is the contract to pin at extraction time |
+| Extraction PR | Future — folds into the plugin-message API extraction's presentation boundary |
+| Blast radius | The `transportsForEdge`/`formatTransportDisplay`/`getPohExitInfo` responsibility rows on `ShortestPathPlugin`, the display half of `BankPickupRequirements`, and overlay call sites |
+| Known violations | `PathTileOverlay` and `SpellbookHighlightOverlay` call `plugin.transportsForEdge`/`formatTransportDisplay`/`getPohExitInfo` — leaf-package instance reads into the shell that this boundary replaces |
+
+### TSV data loading
+
+The `transport/parser/` grammar package is the absorption target; the rows
+below are the hand-rolled loaders that fold into it.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | `Destination.addDestinations` — a hand-rolled `Scanner` loop over ~20 `destinations/**` resource paths anchored on `ShortestPathPlugin.class.getResourceAsStream`; `Destination.loadBankRequirementsFromResources` — a second `Scanner` loop producing `Map<Integer, DestinationRequirements>`; `Destination.loadAllFromResources` entry point; `Transport` record, `TransportType` taxonomy, `TransportLoader.loadAllFromResources`, `LoadInterner` load-scoped dedup pools; `LeagueRegionChecker.parse` folds in; the destination-map responsibility rows on `PathfinderConfig` (`allDestinations`/`filteredDestinations`, `hasDestination`, `getDestinations`, `filterLocations`, `filterDestinations`) |
+| Owned state | The loaded destination maps and bank requirements; interner pools live only for the load |
+| Subscribed events | None — data loads eagerly at config build and inside `refresh()` |
+| Published facts | Immutable `Transport`/`Destination` data and the per-tile destination index (`getDestinations("bank")` etc.); `bankRequirements` for destination-side requirement checks |
+| Injected dependencies | Classpath resources — the extracted loader anchors on its own class, so the plugin-class anchoring idiom does not migrate into a leaf package |
+| Consumers | `PathfinderConfig` (transports + destinations), `RequirementContext.capture`/`check(DestinationRequirements)` (bank requirements), `accessibleBankTiles` derivation |
+| Killed seams | The two hand-rolled `Scanner` loops in `Destination` replaced by `transport/parser/` machinery; the `ShortestPathPlugin.class.getResourceAsStream` anchors die rather than migrate |
+| Seam anchors | Pinned — the resource-path anchors and the produced map shapes (`Map<String, Set<Integer>>` destinations, `Map<Integer, DestinationRequirements>` bank requirements) are the consumed contract; parser internals provisional |
+| Extraction PR | Future — the TSV-loader extraction |
+| Blast radius | `Destination`, `Transport`, `TransportType`, `TransportLoader`, `LoadInterner`, the destination-map rows on `PathfinderConfig`, `LeagueRegionChecker.parse`; the `transport/parser/` package is wrapped, not rebuilt |
+| Known violations | `Destination`'s two `ShortestPathPlugin.class.getResourceAsStream` anchors — top-level file, outside the leaf-package rule, recorded here because this extraction owns their removal |
+
+### Widget & UI geometry
+
+Roughly 350 lines of widget math in the shell — pure client-thread geometry,
+shared by menu verbs, overlays, spirit-tree menu scraping and nexus dialogs.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | `getMinimapClipArea`/`getMinimapDrawWidget` (minimap shape + hit-test region), `bufferedImageToPolygon`, `mapWorldPointToGraphicsPointX`/`Y` (packed world point → graphics coordinates), `calculateMapPoint` (screen point → world point inverse), `getSelectedWorldPoint` (menu/click position resolution), `scrollFairyRingPanel` (fairy-ring log auto-scroll to the hovered entry) |
+| Owned state | `fairyRingPanelOpen` observation flag; otherwise stateless math over `Client` widget APIs |
+| Subscribed events | `PostClientTick` (drives `scrollFairyRingPanel` while the fairy-ring log is open); `WidgetLoaded`/`WidgetClosed` maintain the open flag |
+| Published facts | World↔graphics point mapping, the minimap clip area — geometry services every presentation surface consumes |
+| Injected dependencies | `Client` widget/viewport APIs (client thread) |
+| Consumers | Menu verbs (`getSelectedWorldPoint`, minimap hit-test); overlays (`plugin.mapWorldPointToGraphicsPointX/Y`, `plugin.calculateMapPoint` — the dominant `plugin.*` reads on `PathMapOverlay`/`PathMapTooltipOverlay`); `parseSpiritTreeWidget`; nexus dialog refresh |
+| Killed seams | ~350 lines of widget math in the shell; overlays reaching `plugin.*` for geometry |
+| Seam anchors | Provisional — the geometry function surface is internal until the presentation boundary pins it |
+| Extraction PR | Future — the widget-geometry extraction |
+| Blast radius | The geometry responsibility row on `ShortestPathPlugin` plus overlay call sites |
+| Known violations | `PathMapOverlay`/`PathMapTooltipOverlay` call `plugin.mapWorldPointToGraphicsPointX/Y` and `plugin.calculateMapPoint` — leaf→shell instance reads replaced by the geometry service |
+
+### Player skill levels
+
+No files today — a pending value type. The magic `int[]` layout
+(`Skill.values().length + 3`: trailing indices carry total level, combat
+level and quest points) is the extended-index contract four sites share.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | Own the `Skill.values().length + 3` layout and its index semantics — `Skill.values().length` = total level, +1 = combat level, +2 = quest points; `MAX_LEVEL`/`maximumLevel` sentinels (99 per skill, `99 * Skill.values().length` for total, 126 combat, quest-point cap) — replacing magic indices across all readers |
+| Owned state | None — a value type, constructed per refresh/per transport |
+| Subscribed events | None |
+| Published facts | The extended-index contract itself; typed accessors replacing bare `int[]` reads |
+| Injected dependencies | None — produced by `RequirementContext.capture` and the parsers |
+| Consumers | `Transport.NO_SKILLS`/`Transport.Builder.skillLevels`, `SkillRequirementParser`, `Destination`'s skills-column parse, `RequirementContext.boostedSkillLevelsAndMore`, `Requirements.skillLevel`/`maximumLevel`, bank `DestinationRequirements` skill sets |
+| Killed seams | Bare `int[]` + magic-index arithmetic in four places; the `Requirements` → `SkillRequirementParser.MAX_LEVEL` leaf-to-leaf constant read |
+| Seam anchors | Pinned — the `Skill.values().length + 3` index layout is the contract every consumer already shares |
+| Extraction PR | Future — the skills value-type extraction |
+| Blast radius | `PathfinderConfig`'s skill-layout row, `SkillRequirementParser`, `Requirements.skillLevel`, `Destination`/`DestinationRequirements`, `Transport` |
+| Known violations | `Requirements` imports `SkillRequirementParser` for `MAX_LEVEL` — a leaf-to-leaf edge the shared value type absorbs |
+
+### Path rendering overlays
+
+The path-drawing trio plus `ArrowHead` — a presentation-seam record: these
+consume the settings service and scheduler output; they own no logic.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | `PathTileOverlay` (841 lines — tile-by-tile path drawing, transport info, bank-pickup hint, unreachable text, teleport pulse, tile counter), `PathMinimapOverlay`, `PathMapOverlay`, `PathMapTooltipOverlay`, `ArrowHead` (direction glyph) — render the active search's path across client, minimap and world-map surfaces |
+| Owned state | Render state only — no domain state |
+| Subscribed events | None — driven by the render loop |
+| Published facts | None — terminal consumers |
+| Injected dependencies | Today: `plugin.*` (~90+ accesses across the five files — display fields `pathStyle`, `colour*`, `draw*`, `show*`, `tileCounterStep`; state `getActiveSearch`, `nextPathStep`, `isPathUnreachable`, `getBankPickup`, `getPohExitInfo`, `getPathfinderConfig`; geometry `mapWorldPointToGraphicsPointX/Y`, `calculateMapPoint`, `getMinimapClipArea`). Target: narrow read seams — the settings view (display prefs), the scheduler's `ActiveSearch`, item-state pickup facts, POH facts, widget geometry |
+| Consumers | The render thread |
+| Killed seams | Every `plugin.*` read — replaced by the published facts above |
+| Seam anchors | Provisional — the published-facts shape they read is the contract; named inputs are already enumerable (the `plugin.*` symbol set above) |
+| Extraction PR | Future — the presentation-boundary work |
+| Blast radius | The five overlay files; no logic moves — reads re-point |
+| Known violations | `PathTileOverlay` reads `ShortestPathPlugin.isInsidePoh` at 6 sites — leaf→shell static reads that migrate to the POH service; the `plugin.*` instance reads are the seam this boundary exists to kill |
+
+### Highlight overlays
+
+`AbstractHighlightOverlay` plus the three concrete highlighters — the same
+presentation-seam shape as the path overlays, scoped to bank-pickup visuals.
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | `AbstractHighlightOverlay` shared base; `BankItemHighlightOverlay` (bank slots for pickup items), `InventoryHighlightOverlay` (carried items), `SpellbookHighlightOverlay` (teleport spells in the spellbook) — highlight where the player can satisfy the bank-pickup plan |
+| Owned state | Render state only |
+| Subscribed events | None — render-loop driven |
+| Published facts | None — terminal consumers |
+| Injected dependencies | Today: `plugin.getPathfinderConfig`, `plugin.highlightSpellbookSpells`, `plugin.colourBankPickupHighlight`, `plugin.getActiveSearch`, `plugin.transportsForEdge`, `plugin.getBankPickup`. Target: item-state pickup facts + settings view |
+| Consumers | The render thread |
+| Killed seams | `plugin.*` reads; the bank-pickup display logic they wrap |
+| Seam anchors | Provisional — consumers of the item-state and settings published facts |
+| Extraction PR | Future — the presentation-boundary work |
+| Blast radius | The four overlay files |
+| Known violations | None static — the `plugin.*` instance reads are the seam this boundary replaces |
+
+### Debug overlay
+
+`DebugOverlayPanel` is the presentation seam for diagnostics — deliberately
+split from `DebugState` (state vs presentation; no file is owned by two
+records).
+
+| Field | Content |
+|-------|---------|
+| Responsibilities | Render the diagnostics panel: the last restart attempt (`DebugState.Restart`), the current search state (`renderSearch`/`state(ActiveSearch, ExactPathfinder, PathfinderResult, DebugState)`), `renderRestart`, `renderErrors`; shown/hidden on the `drawDebugPanel` config key |
+| Owned state | Panel-side render state only — `DebugState` is an injected data source owned by the diagnostics record (cross-referenced there, not re-owned here) |
+| Subscribed events | None — overlay manager registration rides `onConfigChanged`; renders each frame |
+| Published facts | None — terminal consumer |
+| Injected dependencies | `DebugState` via `plugin.getDebugState()` today — an injected read seam in target shape; `ActiveSearch`/exact-search handles for state text |
+| Consumers | The render thread; developers reading the panel |
+| Killed seams | `plugin.getDebugState()` shell read → injected `DebugState` |
+| Seam anchors | Pinned — reads the `DebugState` snapshot contract the diagnostics record owns |
+| Extraction PR | Future — rides the diagnostics/scheduler work |
+| Blast radius | `DebugOverlayPanel.java` only |
+| Known violations | None. Recorded note: per-gate verdict tallies here are the cheapest legitimate future consumer of the gate-verdict contract — a post-milestone PR, not current scope |
+
 ## Coherent units
 
 Units that are already internally coherent get a one-line defer record —
