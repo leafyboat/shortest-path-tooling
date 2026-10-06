@@ -108,22 +108,23 @@ public class ProfilingPathfinder {
             int pendingHead = pending.peek();
 
             int node;
+            // On a cost tie the pending heap wins: a queued transport that is strictly
+            // cheaper than the walking route must claim its destination before an
+            // equal-cost boundary node can expand and emit a competing walking edge.
             if (pendingHead != NodeGraph.NO_NODE
-                && (boundaryHead == NodeGraph.NO_NODE || graph.compareCost(pendingHead) < graph.cost(boundaryHead))) {
+                && (boundaryHead == NodeGraph.NO_NODE || graph.compareCost(pendingHead) <= graph.cost(boundaryHead))) {
                 node = pending.poll();
 
-                // For delayed-visit nodes, check if the destination was already
-                // reached by a cheaper path while this node was queued.
-                if (graph.isDelayedVisit(node)) {
-                    int packed = graph.packedPosition(node);
-                    boolean bank = graph.bankVisited(node);
-                    if (visited.get(packed, bank)) {
-                        profile.delayedVisitSkipped++;
-                        profile.queueSelectionNanos += System.nanoTime() - phaseStart;
-                        continue;
-                    }
-                    visited.set(packed, bank);
+                // Nothing in pending claimed its destination at enqueue. The first,
+                // cheapest, dequeue wins the tile; later queued duplicates are dropped.
+                int packed = graph.packedPosition(node);
+                boolean bank = graph.bankVisited(node);
+                if (visited.get(packed, bank)) {
+                    profile.delayedVisitSkipped++;
+                    profile.queueSelectionNanos += System.nanoTime() - phaseStart;
+                    continue;
                 }
+                visited.set(packed, bank);
             } else {
                 node = boundary.pollFirst();
             }
@@ -253,9 +254,10 @@ public class ProfilingPathfinder {
             }
 
             final boolean neighborIsTransport = graph.isTransport(neighbor);
-            // For delayed-visit nodes (shared destinations), don't mark as visited on enqueue.
-            // They will be checked and marked when dequeued from pending.
-            if (!(neighborIsTransport && graph.isDelayedVisit(neighbor))) {
+            // Transports queue on the cost-ordered pending heap, so they are checked and
+            // marked visited when dequeued; walking and abstract neighbours claim their
+            // tile at enqueue.
+            if (!neighborIsTransport) {
                 visited.set(neighbor, graph);
             } else {
                 profile.delayedVisitEnqueued++;
