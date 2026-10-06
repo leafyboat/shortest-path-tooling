@@ -664,3 +664,115 @@ consumes — recorded here so they are not lost.
   `BankPickupRequirements.compute` takes a `PathfinderConfig` parameter.
   Not shell violations, but boundary notes the player-item-state extraction
   owns: the constants and the config edge move with item state.
+
+## Middleware re-audit
+
+The landed requirement middleware, adjudicated against the same boundary
+criteria as every other cluster — the exemplar is not exempt. Each finding
+carries an explicit disposition for the remediation adjudication: `folds
+into` an owning extraction (the file moves at most once more, inside the
+extraction that redefines its boundary) or `IDIOM-LEVEL` (a defect in the
+snapshot/gates/hooks/package conventions later extractions would copy —
+the only trigger that reserves a gated remediation slot).
+
+### Gate classification
+
+The ordered chain in `Requirements` — `check(Transport)` runs all fifteen
+gates in fixed order; `check(DestinationRequirements)` reuses the skill,
+quest, varbit and varplayer logic for bank destinations.
+
+| Gate | What it reads | Classification | Disposition |
+|------|---------------|----------------|-------------|
+| `sailing` | `context.isOnSailingBoat` + `type.isTeleport()` | Thin delegation over snapshot facts | Clean — stays |
+| `pohDisabled` | `ShortestPathPlugin.isInsidePoh` ×2 on unpacked endpoints | Domain leak — POH region math + shell static inside a leaf package | Folds into the POH extraction |
+| `leagueRegion` | `LeagueRegionChecker.getRegion` + `leagueMode.isUnlocked` (+ `getRegionOverride`) | Delegates to league-domain classification | The region classification folds into the leagues boundary when it extracts; the gate keeps the verdict |
+| `typeDisabled` | `policy.isTransportTypeEnabled` | Thin delegation over the settings view | Clean — stays |
+| `pohVariant` | `isInsidePoh` ×2 + `isPohNexusPortalEnabled` (portal display-info matching) + POH variant toggles | Domain leak — POH semantics + shell static | Folds into the POH extraction |
+| `teleportationItem` | `policy.teleportationItemSetting` mode dispatch, `DEADMAN_ONLY_ITEM_IDS`, seasonal-world check, `transport.isConsumable` | Requirement-domain logic; carries the reserved `BLOCKED_ITEM` seat | Stays — the restriction gate fills the reserved seat when the panel's `TeleportRestriction` contract lands |
+| `respawn` | `hasDisplayInfo("Respawn")` + `PRIFDDINAS_RESPAWN`/`LUMBRIDGE_RESPAWN` constants + `context.isRespawnPrifddinas` | Requirement-domain logic | Stays — flagged idiom-level note: display-info string matching as requirement evidence (see below) |
+| `unlockGate` | `context.getUnlocks` vs pure-unlock `ItemRequirement` branches + `hasDisplayInfo("Honour")` singleton | Requirement-domain logic | Stays — same string-matching note |
+| `jewelleryBoxTier` | `PohMountedItem.fromObjectInfo`, `objectInfo.contains("…Jewellery Box <id>")` string matching, `policy.pohJewelleryBoxTier`/`enabledPohMountedItems` | Domain leak — POH domain parsing inside the gate | Folds into the POH extraction (the parsing moves; the gate keeps the verdict) |
+| `skillLevel` | `boostedSkillLevelsAndMore` `int[]` loop + `maximumLevel` index table + league-aware total-level skip | Thin delegation carrying the skills-layout contract | The layout/index knowledge folds into the PlayerSkills value type; the gate stays |
+| `quest` | `completedQuests` over `context.getQuestStates` | Thin delegation | Clean — stays |
+| `varbit` | `hooks.varbitChecks` over the captured varbit map | Thin delegation through the hooks seam | Clean — stays |
+| `varplayer` | `hooks.varPlayerChecks` over the captured varplayer map | Thin delegation through the hooks seam | Clean — stays |
+| `plantedSpiritTree` | `SpiritTreePatchState.patchNameForTile` + the unresolved-vs-unavailable set semantics | Tree-domain mapping inside the gate | The patch-tile mapping folds into the spirit-tree extraction; the gate keeps reading the published set |
+| `itemRequirement` | `eligibility.usable(transport, false)` / `(true)` | Thin delegation over the eligibility snapshot | Clean — the positional `boolean` pair is a seam site for the banked/unbanked domain type |
+
+### `RoutingPolicy` ownership
+
+**Facts.** An eleven-field immutable settings view captured per refresh:
+`enabledTypes`, `teleportationItemSetting`, `usePoh`, `usePohFairyRing`,
+`usePohSpiritTree`, `usePohObelisk`, `enabledPohNexusPortals`,
+`enabledPohMountedItems`, `pohJewelleryBoxTier`, `currencyThreshold`,
+`includeBankPath`. Every field is config-derived; seven are POH-specific.
+`PathfinderConfig.buildRoutingPolicy` produces it today.
+
+**Verdict.** The type is correctly shaped — an immutable settings view is
+exactly what the gates should consume. The question is who owns its
+production: the settings service is the natural home, since every field
+originates in config and the service already owns typed access. Moving the
+type without moving production would move it twice.
+
+**Disposition:** folds into the settings extraction — `buildRoutingPolicy`
+(and the type's construction seam) moves to the settings service; the
+immutable type itself stays consumed by the gate chain unchanged.
+
+### `RequirementContext` width
+
+**Facts.** The snapshot carries `evaluationTimeMinutes`,
+`boostedSkillLevelsAndMore`, `currentMaxQuestPoints`, `questStates`,
+`varbitValues`, `varPlayerValues`, `eligibility` (`TransportEligibility` —
+embedded carried/bank-path/bank item pools, banked rune-pouch contents, the
+fairy-ring-staff rule, plus the policy params `teleportationItemSetting`,
+`currencyThreshold`, `unlocks` it evaluates against), `unlocks`,
+`respawnPrifddinas`, `isOnSailingBoat`, `leagueModeSnapshot`,
+`availableSpiritTrees`. `collectEligibility` is a public static — a residual
+seam shared by `capture` and the lazy `getEligibility()` rebuild so exactly
+one collection path exists. Two leaf-to-leaf edges remain:
+`RequirementContext`/`OwnedItems` read `PathfinderConfig.RUNE_POUCHES`,
+`RUNE_POUCH_RUNE_VARBITS`, `RUNE_POUCH_AMOUNT_VARBITS`, and
+`BankPickupRequirements.compute` takes a `PathfinderConfig` parameter.
+
+**Verdict.** The width is honest — every field is a real per-refresh input
+the gates consume; nothing dead rides the snapshot. The embedded item pools
+are the widest edge: they belong to player item state, which publishes them
+post-extraction. `TransportEligibility` holding policy params alongside
+item pools is a mild state/policy mix — noted, not defective (the pools are
+evaluated under that policy; splitting them would complicate the snapshot
+for no consumer gain).
+
+**Disposition:** folds into the item-state extraction — `collectEligibility`/
+`collectItems` and the `PathfinderConfig` constant edges move to the item
+service, which publishes the pools the context keeps consuming. The
+policy-inside-eligibility observation is flagged IDIOM-LEVEL-adjacent —
+recorded for adjudication, no remediation on its own.
+
+### `model/` consistency
+
+**Facts.** `requirement/model/` holds `DestinationRequirements`,
+`ItemRequirement`, `JewelleryBoxTier`, `TransportItems`, `Unlock`,
+`VarCheckType`, `VarRequirement` — but `TeleportationItem` (the
+teleportation-item mode enum) sits in the engine package root, and
+`BankPickupRequirements` produces display phrases — presentation logic —
+inside the engine package.
+
+**Verdict.** Placement inconsistency, not a design defect:
+`TeleportationItem` is a settings/policy mode (the values describe config
+options, not game state); `JewelleryBoxTier` is POH-domain data in the
+shared model package; `BankPickupRequirements`' phrase building is the
+transport-presentation seam living beside the evaluation it annotates.
+
+**Dispositions:** `TeleportationItem` folds into the settings extraction
+(policy type, owned with `RoutingPolicy` production); `JewelleryBoxTier`
+folds into the POH extraction; `BankPickupRequirements` display phrases fold
+into the transport-presentation boundary. None idiom-level.
+
+### Audit verdict
+
+The exemplar idiom — injected services, immutable per-refresh snapshot,
+named stateless gates, hooks seam, package conventions — is clean enough to
+copy: every finding above is a localized domain leak or placement wrinkle
+with a named fold target, not a defect in the shape itself. No finding
+requests the gated remediation slot on its own; the adjudication gate decides
+fold-vs-slot with this evidence.
