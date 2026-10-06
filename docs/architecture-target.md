@@ -169,20 +169,178 @@ anchors disappear when the loader lands self-anchored.
 
 ## Diagram
 
-Target state — seeded with the landed middleware nodes; the remaining
-services and lanes fill in as boundary records land.
+Current state as surveyed, then the target state. Node names match the
+survey's cluster index. In the current block, dashed arrows are the
+backward coupling the dependency rule outlaws — every dashed edge is a
+site in the frozen allowlist. In the target block, filled nodes are the
+services and value types the refactor introduces; grey nodes already exist
+and keep their shape — only their seams change. Edge labels that cross
+threads carry the producer-thread to consumer-thread pair.
 
 ```mermaid
 flowchart TD
-    subgraph Producers["Client-thread producers"]
-        PlayerStateSource["PlayerStateSource - sole Client reader"]
+    subgraph RL["RuneLite host"]
+        Client["Client - mutable game state"]
+        Events["event bus"]
+        ConfigMgr["ConfigManager"]
     end
-    subgraph Engine["Engine"]
-        RequirementContext["RequirementContext - immutable snapshot"]
-        RoutingPolicy["RoutingPolicy - settings view"]
-        Requirements["Requirements - ordered stateless gates"]
+
+    subgraph Shell["Plugin shell - two god objects"]
+        Plugin["ShortestPathPlugin - lifecycle ordering, item and varbit handlers, spirit-tree scrape, POH remap and isInsidePoh, scheduler internals, refresh triggers, plugin-message API, menu verbs, transport display, widget geometry, overlay registration"]
+        PFC["PathfinderConfig - cached config fields, override reads, item collection and banks, availableSpiritTrees, refresh orchestration, destinations and filtering, availability views, requirement wiring, exact account prep"]
     end
-    PlayerStateSource -->|client thread| RequirementContext
-    RoutingPolicy --> Requirements
-    RequirementContext --> Requirements
+
+    subgraph Req["Requirement middleware - landed"]
+        PSS["PlayerStateSource"]
+        RC["RequirementContext"]
+        RP["RoutingPolicy"]
+        Gates["Requirements gates and TransportEligibility"]
+    end
+
+    subgraph Engine["Engine - already coherent"]
+        PF["Pathfinder search core"]
+        Exact["Exact backend"]
+    end
+
+    subgraph Data["Leaf packages - data"]
+        TSV["TSV data loading"]
+        Parser["Transport TSV parser"]
+        Leagues["Leagues"]
+    end
+
+    subgraph Present["Leaf packages - presentation"]
+        PathOv["Path rendering overlays"]
+        HighOv["Highlight overlays"]
+        DbgOv["Debug overlay"]
+    end
+
+    Panel["Config panel - writer"]
+    Util["Leaf utilities"]
+
+    Events --> Plugin
+    Plugin --> Client
+    Plugin --> ConfigMgr
+    Panel --> ConfigMgr
+    Plugin --> PFC
+    PFC --> Gates
+    PSS -->|requirement-state reads| Client
+    PSS --> RC
+    RC --> Gates
+    RP --> Gates
+    Parser --> TSV
+    TSV --> PFC
+    Leagues --> Gates
+    PFC -->|availability views| PF
+    PFC -->|account snapshot| Exact
+    Plugin --> PathOv
+    Plugin --> HighOv
+    Plugin --> DbgOv
+    Plugin --> Util
+    Gates -.->|isInsidePoh x4| Plugin
+    PFC -.->|override x16, POH statics, isInsidePoh| Plugin
+    TSV -.->|override x3 and class anchor| Plugin
+    PF -.->|class anchor, POH statics, isInsidePoh| Plugin
+    Leagues -.->|class anchor| Plugin
+    PathOv -.->|about 90 plugin.* reads, isInsidePoh x6| Plugin
+    DbgOv -.->|getDebugState| Plugin
+
+    classDef shell fill:#f8e3e3,stroke:#a33,color:#000
+    class Plugin,PFC shell
 ```
+
+In target shape every cluster above has a lane: producers watch game state
+on the client thread and publish immutable facts; the coordinator hears
+"what changed" and is the scheduler's only caller; the engine consumes
+snapshots on the worker thread; presentation reads published handles on
+the render thread.
+
+```mermaid
+flowchart TD
+    subgraph ShellT["Plugin shell residue"]
+        ShellRes["lifecycle ordering, one-line event forwarders, overlay and keybind registration"]
+    end
+
+    subgraph Prod["Client-thread producers"]
+        Cfg["Config access and overrides - settings service"]
+        PSS["PlayerStateSource - sole Client reader"]
+        Items["Player item state"]
+        Trees["Spirit trees"]
+        POH["POH service"]
+        Geo["Widget and UI geometry"]
+    end
+
+    subgraph Coord["Coordination - notification flows inward only"]
+        RCO["RefreshCoordinator"]
+        Sched["PathScheduler"]
+        Diag["Diagnostics"]
+    end
+
+    subgraph EngineT["Engine - immutable per-refresh inputs"]
+        RC["RequirementContext - immutable snapshot"]
+        RP["RoutingPolicy - settings view"]
+        Gates["Requirements gates and TransportEligibility"]
+        Skills["Player skill levels"]
+        TSV["TSV data loading"]
+        Leagues["Leagues"]
+        PF["Pathfinder search core"]
+        Exact["Exact backend"]
+    end
+
+    subgraph PresentT["Presentation"]
+        API["Plugin-message API"]
+        Menu["Menu and target-setting verbs"]
+        TPres["Transport presentation"]
+        Panel["Config panel - writer"]
+        PathOv["Path rendering overlays"]
+        HighOv["Highlight overlays"]
+        DbgOv["Debug overlay"]
+    end
+
+    Util["Leaf utilities"]
+
+    ShellRes -->|one-line event forwarders| Prod
+    ShellRes -->|one-line event forwarders| RCO
+    PSS -->|captures snapshot - client to worker| RC
+    Items -->|item pools| RC
+    Trees -->|tree set| RC
+    POH -->|region facts| RC
+    Geo -->|widget reads| Trees
+    Cfg -->|projects| RP
+    Cfg -->|config changed| RCO
+    Items -->|items changed| RCO
+    Trees -->|tree set changed| RCO
+    POH -->|POH facts changed| RCO
+    RCO -->|sole caller - client to worker| Sched
+    Sched -->|submit search| PF
+    Sched -->|submit search| Exact
+    Sched -->|records outcomes| Diag
+    RC --> Gates
+    RP --> Gates
+    Skills --> Gates
+    TSV -->|destinations and transports| Gates
+    Leagues --> Gates
+    Gates -->|availability views| PF
+    Gates -->|availability views| Exact
+    Menu -->|verbs| Sched
+    API -->|queries and restarts| Sched
+    API -->|config payload| Cfg
+    Panel -->|read write listen| Cfg
+    Panel -->|owned items| Items
+    TPres -->|display strings| API
+    TPres -->|display strings| PathOv
+    Sched -->|publishes ActiveSearch - worker to render| PathOv
+    PathOv -->|settings view| Cfg
+    PathOv -->|geometry| Geo
+    PathOv -->|POH facts| POH
+    HighOv -->|pickup facts| Items
+    DbgOv -->|reads snapshot| Diag
+
+    classDef extracted fill:#dceeff,stroke:#2a62b0,color:#000
+    classDef existing fill:#f2f2f2,stroke:#777,color:#000
+    class Cfg,Items,POH,Geo,RCO,Sched,Diag,API,Menu,TPres,Skills extracted
+    class PSS,RC,RP,Gates,TSV,Leagues,PF,Exact,PathOv,HighOv,DbgOv,Panel,Util,ShellRes,Trees existing
+```
+
+A combined both-states overview is deliberately omitted: compressing both
+graphs into one stays legible only under roughly twenty nodes, and the
+honest count is well above it.
