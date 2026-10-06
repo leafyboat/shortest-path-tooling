@@ -1,0 +1,11 @@
+// --- Canonical corpus benchmarks ---
+//
+// The canonical corpus lives in its own repository. The commands below take it as an explicit
+// --corpus argument; tests read -PcorpusDir (default: ../shortest-path-corpus).
+def testCorpusDir = providers.gradleProperty('corpusDir')
+
+tasks.named('test') {
+    if (testCorpusDir.isPresent()) {
+        systemProperty 'benchmark.corpusDir', file(testCorpusDir.get()).absolutePath
+    }
+}
