@@ -3,6 +3,7 @@ package shortestpath.dashboard;
 import shortestpath.JewelleryBoxTier;
 import shortestpath.ShortestPathConfig;
 import shortestpath.TeleportationItem;
+import shortestpath.pathfinder.PathfinderBackend;
 
 /**
  * Mutable POJO implementation of {@link ShortestPathConfig} for the dashboard test harness.
@@ -63,6 +64,8 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private int currencyThreshold = 10_000_000;
     private int calculationCutoff = 500;
     private int unreachableTargetDistance = 2;
+    private PathfinderBackend pathfinderBackend = PathfinderBackend.LEGACY;
+    private int exactHeuristicWeight = 100;
 
     // -------------------------------------------------------------------------
     // POH settings
@@ -151,6 +154,8 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int currencyThreshold() { return currencyThreshold; }
     @Override public int calculationCutoff() { return calculationCutoff; }
     @Override public int unreachableTargetDistance() { return unreachableTargetDistance; }
+    @Override public PathfinderBackend pathfinderBackend() { return pathfinderBackend; }
+    @Override public int exactHeuristicWeight() { return exactHeuristicWeight; }
 
     @Override public boolean usePoh() { return usePoh; }
     @Override public boolean usePohFairyRing() { return usePohFairyRing; }
@@ -249,6 +254,8 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setCurrencyThreshold(int v) { currencyThreshold = v; }
     public void setCalculationCutoff(int v) { calculationCutoff = v; }
     public void setUnreachableTargetDistance(int v) { unreachableTargetDistance = v; }
+    public void setPathfinderBackend(PathfinderBackend v) { pathfinderBackend = v; }
+    public void setExactHeuristicWeight(int v) { exactHeuristicWeight = v; }
 
     public void setUsePoh(boolean v) { usePoh = v; }
     public void setUsePohFairyRing(boolean v) { usePohFairyRing = v; }
