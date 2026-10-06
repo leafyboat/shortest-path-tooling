@@ -250,3 +250,78 @@ cluster.
 Package neighbours deliberately outside this cluster: `OwnedItems` collects
 player items and is partitioned to player item state; `TeleportRestriction`
 is the config panel's write contract.
+
+## Coherent units
+
+Units that are already internally coherent get a one-line defer record —
+name, files, status, why extraction is deferred, and what would force
+re-examination.
+
+- **Pathfinder search core** (`pathfinder/`: `Pathfinder`, `CollisionMap`,
+  `NodeGraph`, `VisitedTiles`, `SplitFlagMap`, `IntDeque`, `IntMinHeap`,
+  `SearchDeadline`, `WildernessChecker`, `PathStep`, `PathfinderResult`,
+  `PathfinderStats`, `PathfinderBackend`, `PathTerminationReason`,
+  `AbstractNodeKind`, `OrdinalDirection`, `TransportAvailability`,
+  `PathConsumptionValidator`) — confirmed coherent: a tight
+  structure-of-arrays engine already behind the `ActiveSearch` handle;
+  extracting it now buys nothing the package boundary doesn't already give.
+  **Revisit trigger:** a correctness fix needing cross-cluster state, or a
+  new mid-search state dimension that breaks the `boolean bankVisited`
+  encodings (`PathStep`, `VisitedTiles`, `NodeGraph`).
+- **Exact backend** (`pathfinder/exact/` plus the `ExactPathfinder` /
+  `ExactRoutingStaticProvider` adapters) — confirmed coherent: the package
+  already declares its dependency rule in `package-info.java` — it "must not
+  depend on the legacy search implementation or RuneLite's mutable client
+  state", the precedent the repo-wide dependency rule copies.
+  **Revisit trigger:** the exact backend absorbing legacy call sites or
+  growing its own plugin-facing seams beyond `ActiveSearch`.
+- **Leagues** (`leagues/`) — confirmed coherent: `LeagueModeState`,
+  `LeagueModeSnapshot`, `LeagueRegion`, `LeagueRegionChecker` form a
+  self-contained region-gating unit; its TSV parse folds into the loader
+  record when the loader extraction lands. **Revisit trigger:** the
+  `leagueRegion` gate moving out of `Requirements` into league ownership.
+- **Transport TSV parser** (`transport/parser/`) — confirmed coherent: the
+  grammar parsers are already a clean leaf under `transport/`.
+  **Revisit trigger:** the TSV loader extraction, which should wrap this
+  package rather than rebuild it.
+
+## Leaf listing
+
+Stable helper code with no plugin coupling to unwind — partition rows only,
+no boundary records.
+
+| File | Cluster | What it is |
+|------|---------|------------|
+| shortestpath/ItemVariations.java | leaf | item-variation id mapping |
+| shortestpath/PrimitiveIntHashMap.java | leaf | primitive int-keyed hash map |
+| shortestpath/PrimitiveIntList.java | leaf | primitive int list |
+| shortestpath/TileCounter.java | leaf | path tile counter |
+| shortestpath/TileStyle.java | leaf | path tile styling enum |
+| shortestpath/Util.java | leaf | shared helpers (resource byte reads, misc) |
+| shortestpath/WorldPointUtil.java | leaf | packed-int world-point helpers |
+
+## Coupling notes
+
+Facts outside the leaf-package dependency rule that the extraction sequence
+consumes — recorded here so they are not lost.
+
+- **`Destination` resource anchors.** `Destination` reads resources via
+  `ShortestPathPlugin.class.getResourceAsStream` at Destination.java:63 and
+  Destination.java:169 — two of the five plugin-class anchors in the tree.
+  The other three are leaf-package sites already frozen in the
+  dependency-rule allowlist (`transport/TransportLoader.java:33`,
+  `pathfinder/SplitFlagMap.java:92`, `leagues/LeagueRegionChecker.java:105`).
+  The `Destination` pair sits outside the leaf-package rule and is owned by
+  the TSV loader extraction: the new loader anchors on its own class, so the
+  plugin-class idiom dies rather than migrates.
+- **Shell-internal group constant.** Top-level shell files read
+  `ShortestPathPlugin.CONFIG_GROUP` — `ShortestPathConfig`,
+  `PortalNexusKeybinds`, `SpiritTreePatchState`. These are shell-internal
+  references, not leaf violations: the dependency rule covers the leaf
+  packages only.
+- **Leaf-to-leaf requirement reads.** `requirement/` reads
+  `PathfinderConfig.RUNE_POUCHES`, `RUNE_POUCH_RUNE_VARBITS`, and
+  `RUNE_POUCH_AMOUNT_VARBITS` (`RequirementContext`, `OwnedItems`), and
+  `BankPickupRequirements.compute` takes a `PathfinderConfig` parameter.
+  Not shell violations, but boundary notes the player-item-state extraction
+  owns: the constants and the config edge move with item state.
