@@ -2,6 +2,8 @@ package shortestpath.dashboard;
 
 import java.util.List;
 import shortestpath.WorldPointUtil;
+import shortestpath.pathfinder.BoatHull;
+import shortestpath.pathfinder.CollisionMap;
 import shortestpath.pathfinder.PathStep;
 import shortestpath.pathfinder.SailingMoves;
 
@@ -23,8 +25,8 @@ final class SailingPaths {
 
     /**
      * The path up to the first point within {@code gap} tiles of the target, or all of it if it never gets
-     * that close. A sailing path can stop next to the target rather than on it, so the normal search's path,
-     * which goes all the way, is compared up to the same distance.
+     * that close. A sailing path with a hull stops as close to the target as the hull fits, so the normal
+     * search's path, which goes all the way, is compared up to the same distance.
      */
     static List<PathStep> upToGap(List<PathStep> path, int target, double gap) {
         for (int i = 0; i < path.size(); i++) {
@@ -90,6 +92,24 @@ final class SailingPaths {
             ticks += (double) moves.ticks(move) / Math.max(Math.abs(moves.dx(move)), Math.abs(moves.dy(move)));
         }
         return ticks;
+    }
+
+    /**
+     * How many of a path's one-tile steps, such as the normal search's, would run the boat's hull over a
+     * blocked tile, with the boat facing each step's straight or diagonal heading.
+     */
+    static int collisions(List<PathStep> path, BoatHull hull, CollisionMap map) {
+        int collisions = 0;
+        for (int i = 1; i < path.size(); i++) {
+            int dx = dx(path, i);
+            int dy = dy(path, i);
+            int from = path.get(i - 1).getPackedPosition();
+            if (Math.max(Math.abs(dx), Math.abs(dy)) == 1 && !hull.canMove(map, WorldPointUtil.unpackWorldX(from),
+                WorldPointUtil.unpackWorldY(from), WorldPointUtil.unpackWorldPlane(from), stepHeading(dx, dy), dx, dy)) {
+                collisions++;
+            }
+        }
+        return collisions;
     }
 
     // The heading of a one-tile step: 0 is south, 4 west, 8 north and 12 east

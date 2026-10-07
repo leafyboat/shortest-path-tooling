@@ -99,11 +99,14 @@ public final class PathfinderDashboardModels {
     }
 
     /**
-     * A route searched with the experimental sailing search: the game's 16 boat headings at the boat's speed.
-     * Coordinates are in tiles, with each tile's centre on whole numbers.
+     * A route searched with the experimental sailing search: the game's 16 boat headings at the boat's speed,
+     * keeping the boat's hull clear when the row names a boat. Coordinates are in tiles, with each tile's
+     * centre on whole numbers.
      */
     public static class SailingRun {
         public double speed;
+        /** {@code raft}, {@code skiff}, {@code sloop}, or empty when only the boat's centre is kept clear. */
+        public String boat;
         public boolean reached;
         public String terminationReason;
         public int nodesChecked;
@@ -120,10 +123,14 @@ public final class PathfinderDashboardModels {
         public double normalDistance;
         public int normalLegs;
         public double normalTicks;
+        /** Steps of that part of the normal path that would run the boat's hull over a blocked tile. */
+        public int normalCollisions;
         /** Where the path turns (and starts and ends). */
         public List<WorldPointJson> path;
         /** The heading (0 south, 4 west, 8 north, 12 east) of the leg leaving each point; the last point keeps the leg arriving at it. */
         public List<Integer> headings;
+        /** The hull's corners facing each point's heading, in order round it, relative to the point: {x0, y0, ...}. */
+        public List<double[]> outlines;
     }
 
     public static class Stats {

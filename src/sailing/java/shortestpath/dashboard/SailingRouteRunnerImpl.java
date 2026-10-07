@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import shortestpath.WorldPointUtil;
+import shortestpath.pathfinder.BoatHull;
 import shortestpath.pathfinder.PathStep;
 import shortestpath.pathfinder.Pathfinder;
 import shortestpath.pathfinder.PathfinderResult;
@@ -17,19 +18,22 @@ public class SailingRouteRunnerImpl implements SailingRouteRunner {
         List<PathStep> normalPath) {
         double speed = scenario.getSailingSpeed().orElseThrow();
         SailingMoves moves = SailingMoves.forSpeed(speed);
+        BoatHull hull = SailingBoats.hull(scenario.getBoat());
         Pathfinder pathfinder = new Pathfinder(config, scenario.getStartPoint(), Set.of(scenario.getEndPoint()), null,
-            moves);
+            moves, hull);
         pathfinder.run();
         PathfinderResult result = pathfinder.getResult();
 
         PathfinderDashboardModels.SailingRun run = new PathfinderDashboardModels.SailingRun();
         run.speed = speed;
+        run.boat = hull == null ? "" : scenario.getBoat();
         run.reached = result.isReached();
         run.terminationReason = result.getTerminationReason().name();
         run.nodesChecked = result.getNodesChecked() + result.getTransportsChecked();
         run.elapsedNanos = result.getElapsedNanos();
         run.path = new ArrayList<>();
         run.headings = new ArrayList<>();
+        run.outlines = new ArrayList<>();
 
         List<PathStep> path = result.getPathSteps();
         run.distance = SailingPaths.distance(path);
@@ -39,6 +43,9 @@ public class SailingRouteRunnerImpl implements SailingRouteRunner {
         run.normalDistance = SailingPaths.distance(normalToGap);
         run.normalLegs = SailingPaths.legs(normalToGap);
         run.normalTicks = SailingPaths.ticksToSail(normalToGap, moves);
+        if (hull != null) {
+            run.normalCollisions = SailingPaths.collisions(normalToGap, SailingBoats.hull(scenario.getBoat()), config.getMap());
+        }
         int heading = -1;
         int previousMove = -1;
         for (int i = 0; i < path.size(); i++) {
@@ -60,6 +67,7 @@ public class SailingRouteRunnerImpl implements SailingRouteRunner {
             }
             run.path.add(PathfinderDashboardReportWriter.worldPointJsonPacked(point));
             run.headings.add(heading);
+            run.outlines.add(hull == null || heading < 0 ? null : hull.outline(heading));
         }
         return run;
     }

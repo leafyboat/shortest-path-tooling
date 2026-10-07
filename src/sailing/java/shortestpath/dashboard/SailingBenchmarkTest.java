@@ -31,6 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 import shortestpath.WorldPointUtil;
+import shortestpath.pathfinder.BoatHull;
 import shortestpath.pathfinder.PathStep;
 import shortestpath.pathfinder.Pathfinder;
 import shortestpath.pathfinder.PathfinderResult;
@@ -40,9 +41,10 @@ import shortestpath.pathfinder.SailingMoves;
  * Times the experimental sailing search against the existing search on routes at sea.
  *
  * <p>Each route in the dataset runs with the existing search (the path the plugin draws in red while
- * sailing), then with the sailing search (the game's 16 boat headings) at each speed. The rows' own
- * {@code speed} column is ignored; the speeds to compare come from the properties below. Rows with the same
- * start and target are one route, named after the first of them without a trailing note in brackets.</p>
+ * sailing), then with the sailing search (the game's 16 boat headings) at each speed, first keeping only the
+ * boat's centre clear and then each boat's whole hull. The rows' own {@code speed} and {@code boat} columns
+ * are ignored; the searches to compare come from the properties below. Rows with the same start and target
+ * are one route, named after the first of them without a trailing note in brackets such as "(sloop)".</p>
  *
  * <p>The player counts as on a boat, as they are whenever the plugin runs the sailing search, so neither search
  * uses teleports. Off a boat the existing search would spread out from every teleport's destination as well, and
@@ -52,7 +54,7 @@ import shortestpath.pathfinder.SailingMoves;
  * so noise spreads evenly. The report gives the median and fastest search times (as the plugin's debug panel
  * measures them), the nodes checked, and the path each search found.</p>
  *
- * <p>It also compares the paths themselves, for each row with its own {@code speed}: how far
+ * <p>It also compares the paths themselves, for each row with its own {@code speed} and {@code boat}: how far
  * the existing path and the sailing path go, their straight legs, and how many ticks the boat takes to sail
  * each (see {@link SailingPaths#ticksToSail} for the existing path).</p>
  *
@@ -66,6 +68,7 @@ import shortestpath.pathfinder.SailingMoves;
  *   <tr><th>Property</th><th>Default</th></tr>
  *   <tr><td>{@code sailingBenchmark.dataset}</td><td>{@code /dashboard/sailing_routes.csv}</td></tr>
  *   <tr><td>{@code sailingBenchmark.speeds}</td><td>{@code 1.5,3.0}</td></tr>
+ *   <tr><td>{@code sailingBenchmark.boats}</td><td>{@code none,raft,skiff,sloop}</td></tr>
  *   <tr><td>{@code sailingBenchmark.warmup}</td><td>{@code 2}</td></tr>
  *   <tr><td>{@code sailingBenchmark.rounds}</td><td>{@code 5}</td></tr>
  *   <tr><td>{@code sailingBenchmark.outputDir}</td><td>{@code build/reports/sailing-benchmark}</td></tr>
@@ -83,15 +86,18 @@ public class SailingBenchmarkTest {
     private ItemContainer bank;
     private Runnable clientBaseline;
 
-    /** One way of searching a route: the existing search, or the sailing search at a speed. */
+    /** One way of searching a route: the existing search, or the sailing search at a speed with a boat's hull. */
     private static final class Search {
         final String name;
         /** Tiles per tick, or {@code NaN} for the existing search. */
         final double speed;
+        /** {@code none} or a {@link SailingBoats} name; unused by the existing search. */
+        final String boat;
 
-        Search(String name, double speed) {
+        Search(String name, double speed, String boat) {
             this.name = name;
             this.speed = speed;
+            this.boat = boat;
         }
 
         boolean isSailing() {
@@ -117,12 +123,13 @@ public class SailingBenchmarkTest {
     }
 
     /**
-     * The existing path and the sailing path for one row, at the row's speed. The existing path is
+     * The existing path and the sailing path for one row, with the row's boat and speed. The existing path is
      * measured up to where it gets as close to the target as the sailing path stops (see
      * {@link SailingPaths#upToGap}); its full length is kept too.
      */
     static final class Comparison {
         String route;
+        String boat;
         double speed;
         boolean normalReached;
         double normalDistance;
@@ -131,6 +138,8 @@ public class SailingBenchmarkTest {
         double normalEndGap;
         double normalFullDistance;
         double normalFullTicks;
+        /** Steps of the existing path (as far as the sailing path goes) that would run the boat's hull into a blocked tile. */
+        int normalCollisions;
         int normalSteps;
         boolean sailingReached;
         double sailingDistance;
@@ -169,7 +178,9 @@ public class SailingBenchmarkTest {
         int warmup = Integer.getInteger("sailingBenchmark.warmup", 2);
         int rounds = Integer.getInteger("sailingBenchmark.rounds", 5);
         Path outputDir = Paths.get(System.getProperty("sailingBenchmark.outputDir", "build/reports/sailing-benchmark"));
-        List<Search> searches = searches(System.getProperty("sailingBenchmark.speeds", "1.5,3.0"));
+        List<Search> searches = searches(
+            System.getProperty("sailingBenchmark.speeds", "1.5,3.0"),
+            System.getProperty("sailingBenchmark.boats", "none,raft,skiff,sloop"));
 
         List<DashboardScenario> rows = dataset.startsWith("/")
             ? loader.loadFromResource(dataset)
@@ -245,18 +256,19 @@ public class SailingBenchmarkTest {
         System.out.println("Written to " + outputDir.toAbsolutePath().resolve(stem + ".md"));
     }
 
-    // Searches a row with the existing search and with the sailing search at the row's speed
+    // Searches a row with the existing search and with the sailing search at the row's speed and boat
     private Comparison compare(DashboardScenario row) {
         DashboardScenarioRunner.ApplyResult applied = DashboardScenarioRunner.apply(row, client, clientBaseline, bank);
         SailingMoves moves = SailingMoves.forSpeed(row.getSailingSpeed().getAsDouble());
         Pathfinder normal = new Pathfinder(applied.pathfinderConfig, row.getStartPoint(), Set.of(row.getEndPoint()));
         normal.run();
         Pathfinder sailing = new Pathfinder(applied.pathfinderConfig, row.getStartPoint(), Set.of(row.getEndPoint()), null,
-            moves);
+            moves, SailingBoats.hull(row.getBoat()));
         sailing.run();
 
         Comparison comparison = new Comparison();
         comparison.route = row.getName();
+        comparison.boat = row.getBoat().isEmpty() ? "centre only" : row.getBoat();
         comparison.speed = moves.speed();
         List<PathStep> sailingPath = sailing.getResult().getPathSteps();
         comparison.sailingReached = sailing.getResult().isReached();
@@ -275,23 +287,29 @@ public class SailingBenchmarkTest {
         comparison.normalFullDistance = SailingPaths.distance(fullNormalPath);
         comparison.normalFullTicks = SailingPaths.ticksToSail(fullNormalPath, moves);
         comparison.normalSteps = normalPath.size() - 1;
+        BoatHull hull = SailingBoats.hull(row.getBoat());
+        if (hull != null) {
+            comparison.normalCollisions = SailingPaths.collisions(normalPath, hull, applied.pathfinderConfig.getMap());
+        }
         return comparison;
     }
 
     private static String comparisonTable(List<Comparison> comparisons) {
         StringBuilder table = new StringBuilder("## Existing path vs sailing path\n\n"
-            + "Each route at its own speed. A sailing path can stop next to the target rather than on it, so the "
-            + "existing path is measured up to where it gets that close too. Its ticks are about how long the boat takes "
-            + "to sail it holding the straight or diagonal heading of each step; neither path counts time spent "
-            + "turning.\n\n"
+            + "Each route with its own boat and speed. A sailing path with a hull stops where the hull gets as close "
+            + "to the target as it fits, so the existing path is measured up to where it gets that close too. Its "
+            + "ticks are about how long the boat takes to sail it holding the straight or diagonal heading of each "
+            + "step; neither path counts time spent turning. The existing path isn't one the boat can actually sail: "
+            + "the last column counts its steps that would run the boat's hull over a blocked tile.\n\n"
             + "| Route | Speed | Stops from target | Existing: tiles | Existing: ticks | Existing: legs "
-            + "| Sailing: tiles | Sailing: ticks | Sailing: legs | Ticks saved |\n"
-            + "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n");
+            + "| Sailing: tiles | Sailing: ticks | Sailing: legs | Ticks saved | Existing steps that hit rocks |\n"
+            + "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n");
         for (Comparison c : comparisons) {
-            table.append(String.format(Locale.ROOT, "| %s%s | %.1f | %.0f | %.0f | %.0f | %d | %.0f | %d%s | %d | %d%% |%n",
+            table.append(String.format(Locale.ROOT, "| %s%s | %.1f | %.0f | %.0f | %.0f | %d | %.0f | %d%s | %d | %d%% | %d of %d |%n",
                 c.route, c.normalReached ? "" : " (existing not reached)", c.speed, c.sailingEndGap, c.normalDistance,
                 c.normalTicks, c.normalLegs, c.sailingDistance, c.sailingTicks, c.sailingReached ? "" : " (not reached)",
-                c.sailingLegs, Math.round(100 * (c.normalTicks - c.sailingTicks) / c.normalTicks)));
+                c.sailingLegs, Math.round(100 * (c.normalTicks - c.sailingTicks) / c.normalTicks), c.normalCollisions,
+                c.normalSteps));
         }
         return table.toString();
     }
@@ -315,17 +333,25 @@ public class SailingBenchmarkTest {
     private static Pathfinder searchOnce(DashboardScenarioRunner.ApplyResult applied, DashboardScenario route, Search search) {
         Pathfinder pathfinder = search.isSailing()
             ? new Pathfinder(applied.pathfinderConfig, route.getStartPoint(), Set.of(route.getEndPoint()), null,
-                SailingMoves.forSpeed(search.speed))
+                SailingMoves.forSpeed(search.speed), SailingBoats.hull(search.boat))
             : new Pathfinder(applied.pathfinderConfig, route.getStartPoint(), Set.of(route.getEndPoint()));
         pathfinder.run();
         return pathfinder;
     }
 
-    private static List<Search> searches(String speeds) {
+    private static List<Search> searches(String speeds, String boats) {
         List<Search> searches = new ArrayList<>();
-        searches.add(new Search("existing", Double.NaN));
+        searches.add(new Search("existing", Double.NaN, "none"));
         for (String speedText : speeds.split(",")) {
-            searches.add(new Search("sailing " + speedText.trim(), Double.parseDouble(speedText.trim())));
+            double speed = Double.parseDouble(speedText.trim());
+            for (String boatText : boats.split(",")) {
+                String boat = boatText.trim().toLowerCase(Locale.ROOT);
+                if (!boat.equals("none") && !SailingBoats.NAMES.contains(boat)) {
+                    throw new IllegalArgumentException("Unknown boat '" + boat + "', expected one of " + SailingBoats.NAMES + " or none");
+                }
+                String hull = boat.equals("none") ? "centre only" : boat;
+                searches.add(new Search(String.format(Locale.ROOT, "sailing %s, %s", speedText.trim(), hull), speed, boat));
+            }
         }
         return searches;
     }

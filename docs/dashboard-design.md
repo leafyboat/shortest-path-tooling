@@ -113,6 +113,7 @@ name,category,start_x,start_y,start_plane,x,y,plane,preset,inventory,equipment,b
 | `minimum_length` | no | Minimum acceptable path length; fails if actual is shorter |
 | `expect_reachable` | no | `false` asserts the route is unreachable (an intentional-failure scenario); absent or `true` means expected reachable |
 | `speed` | no | Boat speed in tiles per tick (e.g. `1.5`); also runs the experimental sailing search (see [Sailing](#sailing)) |
+| `boat` | no | `raft`, `skiff` or `sloop`: the hull the sailing search keeps clear; empty keeps only the boat's centre clear |
 
 An empty column is equivalent to omitting it. Rows beginning with `#` are treated as comments.
 
@@ -172,7 +173,7 @@ Tab-separated with `Description`, `X`, `Y`, `Plane` columns. Legacy format.
 | `unit-tests.csv` | Regression cases for specific logic (bank branching, gating, wilderness, spells) |
 | `quetzal_whistle_routes.csv` | Quetzal whistle and primo-quetzal transport routes |
 | `clue_locations_full.csv` | Full clue-step reachability corpus (clue-step format) |
-| `sailing_routes.csv` | Routes at sea for the experimental sailing search, including tight spots |
+| `sailing_routes.csv` | Routes at sea for the experimental sailing search, including tight spots, per boat |
 
 ## Gradle Tasks
 
@@ -344,15 +345,17 @@ The implementation is split into:
 
 ## Sailing
 
-The plugin's experimental sailing search (on branches that have it) sails the game's 16 boat headings. It isn't
-on the plugin's master yet, so point the build at a checkout that has it with `-PshortestPathDir`; the sailing
-code here lives in `src/sailing/java` and is only compiled when that checkout has the sailing search.
+The plugin's experimental sailing search (on branches that have it) sails the game's 16 boat headings and
+keeps the boat's whole hull clear of blocked tiles. It isn't on the plugin's master yet, so point the build
+at a checkout that has it with `-PshortestPathDir`; the sailing code here lives in `src/sailing/java` and is only
+compiled when that checkout has the sailing search.
 
 ### Sailing view
 
 Rows with a `speed` also run the sailing search from the same start, and the dashboard draws it in blue next
-to the normal path, with a dot where it turns. Turn on the **Collision map** layer to see the blocked tiles. A
-card compares the two searches.
+to the normal path: the path, the boat's hull at each turn (facing the leg that leaves it) and the area the
+hull sweeps along each leg, which is what the search keeps clear. Turn on the **Collision map** layer to see
+the blocked tiles, and **Sailing hull** to hide the hull. A card compares the two searches.
 
 `./gradlew dashboard` builds `sailing_routes.csv` as its own bundle along with the default routes, unless it's
 given a `dashboardDataset`; `sailingDashboard` builds just that bundle. Without a plugin checkout that has the
@@ -362,19 +365,23 @@ sailing search, the sailing routes show only the normal path.
 ./gradlew dashboard -PshortestPathDir=../shortest-path
 ```
 
+Hulls come from the game's bounds for each boat (`SailingBoats`), sitting on the centre of their tile.
+
 ### Sailing benchmark
 
 `sailingBenchmark` runs each route in a dataset (default `sailing_routes.csv`; rows with the same start and
-target are one route) with the existing search, then with the sailing search at each speed. Each search runs a
-few times untimed to warm up, then several times timed, taking turns. It reports the median and fastest search
-times (as the plugin's debug panel measures them), nodes checked and the path found, per route and in total, to
+target are one route) with the existing search, then with the sailing search at each speed, keeping only the
+boat's centre clear and then each boat's hull. Each search runs a few times untimed to warm up, then several
+times timed, taking turns. It reports the median and fastest search times (as the plugin's debug panel
+measures them), nodes checked and the path found, per route and in total, to
 `build/reports/sailing-benchmark/<dataset>.md` and `.json`.
 
-The report starts by comparing the paths themselves for each row, at the row's own speed: the existing path
-and the sailing path's length in tiles, straight legs, and ticks. The existing path's ticks are about how long
-the boat takes to sail it holding the straight or diagonal heading of each step (`SailingPaths.ticksToSail`). A
-sailing path can stop next to the target rather than on it, so the existing path is measured up to where it gets
-that close too. Neither counts time spent turning. The dashboard's sailing card shows the same comparison.
+The report starts by comparing the paths themselves for each row, with the row's own boat and speed: the
+existing path and the sailing path's length in tiles, straight legs, and ticks. The existing path's ticks
+are about how long the boat takes to sail it holding the straight or diagonal heading of each step
+(`SailingPaths.ticksToSail`). A sailing path with a hull stops as close to the target as the hull fits, so
+the existing path is measured up to where it gets that close too. Neither counts time spent turning. The
+dashboard's sailing card shows the same comparison.
 
 ```bash
 ./gradlew sailingBenchmark -PshortestPathDir=../shortest-path
@@ -385,5 +392,6 @@ that close too. Neither counts time spent turning. The dashboard's sailing card 
 |---|---|---|
 | `sailingBenchmarkDataset` | `/dashboard/sailing_routes.csv` | Routes to run |
 | `sailingBenchmarkSpeeds` | `1.5,3.0` | Boat speeds, in tiles per tick |
+| `sailingBenchmarkBoats` | `none,raft,skiff,sloop` | Hulls to keep clear (`none` keeps only the centre clear) |
 | `sailingBenchmarkWarmup` | `2` | Untimed runs of each search first |
 | `sailingBenchmarkRounds` | `5` | Timed runs of each search |

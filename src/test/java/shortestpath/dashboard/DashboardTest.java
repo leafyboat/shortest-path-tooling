@@ -465,8 +465,9 @@ public class DashboardTest {
                 if (scenario.getSailingSpeed().isPresent()) {
                     if (sailingRunner != null) {
                         run.sailing = sailingRunner.run(applied.pathfinderConfig, scenario, path);
-                        sailingSummary = String.format("  | sailing %s: %s %d ticks, %d legs, %.0fms",
-                            run.sailing.speed, run.sailing.reached ? "\u2714" : "\u2716", run.sailing.ticks, run.sailing.legs,
+                        sailingSummary = String.format("  | sailing %s %s: %s %d ticks, %d legs, %.0fms",
+                            run.sailing.speed, run.sailing.boat.isEmpty() ? "(centre only)" : run.sailing.boat,
+                            run.sailing.reached ? "\u2714" : "\u2716", run.sailing.ticks, run.sailing.legs,
                             run.sailing.elapsedNanos / 1_000_000.0);
                     } else {
                         sailingSummary = "  | sailing skipped: the plugin checkout has no sailing search (-PshortestPathDir)";

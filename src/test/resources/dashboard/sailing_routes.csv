@@ -1,14 +1,21 @@
-name,category,start_x,start_y,start_plane,x,y,plane,preset,speed
-# Sailing routes: each row also runs the experimental sailing search at the row's speed. Needs -PshortestPathDir
-# pointing at a plugin with the sailing search. The sailingBenchmark task runs every route at every speed.
+name,category,start_x,start_y,start_plane,x,y,plane,preset,speed,boat
+# Sailing routes: each row also runs the experimental sailing search at the row's speed, keeping the named
+# boat's hull clear (raft, skiff or sloop; empty for just the boat's centre). Needs -PshortestPathDir pointing at a
+# plugin with the sailing search. The sailingBenchmark task runs every route with every boat and speed; rows
+# with the same start and target are one route there.
 # Long routes between ports
-Port Sarim to the Pandemonium,sailing,3048,3184,0,3074,2983,0,UNIT_TEST,1.5
-Port Sarim to Catherby,sailing,3053,3187,0,2797,3410,0,UNIT_TEST,1.5
-Musa Point to Corsair Cove,sailing,2961,3150,0,2585,2843,0,UNIT_TEST,1.5
-Ardougne to Port Tyras,sailing,2663,3259,0,2142,3117,0,UNIT_TEST,1.5
+Port Sarim to the Pandemonium (sloop),sailing,3048,3184,0,3074,2983,0,UNIT_TEST,1.5,sloop
+Port Sarim to Catherby (sloop),sailing,3053,3187,0,2797,3410,0,UNIT_TEST,1.5,sloop
+Musa Point to Corsair Cove (sloop),sailing,2961,3150,0,2585,2843,0,UNIT_TEST,1.5,sloop
+Ardougne to Port Tyras (sloop),sailing,2663,3259,0,2142,3117,0,UNIT_TEST,1.5,sloop
 # Tight spots
-Past the rocks off Mudskipper Point,sailing-tight,2948,3074,0,3074,2983,0,UNIT_TEST,3.0
-Ruins of Unkah past the Elid Delta islands,sailing-tight,3143,2847,0,3273,2738,0,UNIT_TEST,1.5
+Past the rocks off Mudskipper Point (raft),sailing-tight,2948,3074,0,3074,2983,0,UNIT_TEST,3.0,raft
+Past the rocks off Mudskipper Point (sloop),sailing-tight,2948,3074,0,3074,2983,0,UNIT_TEST,3.0,sloop
+Ruins of Unkah past the Elid Delta islands (skiff),sailing-tight,3143,2847,0,3273,2738,0,UNIT_TEST,1.5,skiff
+# A sloop is too big to get past the Elid Delta islands, so it should find the target unreachable
+Ruins of Unkah past the Elid Delta islands (sloop),sailing-tight,3143,2847,0,3273,2738,0,UNIT_TEST,1.5,sloop
 # Rocky seas
-Through the Storm Tempor rocks past Tempoross Cove,sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5
-North of Charred Island to south of Wyrmscraig,sailing-rocky,2672,2452,0,2515,2160,0,UNIT_TEST,1.5
+Through the Storm Tempor rocks past Tempoross Cove (raft),sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5,raft
+Through the Storm Tempor rocks past Tempoross Cove (sloop),sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5,sloop
+North of Charred Island to south of Wyrmscraig (raft),sailing-rocky,2672,2452,0,2515,2160,0,UNIT_TEST,1.5,raft
+North of Charred Island to south of Wyrmscraig (sloop),sailing-rocky,2672,2452,0,2515,2160,0,UNIT_TEST,1.5,sloop

@@ -649,6 +649,25 @@ def test_scenario_csv_speed_column_known(tmp_path, monkeypatch):
     assert findings[0].startswith(f"{rel}:4: speed")
 
 
+def test_scenario_csv_boat_column_known(tmp_path, monkeypatch):
+    # `boat` names the hull a sailing route keeps clear: raft, skiff or
+    # sloop, or none (or empty) for just the boat's centre.
+    # SailingBoats.hull throws on any other name.
+    vd = load_vd()
+    repo = tmp_path / "repo"
+    rel = _write_csv(
+        repo, "src/test/resources/dashboard/sailing_routes.csv",
+        ROUTES_HEADER + ",speed,boat",
+        ["R1,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,1.5,sloop",
+         "R2,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,1.5,",
+         "R3,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,1.5,none",
+         "R4,cat,3222,3218,0,3222,3218,0,ALL,,,,,,,10,10,1.5,canoe"])
+    _patch_repo_leaf(vd, monkeypatch, repo, ls_files=[rel])
+    findings = vd.CHECKS["scenario-csv"]()
+    assert len(findings) == 1
+    assert findings[0].startswith(f"{rel}:5: boat")
+
+
 def test_scenario_csv_quests_grammar_rejects(tmp_path, monkeypatch):
     # Malformed quests cells abort the loader with
     # IllegalArgumentException, so the lint must flag them first:
