@@ -2,12 +2,12 @@ name,category,start_x,start_y,start_plane,x,y,plane,preset,speed
 # Sailing routes: each row also runs the experimental sailing search at the row's speed. Needs -PshortestPathDir
 # pointing at a plugin with the sailing search. The sailingBenchmark task runs every route at every speed.
 # Long routes between ports
-Port Sarim to the Pandemonium,sailing,3048,3184,0,3069,2983,0,UNIT_TEST,1.5
-Port Sarim to Catherby,sailing,3050,3190,0,2797,3410,0,UNIT_TEST,1.5
-Musa Point to Corsair Cove,sailing,2961,3150,0,2584,2848,0,UNIT_TEST,1.5
+Port Sarim to the Pandemonium,sailing,3048,3184,0,3074,2983,0,UNIT_TEST,1.5
+Port Sarim to Catherby,sailing,3053,3187,0,2797,3410,0,UNIT_TEST,1.5
+Musa Point to Corsair Cove,sailing,2961,3150,0,2585,2843,0,UNIT_TEST,1.5
 Ardougne to Port Tyras,sailing,2663,3259,0,2142,3117,0,UNIT_TEST,1.5
 # Tight spots
-Past the rocks off Mudskipper Point,sailing-tight,2948,3074,0,3069,2983,0,UNIT_TEST,3.0
+Past the rocks off Mudskipper Point,sailing-tight,2948,3074,0,3074,2983,0,UNIT_TEST,3.0
 Ruins of Unkah past the Elid Delta islands,sailing-tight,3143,2847,0,3273,2738,0,UNIT_TEST,1.5
 # Rocky seas
 Through the Storm Tempor rocks past Tempoross Cove,sailing-rocky,2928,2842,0,3125,2869,0,UNIT_TEST,1.5
