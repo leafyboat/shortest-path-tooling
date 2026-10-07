@@ -74,6 +74,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private PathfinderBackend pathfinderBackend = PathfinderBackend.valueOf(
         System.getProperty("dashboard.backend", "LEGACY").toUpperCase(java.util.Locale.ROOT));
     private int exactHeuristicWeight = 100;
+    private boolean useSailingMoves = true;
 
     // -------------------------------------------------------------------------
     // POH settings
@@ -166,6 +167,8 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public boolean collisionAwareBlockedTargets() { return collisionAwareBlockedTargets; }
     @Override public PathfinderBackend pathfinderBackend() { return pathfinderBackend; }
     @Override public int exactHeuristicWeight() { return exactHeuristicWeight; }
+    // Not marked @Override: plugin checkouts without the sailing search don't have this option (see src/sailing)
+    public boolean useSailingMoves() { return useSailingMoves; }
 
     @Override public boolean usePoh() { return usePoh; }
     @Override public boolean usePohFairyRing() { return usePohFairyRing; }
@@ -269,6 +272,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setCollisionAwareBlockedTargets(boolean v) { collisionAwareBlockedTargets = v; }
     public void setPathfinderBackend(PathfinderBackend v) { pathfinderBackend = v; }
     public void setExactHeuristicWeight(int v) { exactHeuristicWeight = v; }
+    public void setUseSailingMoves(boolean v) { useSailingMoves = v; }
 
     public void setUsePoh(boolean v) { usePoh = v; }
     public void setUsePohFairyRing(boolean v) { usePohFairyRing = v; }

@@ -114,6 +114,7 @@ SCENARIO_CONFIG_KEYS = frozenset({
     "includeBankPath", "bypassVarbitChecks", "bypassVarPlayerChecks",
     "currencyThreshold",
     "calculationCutoff", "pathfinderBackend", "exactHeuristicWeight",
+    "useSailingMoves",
     "usePoh", "usePohFairyRing",
     "usePohSpiritTree", "useTeleportationPortalsPoh",
     "usePohMountedItems", "usePohObelisk",

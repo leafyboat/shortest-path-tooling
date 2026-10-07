@@ -230,6 +230,7 @@ public final class DashboardScenarioRunner {
                 case "calculationCutoff": config.setCalculationCutoff(Integer.parseInt(value)); break;
                 case "pathfinderBackend": config.setPathfinderBackend(PathfinderBackend.valueOf(value)); break;
                 case "exactHeuristicWeight": config.setExactHeuristicWeight(Integer.parseInt(value)); break;
+                case "useSailingMoves": config.setUseSailingMoves(parseBoolean(value)); break;
                 case "usePoh": config.setUsePoh(parseBoolean(value)); break;
                 case "usePohFairyRing": config.setUsePohFairyRing(parseBoolean(value)); break;
                 case "usePohSpiritTree": config.setUsePohSpiritTree(parseBoolean(value)); break;
