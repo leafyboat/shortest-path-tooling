@@ -409,19 +409,19 @@ public class CollisionMapDumper
 							{
 								if (orientation == ORIENTATION_WEST) // wall on west
 								{
-									flagMap.set(X - 1, Y, Z, FlagMap.FLAG_WEST, tile);
+									flagMap.setBoundary(X - 1, Y, Z, FlagMap.FLAG_WEST, tile);
 								}
 								else if (orientation == ORIENTATION_NORTH) // wall on north
 								{
-									flagMap.set(X, Y, Z, FlagMap.FLAG_NORTH, tile);
+									flagMap.setBoundary(X, Y, Z, FlagMap.FLAG_NORTH, tile);
 								}
 								else if (orientation == ORIENTATION_EAST) // wall on east
 								{
-									flagMap.set(X, Y, Z, FlagMap.FLAG_EAST, tile);
+									flagMap.setBoundary(X, Y, Z, FlagMap.FLAG_EAST, tile);
 								}
 								else if (orientation == ORIENTATION_SOUTH) // wall on south
 								{
-									flagMap.set(X, Y - 1, Z, FlagMap.FLAG_SOUTH, tile);
+									flagMap.setBoundary(X, Y - 1, Z, FlagMap.FLAG_SOUTH, tile);
 								}
 							}
 
@@ -437,19 +437,19 @@ public class CollisionMapDumper
 							{
 								if (orientation == ORIENTATION_SOUTH)
 								{
-									flagMap.set(X - 1, Y, Z, FlagMap.FLAG_WEST, tile);
+									flagMap.setBoundary(X - 1, Y, Z, FlagMap.FLAG_WEST, tile);
 								}
 								else if (orientation == ORIENTATION_WEST)
 								{
-									flagMap.set(X, Y, Z, FlagMap.FLAG_NORTH, tile);
+									flagMap.setBoundary(X, Y, Z, FlagMap.FLAG_NORTH, tile);
 								}
 								else if (orientation == ORIENTATION_NORTH)
 								{
-									flagMap.set(X, Y, Z, FlagMap.FLAG_EAST, tile);
+									flagMap.setBoundary(X, Y, Z, FlagMap.FLAG_EAST, tile);
 								}
 								else if (orientation == ORIENTATION_EAST)
 								{
-									flagMap.set(X, Y - 1, Z, FlagMap.FLAG_SOUTH, tile);
+									flagMap.setBoundary(X, Y - 1, Z, FlagMap.FLAG_SOUTH, tile);
 								}
 							}
 						}
@@ -466,17 +466,17 @@ public class CollisionMapDumper
 
 							if (orientation != ORIENTATION_WEST && orientation != ORIENTATION_EAST) // diagonal wall pointing north-east
 							{
-								flagMap.set(X, Y, Z, FlagMap.FLAG_NORTH, tile);
-								flagMap.set(X, Y, Z, FlagMap.FLAG_EAST, tile);
-								flagMap.set(X, Y - 1, Z, FlagMap.FLAG_NORTH, tile);
-								flagMap.set(X - 1, Y, Z, FlagMap.FLAG_EAST, tile);
+								flagMap.setBoundary(X, Y, Z, FlagMap.FLAG_NORTH, tile);
+								flagMap.setBoundary(X, Y, Z, FlagMap.FLAG_EAST, tile);
+								flagMap.setBoundary(X, Y - 1, Z, FlagMap.FLAG_NORTH, tile);
+								flagMap.setBoundary(X - 1, Y, Z, FlagMap.FLAG_EAST, tile);
 							}
 							else // diagonal wall pointing north-west
 							{
-								flagMap.set(X, Y, Z, FlagMap.FLAG_NORTH, tile);
-								flagMap.set(X, Y, Z, FlagMap.FLAG_WEST, tile);
-								flagMap.set(X, Y - 1, Z, FlagMap.FLAG_NORTH, tile);
-								flagMap.set(X - 1, Y, Z, FlagMap.FLAG_WEST, tile);
+								flagMap.setBoundary(X, Y, Z, FlagMap.FLAG_NORTH, tile);
+								flagMap.setBoundary(X, Y, Z, FlagMap.FLAG_WEST, tile);
+								flagMap.setBoundary(X, Y - 1, Z, FlagMap.FLAG_NORTH, tile);
+								flagMap.setBoundary(X - 1, Y, Z, FlagMap.FLAG_WEST, tile);
 							}
 						}
 
@@ -524,6 +524,11 @@ public class CollisionMapDumper
 
 					// Nomove
 					int floorType = region.getTileSetting(floorZ, localX, localY);
+					// Tile-level blocking (water, roof walls, missing floor)
+					// marks the tile impassable rather than a directional
+					// boundary, so it must not set the boundary flags -- void
+					// tiles occur at high plane indices in most regions and
+					// would inflate the bitset past the point of trimming.
 					if (floorType == TILE_SETTING_BLOCKED || // water, rooftop wall
 						floorType == TILE_SETTING_BRIDGE_WALL || // bridge wall
 						floorType == TILE_SETTING_HOUSE_ROOF || // house wall/roof
@@ -637,13 +642,23 @@ public class CollisionMapDumper
 		private static final int PLANE_COUNT = 4;
 
 		/**
-		 * Number of possible flags: 0 = north/south, 1 = east/west
+		 * Number of possible flags per tile: 0 = north/south edge open for
+		 * movement, 1 = east/west edge open, 2 = north/south edge is a
+		 * structural boundary, 3 = east/west edge is a structural boundary.
+		 * The boundary flags are written alongside the movement flags by
+		 * every wall and door write, so consumers can tell a real wall edge
+		 * from an edge that is merely blocked by an object's footprint or
+		 * by a tile-level floor/seal block.
 		 */
-		private static final int FLAG_COUNT = 2;
+		private static final int FLAG_COUNT = 4;
 		public static final int FLAG_NORTH = 0;
 		public static final int FLAG_SOUTH = 0;
 		public static final int FLAG_EAST = 1;
 		public static final int FLAG_WEST = 1;
+		public static final int FLAG_WALL_NORTH = 2;
+		public static final int FLAG_WALL_SOUTH = 2;
+		public static final int FLAG_WALL_EAST = 3;
+		public static final int FLAG_WALL_WEST = 3;
 
 		public final BitSet flags;
 		private final int minX;
@@ -667,7 +682,13 @@ public class CollisionMapDumper
 			width = (maxX - minX + 1);
 			height = (maxY - minY + 1);
 			flags = new BitSet(width * height * PLANE_COUNT * FLAG_COUNT);
-			flags.set(0, flags.size(), value);
+			// Only the movement flags take the default value; the boundary
+			// flags must stay unset until an actual boundary write.
+			for (int i = 0; i < flags.size(); i += FLAG_COUNT)
+			{
+				flags.set(i, value);
+				flags.set(i + 1, value);
+			}
 		}
 
 		public byte[] toBytes()
@@ -681,6 +702,19 @@ public class CollisionMapDumper
 			{
 				flags.set(index(x, y, z, flag), value);
 			}
+		}
+
+		/**
+		 * Writes a structural boundary edge: the movement flag records
+		 * whether the edge can be crossed (doors still write it open),
+		 * while the paired boundary flag marks that a wall or door sits on
+		 * it. Only wall-object writes should use this; tile-level floor and
+		 * seal blocks describe impassable tiles, not edges.
+		 */
+		public void setBoundary(int x, int y, int z, int flag, boolean value)
+		{
+			set(x, y, z, flag, value);
+			set(x, y, z, flag + FLAG_WALL_NORTH, true);
 		}
 
 		private boolean isValidIndex(int x, int y, int z, int flag)

@@ -27,7 +27,7 @@ HERE = Path(__file__).resolve().parent
 # Sibling helpers are plain scripts, not a package; the insert keeps
 # the imports working under importlib-spec test loads.
 sys.path.insert(0, str(HERE))
-from collision_zip import CollisionMap, REGION_SIZE  # noqa: E402
+from collision_zip import CollisionMap, FLAG_COUNT, REGION_SIZE  # noqa: E402
 from verify_seasonal_regions import (  # noqa: E402
     classify_chunk, classify_tile, load_bboxes)
 
@@ -48,7 +48,7 @@ COLLISION_ZIP = PLUGIN / RESOURCES / "collision-map.zip"
 GIT_TIMEOUT_SECONDS = 120
 COORD_RE = re.compile(r"^\d+ \d+ \d+$")
 REGION_NAME_RE = re.compile(r"^\d+_\d+$")
-BITS_PER_PLANE = REGION_SIZE * REGION_SIZE * 2
+BITS_PER_PLANE = REGION_SIZE * REGION_SIZE * FLAG_COUNT
 # The committed map covers thousands of regions; a handful of entries
 # means a truncated artifact, not a healthy map.
 MIN_REGION_COUNT = 1000

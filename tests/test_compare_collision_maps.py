@@ -21,7 +21,8 @@ spec = importlib.util.spec_from_file_location(
 ccm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ccm)
 
-BITS_PER_PLANE = collision_zip.REGION_SIZE * collision_zip.REGION_SIZE * 2  # 8192 bits = 1024 bytes
+BITS_PER_PLANE = (collision_zip.REGION_SIZE * collision_zip.REGION_SIZE
+                  * collision_zip.FLAG_COUNT)  # 16384 bits = 2048 bytes
 
 
 def _zip_bytes(regions):

@@ -22,10 +22,13 @@ from collision_zip import (  # noqa: E402
     CollisionMap,
     FLAG_E,
     FLAG_N,
+    FLAG_WALL_E,
+    FLAG_WALL_N,
     REGION_SIZE,
 )
 
 FLAGS = (FLAG_N, FLAG_E)
+WALL_FLAGS = (FLAG_WALL_N, FLAG_WALL_E)
 
 
 def region_planes(m: CollisionMap, key: Tuple[int, int]) -> int:
@@ -51,6 +54,15 @@ def compare_region(old: CollisionMap, new: CollisionMap,
                         stats["opened_to_blocked"] += 1
                     else:
                         stats["blocked_to_opened"] += 1
+                for flag in WALL_FLAGS:
+                    o = old.flag(wx, wy, p, flag)
+                    n = new.flag(wx, wy, p, flag)
+                    if o == n:
+                        stats["wall_both" if o else "wall_neither"] += 1
+                    elif o and not n:
+                        stats["wall_removed"] += 1
+                    else:
+                        stats["wall_added"] += 1
     return stats
 
 
@@ -58,7 +70,11 @@ def probe(maps: Dict[str, CollisionMap], wx: int, wy: int, p: int) -> None:
     for label, m in maps.items():
         print(f"{label} ({wx},{wy},{p}): N={int(m.n(wx, wy, p))} "
               f"E={int(m.e(wx, wy, p))} S={int(m.s(wx, wy, p))} "
-              f"W={int(m.w(wx, wy, p))}")
+              f"W={int(m.w(wx, wy, p))} "
+              f"wallN={int(m.wall_n(wx, wy, p))} "
+              f"wallE={int(m.wall_e(wx, wy, p))} "
+              f"wallS={int(m.wall_s(wx, wy, p))} "
+              f"wallW={int(m.wall_w(wx, wy, p))}")
 
 
 def main() -> int:
@@ -97,6 +113,9 @@ def main() -> int:
     print()
     print("Edge totals:")
     for k in ("both_open", "both_blocked", "opened_to_blocked", "blocked_to_opened"):
+        print(f"  {k:>22}: {totals[k]:>12,}")
+    print("Boundary-flag totals:")
+    for k in ("wall_both", "wall_neither", "wall_removed", "wall_added"):
         print(f"  {k:>22}: {totals[k]:>12,}")
     changed = totals["opened_to_blocked"] + totals["blocked_to_opened"]
     total = sum(totals.values()) or 1
