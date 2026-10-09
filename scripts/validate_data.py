@@ -17,6 +17,7 @@ Run standalone::
     python3 scripts/validate_data.py [check ...]
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -180,6 +181,21 @@ SCENARIO_KNOWN_COLUMNS = frozenset({
 })
 
 
+# Git exports these into hook environments (pre-push quarantine, worktree
+# overrides). Inherited by our git subprocesses they redirect even
+# `-C`-rooted calls at the hook's repository, silently emptying the
+# committed-file listings every check enumerates.
+_GIT_HOOK_ENV_VARS = frozenset({
+    "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_QUARANTINE_PATH",
+    "GIT_COMMON_DIR", "GIT_PREFIX",
+})
+
+
+def _git_env():
+    return {k: v for k, v in os.environ.items() if k not in _GIT_HOOK_ENV_VARS}
+
+
 def _git_ls_files(*pathspecs):
     """Committed submodule files matching the given pathspecs.
 
@@ -189,7 +205,7 @@ def _git_ls_files(*pathspecs):
     """
     proc = subprocess.run(
         ["git", "-C", "shortest-path", "ls-files", *pathspecs],
-        cwd=REPO, capture_output=True, text=True,
+        cwd=REPO, capture_output=True, text=True, env=_git_env(),
         timeout=GIT_TIMEOUT_SECONDS)
     if proc.returncode != 0:
         tail = (proc.stderr or "").strip().splitlines()
@@ -208,7 +224,7 @@ def _git_ls_files_repo(*pathspecs):
     """
     proc = subprocess.run(
         ["git", "ls-files", *pathspecs],
-        cwd=REPO, capture_output=True, text=True,
+        cwd=REPO, capture_output=True, text=True, env=_git_env(),
         timeout=GIT_TIMEOUT_SECONDS)
     if proc.returncode != 0:
         tail = (proc.stderr or "").strip().splitlines()
