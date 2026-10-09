@@ -17,6 +17,7 @@ Run standalone::
     python3 scripts/validate_data.py [check ...]
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -27,7 +28,7 @@ HERE = Path(__file__).resolve().parent
 # Sibling helpers are plain scripts, not a package; the insert keeps
 # the imports working under importlib-spec test loads.
 sys.path.insert(0, str(HERE))
-from collision_zip import CollisionMap, REGION_SIZE  # noqa: E402
+from collision_zip import CollisionMap, FLAG_COUNT, REGION_SIZE  # noqa: E402
 from verify_seasonal_regions import (  # noqa: E402
     classify_chunk, classify_tile, load_bboxes)
 
@@ -48,7 +49,7 @@ COLLISION_ZIP = PLUGIN / RESOURCES / "collision-map.zip"
 GIT_TIMEOUT_SECONDS = 120
 COORD_RE = re.compile(r"^\d+ \d+ \d+$")
 REGION_NAME_RE = re.compile(r"^\d+_\d+$")
-BITS_PER_PLANE = REGION_SIZE * REGION_SIZE * 2
+BITS_PER_PLANE = REGION_SIZE * REGION_SIZE * FLAG_COUNT
 # The committed map covers thousands of regions; a handful of entries
 # means a truncated artifact, not a healthy map.
 MIN_REGION_COUNT = 1000
@@ -130,6 +131,7 @@ SCENARIO_CONFIG_KEYS = frozenset({
     "costQuetzalWhistle", "costTeleportationBoxes",
     "builtTeleportationBoxes", "builtTeleportationPortalsPoh",
     "pohJewelleryBoxTier", "unreachableTargetDistanceThreshold",
+    "collisionAwareBlockedTargets",
     "unlockCanoeAxe", "unlockXericsHonour", "unlockDragontoothPassage",
 })
 
@@ -180,6 +182,21 @@ SCENARIO_KNOWN_COLUMNS = frozenset({
 })
 
 
+# Git exports these into hook environments (pre-push quarantine, worktree
+# overrides). Inherited by our git subprocesses they redirect even
+# `-C`-rooted calls at the hook's repository, silently emptying the
+# committed-file listings every check enumerates.
+_GIT_HOOK_ENV_VARS = frozenset({
+    "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_QUARANTINE_PATH",
+    "GIT_COMMON_DIR", "GIT_PREFIX",
+})
+
+
+def _git_env():
+    return {k: v for k, v in os.environ.items() if k not in _GIT_HOOK_ENV_VARS}
+
+
 def _git_ls_files(*pathspecs):
     """Committed submodule files matching the given pathspecs.
 
@@ -189,7 +206,7 @@ def _git_ls_files(*pathspecs):
     """
     proc = subprocess.run(
         ["git", "-C", "shortest-path", "ls-files", *pathspecs],
-        cwd=REPO, capture_output=True, text=True,
+        cwd=REPO, capture_output=True, text=True, env=_git_env(),
         timeout=GIT_TIMEOUT_SECONDS)
     if proc.returncode != 0:
         tail = (proc.stderr or "").strip().splitlines()
@@ -208,7 +225,7 @@ def _git_ls_files_repo(*pathspecs):
     """
     proc = subprocess.run(
         ["git", "ls-files", *pathspecs],
-        cwd=REPO, capture_output=True, text=True,
+        cwd=REPO, capture_output=True, text=True, env=_git_env(),
         timeout=GIT_TIMEOUT_SECONDS)
     if proc.returncode != 0:
         tail = (proc.stderr or "").strip().splitlines()

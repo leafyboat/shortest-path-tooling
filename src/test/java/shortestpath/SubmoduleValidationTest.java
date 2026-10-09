@@ -36,15 +36,37 @@ public class SubmoduleValidationTest
 		assertFalse("Submodule must not be a symlink", Files.isSymbolicLink(submoduleDir.toPath()));
 	}
 
-	@Test
-	public void testSubmoduleGitRepositoryExists()
+	/**
+	 * Resolve the submodule's real git directory. The submodule's .git is a
+	 * file whose "gitdir:" line points at it — under .git/modules/shortest-path
+	 * in a plain checkout, .git/worktrees/&lt;name&gt;/modules/shortest-path in a
+	 * linked worktree.
+	 */
+	private static File submoduleGitDir() throws IOException
 	{
-		// V-08: Submodule git repository must exist in .git/modules
-		File submoduleGitDir = new File(".git/modules/shortest-path");
-		
-		assertTrue("Submodule git repository must exist in .git/modules", submoduleGitDir.exists());
+		File gitFile = new File("shortest-path/.git");
+		assertTrue("Submodule .git file must exist", gitFile.isFile());
+		for (String line : Files.readAllLines(gitFile.toPath()))
+		{
+			if (line.startsWith("gitdir:"))
+			{
+				return new File("shortest-path", line.substring("gitdir:".length()).trim())
+					.getCanonicalFile();
+			}
+		}
+		fail("Submodule .git file contains no gitdir pointer");
+		return null;
+	}
+
+	@Test
+	public void testSubmoduleGitRepositoryExists() throws IOException
+	{
+		// V-08: Submodule git repository must exist under the superproject's git dir
+		File submoduleGitDir = submoduleGitDir();
+
+		assertTrue("Submodule git repository must exist: " + submoduleGitDir, submoduleGitDir.exists());
 		assertTrue("Submodule git repository must be a directory", submoduleGitDir.isDirectory());
-		
+
 		File config = new File(submoduleGitDir, "config");
 		assertTrue("Submodule git config must exist", config.exists());
 		assertTrue("Submodule git config must be a file", config.isFile());
@@ -186,11 +208,11 @@ public class SubmoduleValidationTest
 	}
 
 	@Test
-	public void testSubmoduleRemoteConfiguration()
+	public void testSubmoduleRemoteConfiguration() throws IOException
 	{
 		// V-03 / V-09: Submodule remotes must follow the repo convention:
 		// 'upstream' = Skretzo/shortest-path, 'origin' = the user's fork.
-		File config = new File(".git/modules/shortest-path/config");
+		File config = new File(submoduleGitDir(), "config");
 
 		assertTrue("Submodule git config must exist", config.exists());
 		assertTrue("Submodule git config must be a file", config.isFile());

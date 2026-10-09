@@ -45,9 +45,10 @@ def _mini_zip(path, entries):
     iterable of ``(lx, ly, plane, flag)`` bits to set."""
     with zipfile.ZipFile(path, "w") as z:
         for name, bits in entries.items():
-            data = bytearray(1024)  # one plane's worth of bits
+            # one plane's worth of bits
+            data = bytearray(64 * 64 * collision_zip.FLAG_COUNT // 8)
             for lx, ly, plane, flag in bits:
-                idx = ((plane * 64 * 64) + (ly * 64) + lx) * 2 + flag
+                idx = ((plane * 64 * 64) + (ly * 64) + lx) * collision_zip.FLAG_COUNT + flag
                 data[idx >> 3] |= 1 << (idx & 7)
             z.writestr(name, bytes(data))
     return path
