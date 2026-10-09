@@ -68,6 +68,7 @@ public class ConfigParityTest {
         NO_TWIN_ALLOWLIST.put("colourText", "display colour; never read during pathfinding");
         NO_TWIN_ALLOWLIST.put("colourTransports", "display colour; never read during pathfinding");
         // Display-only items — overlay/render toggles.
+        NO_TWIN_ALLOWLIST.put("drawClickPoints", "overlay toggle; never read during pathfinding");
         NO_TWIN_ALLOWLIST.put("drawCollisionMap", "overlay toggle; never read during pathfinding");
         NO_TWIN_ALLOWLIST.put("drawDebugPanel", "overlay toggle; never read during pathfinding");
         NO_TWIN_ALLOWLIST.put("drawMap", "overlay toggle; never read during pathfinding");

@@ -68,6 +68,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private int currencyThreshold = 10_000_000;
     private int calculationCutoff = 500;
     private int unreachableTargetDistance = 2;
+    private boolean collisionAwareBlockedTargets = true;
     // The -PdashboardBackend flag lands here as the default; a per-row
     // config_overrides "pathfinderBackend" entry still wins.
     private PathfinderBackend pathfinderBackend = PathfinderBackend.valueOf(
@@ -162,6 +163,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     @Override public int currencyThreshold() { return currencyThreshold; }
     @Override public int calculationCutoff() { return calculationCutoff; }
     @Override public int unreachableTargetDistance() { return unreachableTargetDistance; }
+    @Override public boolean collisionAwareBlockedTargets() { return collisionAwareBlockedTargets; }
     @Override public PathfinderBackend pathfinderBackend() { return pathfinderBackend; }
     @Override public int exactHeuristicWeight() { return exactHeuristicWeight; }
 
@@ -264,6 +266,7 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     public void setCurrencyThreshold(int v) { currencyThreshold = v; }
     public void setCalculationCutoff(int v) { calculationCutoff = v; }
     public void setUnreachableTargetDistance(int v) { unreachableTargetDistance = v; }
+    public void setCollisionAwareBlockedTargets(boolean v) { collisionAwareBlockedTargets = v; }
     public void setPathfinderBackend(PathfinderBackend v) { pathfinderBackend = v; }
     public void setExactHeuristicWeight(int v) { exactHeuristicWeight = v; }
 

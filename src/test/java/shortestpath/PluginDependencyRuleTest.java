@@ -51,8 +51,9 @@ public class PluginDependencyRuleTest
 {
 	private static final Path MAIN_ROOT = Paths.get("shortest-path/src/main/java");
 
+	// "requirement" rejoins when the upstream rework that introduces it lands.
 	private static final List<String> LEAF_PACKAGES = List.of(
-		"transport", "pathfinder", "requirement", "leagues", "overlay");
+		"transport", "pathfinder", "leagues", "overlay");
 
 	private static final String PLUGIN_REFERENCE = "ShortestPathPlugin.";
 
@@ -71,19 +72,19 @@ public class PluginDependencyRuleTest
 		// data loader anchors on its own class.
 		ALLOWLIST.put("shortestpath/transport/TransportLoader.java:33",
 			"resource anchor — transport TSV read; the loader migrates self-anchored");
-		ALLOWLIST.put("shortestpath/pathfinder/SplitFlagMap.java:92",
+		ALLOWLIST.put("shortestpath/pathfinder/SplitFlagMap.java:100",
 			"resource anchor — collision-map resource read; the loader migrates self-anchored");
 		ALLOWLIST.put("shortestpath/leagues/LeagueRegionChecker.java:105",
 			"resource anchor — league-region TSV read; the loader migrates self-anchored");
 
 		// Static imports of the POH landing-tile constants.
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:31",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:36",
 			"import static of POH_LANDING_X — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:32",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:37",
 			"import static of POH_LANDING_Y — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/pathfinder/TransportAvailability.java:9",
-			"import static of POH_LANDING_X — migrates to the POH service");
 		ALLOWLIST.put("shortestpath/pathfinder/TransportAvailability.java:10",
+			"import static of POH_LANDING_X — migrates to the POH service");
+		ALLOWLIST.put("shortestpath/pathfinder/TransportAvailability.java:11",
 			"import static of POH_LANDING_Y — migrates to the POH service");
 
 		// override() config reads — migrate to the settings service.
@@ -93,59 +94,63 @@ public class PluginDependencyRuleTest
 			"override read of a per-type config value — migrates to the settings service");
 		ALLOWLIST.put("shortestpath/transport/TransportTypeConfig.java:125",
 			"override read of a per-type config value — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:324",
-			"override read of unreachableTargetDistanceThreshold — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:327",
-			"override read of exactHeuristicWeight — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:328",
-			"override read of avoidWilderness — migrates to the settings service");
 		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:329",
-			"override read of usePoh — migrates to the settings service");
+			"override read of unreachableTargetDistanceThreshold — migrates to the settings service");
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:330",
+			"override read of collisionAwareBlockedTargets — migrates to the settings service");
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:333",
+			"override read of exactHeuristicWeight — migrates to the settings service");
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:334",
+			"override read of avoidWilderness — migrates to the settings service");
 		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:335",
-			"override read of usePohFairyRing — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:336",
-			"override read of usePohSpiritTree — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:337",
-			"override read of usePohObelisk — migrates to the settings service");
+			"override read of usePoh — migrates to the settings service");
 		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:341",
+			"override read of usePohFairyRing — migrates to the settings service");
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:342",
+			"override read of usePohSpiritTree — migrates to the settings service");
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:343",
+			"override read of usePohObelisk — migrates to the settings service");
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:347",
 			"override read of pohJewelleryBoxTier — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:344",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:350",
 			"override read of currencyThreshold — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:349",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:355",
 			"override read of includeBankPath — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:352",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:358",
 			"override read of respawnPrifddinas — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:356",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:362",
 			"override read of unlockCanoeAxe — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:360",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:366",
 			"override read of unlockXericsHonour — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:364",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:370",
 			"override read of unlockDragontoothPassage — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:371",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:377",
 			"override read of costConsumableTeleportationItems — migrates to the settings service");
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:372",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:378",
 			"override read of costBankVisit — migrates to the settings service");
 
 		// isInsidePoh world-geometry reads — migrate to the POH service.
-		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:660",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:754",
 			"isInsidePoh redirect filter — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/pathfinder/TransportAvailability.java:100",
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:820",
+			"isInsidePoh transport filter — migrates to the POH service");
+		ALLOWLIST.put("shortestpath/pathfinder/PathfinderConfig.java:1069",
+			"isInsidePoh POH-transport classification — migrates to the POH service");
+		ALLOWLIST.put("shortestpath/pathfinder/TransportAvailability.java:104",
 			"isInsidePoh origin check — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/requirement/Requirements.java:194",
-			"isInsidePoh POH gate — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/requirement/Requirements.java:262",
-			"isInsidePoh POH-variant gate — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:251",
+		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:253",
 			"isInsidePoh marker filter — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:286",
+		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:288",
 			"isInsidePoh tracer filter — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:321",
+		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:323",
 			"isInsidePoh marker filter — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:365",
+		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:367",
 			"isInsidePoh marker filter — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:763",
+		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:394",
+			"isInsidePoh click-point filter — migrates to the POH service");
+		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:785",
 			"isInsidePoh transport-tile check — migrates to the POH service");
-		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:764",
+		ALLOWLIST.put("shortestpath/overlay/PathTileOverlay.java:786",
 			"isInsidePoh player-tile check — migrates to the POH service");
 	}
 

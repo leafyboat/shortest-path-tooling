@@ -131,6 +131,7 @@ SCENARIO_CONFIG_KEYS = frozenset({
     "costQuetzalWhistle", "costTeleportationBoxes",
     "builtTeleportationBoxes", "builtTeleportationPortalsPoh",
     "pohJewelleryBoxTier", "unreachableTargetDistanceThreshold",
+    "collisionAwareBlockedTargets",
     "unlockCanoeAxe", "unlockXericsHonour", "unlockDragontoothPassage",
 })
 

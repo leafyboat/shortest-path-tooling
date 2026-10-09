@@ -27,6 +27,10 @@ public class ProfilingPathfinder {
     private final CollisionMap map;
     private final int start;
     private final Set<Integer> targets;
+    // Termination set resolved by TargetGoals: the requested targets plus, for
+    // blocked targets, the fallback tiles they route to. Mirrors Pathfinder.goals.
+    private final Set<Integer> goals;
+    private final boolean hasViableGoal;
     private final boolean targetInWilderness;
     private final boolean targetInBlockedRegion;
 
@@ -69,6 +73,9 @@ public class ProfilingPathfinder {
         this.map = config.getMap();
         this.start = start;
         this.targets = targets;
+        TargetGoals resolved = TargetGoals.resolve(config, start, targets);
+        this.goals = resolved.goals();
+        this.hasViableGoal = resolved.hasViableGoal();
         this.visited = new VisitedTiles(map, config.getBankVisitCost());
         this.targetInWilderness = WildernessChecker.isInWilderness(targets);
         this.targetInBlockedRegion = anyInBlockedRegion(config.getLeagueModeState(), targets);
@@ -100,7 +107,7 @@ public class ProfilingPathfinder {
         long cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
         int iteration = 0;
 
-        while (!boundary.isEmpty() || !pending.isEmpty()) {
+        while (hasViableGoal && (!boundary.isEmpty() || !pending.isEmpty())) {
             // ── Queue selection phase ──
             long phaseStart = System.nanoTime();
 
@@ -149,7 +156,7 @@ public class ProfilingPathfinder {
             if (nodeIsTile) {
                 phaseStart = System.nanoTime();
 
-                if (targets.contains(nodePacked)) {
+                if (goals.contains(nodePacked)) {
                     bestLastNode = node;
                     reachedTarget = nodePacked;
                     if (shortestAcceptedNode != NodeGraph.NO_NODE) {

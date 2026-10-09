@@ -268,6 +268,7 @@ public final class DashboardScenarioRunner {
                 case "costTeleportationBoxes": config.setCostTeleportationBoxes(Integer.parseInt(value)); break;
                 case "pohJewelleryBoxTier": config.setPohJewelleryBoxTier(JewelleryBoxTier.valueOf(value)); break;
                 case "unreachableTargetDistanceThreshold": config.setUnreachableTargetDistance(Integer.parseInt(value)); break;
+                case "collisionAwareBlockedTargets": config.setCollisionAwareBlockedTargets(parseBoolean(value)); break;
                 case "builtTeleportationBoxes": config.setBuiltTeleportationBoxes(value); break;
                 case "builtTeleportationPortalsPoh": config.setBuiltTeleportationPortalsPoh(value); break;
                 default:
