@@ -10,6 +10,7 @@ cache.  The script is loaded via importlib because ``scripts/`` has no
 
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -435,6 +436,8 @@ def local_kind(cmd):
         return "apply-reverse-check"
     if cmd[:2] == ["git", "apply"]:
         return "apply"
+    if cmd[0].endswith("gradlew") and "routingCuts" in cmd:
+        return "routingCuts"
     if cmd[0].endswith("gradlew"):
         return "shadowJar"
     if cmd[0] == "java":
@@ -451,7 +454,7 @@ def make_local_run(repo, calls, *, branch="maint-x",
                    status_out="", download_rc=0,
                    fetch_rc=0, reset_rc=0, clone_rc=0,
                    apply_check_rc=0, reverse_check_rc=1, apply_rc=0,
-                   shadow_rc=0, java_rc=0, zip_rc=0,
+                   shadow_rc=0, java_rc=0, zip_rc=0, cuts_rc=0,
                    diff_stdout="EDGE TOTALS\n"):
     """fake mm.run for the --local pipeline; fabricates the filesystem
     effects each step would produce under the tmp repo."""
@@ -506,6 +509,8 @@ def make_local_run(repo, calls, *, branch="maint-x",
         if kind == "zip":
             Path(cwd, "collision-map.zip").write_bytes(b"NEWZIP")
             return cp(cmd, rc=zip_rc)
+        if kind == "routingCuts":
+            return cp(cmd, rc=cuts_rc)
         if kind == "compare":
             return cp(cmd, diff_stdout)
         raise AssertionError(f"unexpected argv: {cmd}")
@@ -534,6 +539,14 @@ def prepare_local(tmp_path, monkeypatch, *, cache_ready=True,
     calls = []
     monkeypatch.setattr(
         mm, "run", make_local_run(repo, calls, **run_kwargs))
+    # The write path regenerates routing-cuts.bin via KaHIP's
+    # node_separator — give the tests a fake one on PATH by default.
+    fakebin = tmp_path / "bin"
+    fakebin.mkdir(exist_ok=True)
+    separator = fakebin / "node_separator"
+    separator.write_bytes(b"")
+    separator.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{fakebin}:{os.environ['PATH']}")
     return repo, submodule, calls
 
 
@@ -547,7 +560,8 @@ def test_collision_map_local_sequence(tmp_path, monkeypatch, capsys):
     kinds = [local_kind(c) for c, _ in calls]
     assert kinds == [
         "branch", "upstream", "status", "download", "clone",
-        "apply-check", "apply", "shadowJar", "java", "zip", "compare"]
+        "apply-check", "apply", "shadowJar", "java", "zip",
+        "routingCuts", "compare"]
 
     runelite = repo / "build" / "runelite-work" / "runelite"
     build = repo / "build"
@@ -577,6 +591,41 @@ def test_collision_map_local_sequence(tmp_path, monkeypatch, capsys):
     assert compare[2] == str(build / "old-collision-map.zip")
     assert compare[3] == str(new_zip)
     assert "EDGE TOTALS" in capsys.readouterr().out
+
+
+def test_collision_map_local_regenerates_routing_cuts(
+        tmp_path, monkeypatch):
+    # The write path must run routingCuts after the zip lands so the
+    # committed cuts fingerprint stays in sync with the new map.
+    repo, submodule, calls = prepare_local(tmp_path, monkeypatch)
+    rc = mm.main(["collision-map", "--local"])
+    assert rc == 0
+    cuts = next(c for c, _ in calls if local_kind(c) == "routingCuts")
+    assert cuts[1] == "routingCuts"
+    assert str(submodule / "src" / "main" / "resources" /
+               "routing-cuts.bin") in cuts[3]
+    assert "node_separator" in cuts[2]
+
+
+def test_collision_map_local_requires_separator_for_cuts(
+        tmp_path, monkeypatch):
+    # Without KaHIP's node_separator the write path must fail rather
+    # than land a map whose committed cuts fingerprint is stale.
+    repo, submodule, calls = prepare_local(tmp_path, monkeypatch)
+    monkeypatch.setenv("PATH", "/nonexistent")
+    rc = mm.main(["collision-map", "--local"])
+    assert rc == 1
+    assert "routingCuts" not in [local_kind(c) for c, _ in calls]
+
+
+def test_collision_map_local_skip_cuts(tmp_path, monkeypatch, capsys):
+    # --skip-cuts bypasses KaHIP but warns about the stale artifact.
+    repo, submodule, calls = prepare_local(tmp_path, monkeypatch)
+    monkeypatch.setenv("PATH", "/nonexistent")
+    rc = mm.main(["collision-map", "--local", "--skip-cuts"])
+    assert rc == 0
+    assert "routingCuts" not in [local_kind(c) for c, _ in calls]
+    assert "stale" in capsys.readouterr().err
 
 
 def test_collision_map_local_cleans_stale_output(tmp_path, monkeypatch):

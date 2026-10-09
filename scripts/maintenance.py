@@ -832,6 +832,18 @@ def do_collision_map_local(args: argparse.Namespace) -> int:
         else new_zip
     shutil.move(str(output_dir / "collision-map.zip"), str(target))
 
+    # The upstream ExtractCollisionMap workflow regenerates
+    # routing-cuts.bin in the same commit — the cuts embed a
+    # fingerprint of collision-map.zip, so landing the map without
+    # the cuts leaves a stale, fingerprint-mismatched artifact.
+    # Compare-only diverts the zip into build/, so the generator
+    # (which reads the map from the plugin classpath) cannot see it;
+    # cuts are skipped there by design.
+    if not compare_only:
+        cuts_rc = regenerate_routing_cuts(args, build)
+        if cuts_rc != 0:
+            return cuts_rc
+
     if baseline is not None and baseline.exists():
         diff = run([sys.executable,
                     str(REPO / "scripts" / "compare_collision_maps.py"),
@@ -864,6 +876,38 @@ def do_collision_map_local(args: argparse.Namespace) -> int:
             print("no previous collision-map.zip to diff against — "
                   "commit on your origin (fork) feature branch and "
                   "open a PR upstream")
+    return 0
+
+
+def regenerate_routing_cuts(args: argparse.Namespace, build: Path) -> int:
+    """Regenerate routing-cuts.bin for the freshly written collision
+    map, mirroring the ExtractCollisionMap workflow's KaHIP step."""
+    if getattr(args, "skip_cuts", False):
+        print("warning: --skip-cuts left a stale routing-cuts.bin "
+              "(fingerprint no longer matches collision-map.zip)",
+              file=sys.stderr)
+        return 0
+    separator = getattr(args, "kahip_node_separator", None) \
+        or "node_separator"
+    if shutil.which(separator) is None and not Path(separator).is_file():
+        print("routing-cuts.bin must be regenerated with the map, but "
+              "no KaHIP node_separator was found. Install KaHIP, pass "
+              "--kahip-node-separator=<path>, or --skip-cuts.",
+              file=sys.stderr)
+        return 1
+    cuts_out = (SUBMODULE / "src" / "main" / "resources" /
+                "routing-cuts.bin")
+    proc = run([str(REPO / "gradlew"), "routingCuts",
+                f"-PkahipNodeSeparator={separator}",
+                f"-ProutingCutsOutput={cuts_out}"],
+               cwd=REPO, timeout=RUNELITE_BUILD_TIMEOUT_SECONDS)
+    if proc.returncode != 0:
+        print("routingCuts failed:", file=sys.stderr)
+        tail = _stderr_tail(proc)
+        if tail:
+            print(tail, file=sys.stderr)
+        return 1
+    print(f"routing-cuts.bin regenerated -> {cuts_out}")
     return 0
 
 
@@ -1466,6 +1510,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--compare-only", action="store_true",
         help="With --local: regenerate into build/ and diff against "
              "the current artifact without touching the submodule")
+    cm.add_argument(
+        "--kahip-node-separator", metavar="PATH", default=None,
+        help="With --local: path to KaHIP's node_separator binary for "
+             "the routing-cuts.bin regeneration (default: find on PATH)")
+    cm.add_argument(
+        "--skip-cuts", action="store_true",
+        help="With --local: do not regenerate routing-cuts.bin "
+             "(leaves a stale artifact — the zip fingerprint inside "
+             "it no longer matches)")
 
     rg = sub.add_parser(
         "regions",
