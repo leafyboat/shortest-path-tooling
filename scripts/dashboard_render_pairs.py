@@ -189,10 +189,16 @@ def main() -> int:
     ap.add_argument("--report-dir", required=True, type=Path)
     ap.add_argument("--before", required=True)
     ap.add_argument("--after", required=True)
+    ap.add_argument("--panel", action="append", default=[], metavar="BUNDLE[:LABEL]",
+                    help="extra bundles rendered as additional panels, e.g. "
+                         "clue-wrongside-after:'legacy after'; label defaults to the bundle name")
     ap.add_argument("--collision-zip", type=Path, default=None,
                     help="new-format collision-map.zip; draws structural boundary edges")
     ap.add_argument("--scenarios", default=None,
                     help="comma-separated run names; default is all runs that differ")
+    ap.add_argument("--center", choices=["auto", "target"], default="auto",
+                    help="auto: midpoint of target + all endpoints; target: anchor the "
+                         "viewport on the target tile (use when a run ends far away)")
     ap.add_argument("--radius", type=int, default=VIEW_RADIUS,
                     help="world tiles of padding around the focus box")
     ap.add_argument("--scale", type=int, default=OUT_SCALE,
@@ -208,33 +214,44 @@ def main() -> int:
         cm = CollisionMap(args.collision_zip)
 
     report_dir = args.report_dir.resolve()
-    before_runs = json.loads((report_dir / "bundles" / args.before / "report.json").read_text())["runs"]
-    after_runs = json.loads((report_dir / "bundles" / args.after / "report.json").read_text())["runs"]
-    bmap, amap = ({r["name"]: r for r in runs} for runs in (before_runs, after_runs))
+
+    def load(bundle):
+        return json.loads(
+            (report_dir / "bundles" / bundle / "report.json").read_text())["runs"]
+
+    # panels: (label, runmap) in output order — before/after plus any extras
+    panels = [("before", {r["name"]: r for r in load(args.before)}),
+              ("after", {r["name"]: r for r in load(args.after)})]
+    for spec in args.panel:
+        bundle, _, label = spec.partition(":")
+        panels.append((label or bundle,
+                       {r["name"]: r for r in load(bundle)}))
 
     names = ([n.strip() for n in args.scenarios.split(",") if n.strip()]
-             if args.scenarios else changed_names(before_runs, after_runs))
-    missing = [n for n in names if n not in bmap or n not in amap]
+             if args.scenarios else changed_names(list(panels[0][1].values()),
+                                                  list(panels[1][1].values())))
+    missing = [n for n in names if any(n not in runmap for _, runmap in panels)]
     if missing:
-        sys.exit(f"scenario names not found in both bundles: {missing[:5]}")
+        sys.exit(f"scenario names not found in every bundle: {missing[:5]}")
     if not names:
         sys.exit("no differing scenarios to render")
 
     args.out.mkdir(parents=True, exist_ok=True)
     src = TileSource(args.tile_cache)
-    manifest = ["# Dashboard render pairs", "",
-                "| # | scenario | before end | after end | before term | after term |",
-                "|---|---|---|---|---|---|"]
+    head = "| # | scenario |" + "".join(f" {label} end | {label} term |" for label, _ in panels)
+    manifest = ["# Dashboard render pairs", "", head,
+                "|---|---|" + "---|---|" * len(panels)]
 
     for i, name in enumerate(names):
-        rb, ra = bmap[name], amap[name]
+        runs = [runmap[name] for _, runmap in panels]
         t = target_xy(name)
-        eb, ea = end_pos(rb), end_pos(ra)
+        ends = [end_pos(r) for r in runs]
         plane = t[2]
 
-        xs = [t[0]] + [e[0] for e in (eb, ea) if e and e[2] == plane]
-        ys = [t[1]] + [e[1] for e in (eb, ea) if e and e[2] == plane]
-        cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+        xs = [t[0]] + [e[0] for e in ends if e and e[2] == plane]
+        ys = [t[1]] + [e[1] for e in ends if e and e[2] == plane]
+        cx, cy = (t[0], t[1]) if args.center == "target" else \
+            ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
         x0, y0 = int(cx - args.radius), int(cy - args.radius)
         x1, y1 = int(cx + args.radius), int(cy + args.radius)
 
@@ -245,31 +262,33 @@ def main() -> int:
                              Image.NEAREST)
 
         s = slug(name)
-        frames = {}
-        for side, run in (("before", rb), ("after", ra)):
+        frames = []
+        for label, run in zip([p[0] for p in panels], runs):
             frame = img.copy()
             draw_run(frame, run, x0, y1, ppwt, cm, plane)
-            frame.save(args.out / f"{i:03d}-{s}-{side}.png")
-            frames[side] = frame
+            frame.save(args.out / f"{i:03d}-{s}-{slug(label)}.png")
+            frames.append((label, run, frame))
 
         # combined side-by-side for PR embedding
         label_h = max(24, int(ppwt))
-        combo = Image.new("RGB", (frames["before"].width * 2 + 8,
-                                  frames["before"].height + label_h), (24, 24, 28))
+        combo = Image.new("RGB", (frames[0][2].width * len(frames) + 8 * (len(frames) - 1),
+                                  frames[0][2].height + label_h), (24, 24, 28))
         d = ImageDraw.Draw(combo)
-        d.text((8, label_h // 3), f"before: {rb.get('terminationReason', '-')}", fill="#f87171")
-        d.text((frames["before"].width + 16, label_h // 3),
-               f"after: {ra.get('terminationReason', '-')}", fill="#4ade80")
-        combo.paste(frames["before"], (0, label_h))
-        combo.paste(frames["after"], (frames["before"].width + 8, label_h))
+        for k, (label, run, frame) in enumerate(frames):
+            d.text((8 + k * (frame.width + 8), label_h // 3),
+                   f"{label}: {run.get('terminationReason', '-')}",
+                   fill="#f87171" if k == 0 else "#4ade80")
+            combo.paste(frame, (k * (frame.width + 8), label_h))
         combo.save(args.out / f"{i:03d}-{s}-pair.png")
 
-        manifest.append(f"| {i} | {name} | {eb} | {ea} | "
-                        f"{rb.get('terminationReason', '-')} | {ra.get('terminationReason', '-')} |")
+        row = f"| {i} | {name} |"
+        for (label, run, _), e in zip(frames, ends):
+            row += f" {e} | {run.get('terminationReason', '-')} |"
+        manifest.append(row)
         print(f"[{i + 1}/{len(names)}] {name}")
 
     (args.out / "index.md").write_text("\n".join(manifest) + "\n")
-    print(f"\nwrote {2 * len(names)} images + index.md to {args.out}")
+    print(f"\nwrote {len(panels) * len(names)} images + index.md to {args.out}")
     return 0
 
 
