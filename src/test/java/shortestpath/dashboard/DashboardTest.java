@@ -394,7 +394,7 @@ public class DashboardTest {
 
                 List<PathStep> path = result.getPathSteps();
                 int pathLength = path.size();
-                boolean reached = isReachedOrAdjacent(result, end);
+                boolean reached = result.isReached();
                 if (reached) {
                     capturedLengths.put(scenario.getName(), pathLength);
                 }
@@ -553,15 +553,6 @@ public class DashboardTest {
             updated.add(line);
         }
         Files.write(csvPath, updated);
-    }
-
-    private static boolean isReachedOrAdjacent(PathfinderResult result, int target) {
-        if (result == null || result.getPathSteps().isEmpty()) {
-            return false;
-        }
-        List<PathStep> path = result.getPathSteps();
-        return WorldPointUtil.distanceBetween(
-            path.get(path.size() - 1).getPackedPosition(), target) <= 1;
     }
 
     private static String formatBankEventsSummary(PathfinderDashboardModels.RunRecord run) {
