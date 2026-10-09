@@ -54,7 +54,9 @@ Dashboard options are `-P` properties: `dashboardDataset` (default
 only for datasets of ≤ 200 scenarios; pass `true`/`false` to force),
 `dashboardHeatmap` (default true; only applies when profiling is on),
 `dashboardSeasonal`, `dashboardF2p`, `dashboardThreads` (parallel scenario
-workers; default `availableProcessors()-3`). Other tasks: `captureExpectedLengths` (writes actual lengths
+workers; default `availableProcessors()-3`), `dashboardBackend` (routing
+engine: `LEGACY` default or `EXACT`; a per-row `pathfinderBackend` config
+override still wins, and exact searches record unprofiled). Other tasks: `captureExpectedLengths` (writes actual lengths
 back into the CSV) and the cache dumpers/probes in `gradle/cache-dumpers.gradle`
 (`bankTileDump`, `sailingAmenityVarbitDump`, `leagueRegionDump`,
 `f2pRegionDump`, `leagueIdProbe`, `transportAnchorDrift`, the `briefcase*`

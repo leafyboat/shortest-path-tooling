@@ -68,7 +68,10 @@ public class DashboardPathfinderConfig implements ShortestPathConfig {
     private int currencyThreshold = 10_000_000;
     private int calculationCutoff = 500;
     private int unreachableTargetDistance = 2;
-    private PathfinderBackend pathfinderBackend = PathfinderBackend.LEGACY;
+    // The -PdashboardBackend flag lands here as the default; a per-row
+    // config_overrides "pathfinderBackend" entry still wins.
+    private PathfinderBackend pathfinderBackend = PathfinderBackend.valueOf(
+        System.getProperty("dashboard.backend", "LEGACY").toUpperCase(java.util.Locale.ROOT));
     private int exactHeuristicWeight = 100;
 
     // -------------------------------------------------------------------------

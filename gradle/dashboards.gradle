@@ -16,6 +16,10 @@ def dashboardF2p = providers.gradleProperty('dashboardF2p')
         .orElse('false')
 def dashboardThreads = providers.gradleProperty('dashboardThreads')
         .orElse('')
+// Routing engine for the run: LEGACY (default) or EXACT. A per-row
+// config_overrides entry of the same name still wins over this flag.
+def dashboardBackend = providers.gradleProperty('dashboardBackend')
+        .orElse('LEGACY')
 // Derive bundle name and title from the dataset filename + profile flag.
 // e.g. dataset=/dashboard/clue_locations_full.csv, profile=true
 //   → bundle: clue-locations-full-profiled, title: Clue Locations Full Profiled
@@ -24,10 +28,14 @@ def filename = dashboardDataset.get().tokenize('/').last()
 def stem = filename.contains('.') ? filename.substring(0, filename.lastIndexOf('.')) : filename
 def slug = stem.replace('_', '-').toLowerCase()
 def profiled = dashboardProfile.get() == 'true'
+def backendSlug = dashboardBackend.get().equalsIgnoreCase('LEGACY')
+        ? '' : '-' + dashboardBackend.get().toLowerCase()
 def dashboardBundle = providers.gradleProperty('dashboardBundle')
-        .orElse(profiled ? "${slug}-profiled" : slug)
+        .orElse(profiled ? "${slug}${backendSlug}-profiled" : "${slug}${backendSlug}")
 def dashboardTitle = providers.gradleProperty('dashboardTitle')
-        .orElse(stem.tokenize('_').collect { it.capitalize() }.join(' ') + (profiled ? ' Profiled' : ''))
+        .orElse(stem.tokenize('_').collect { it.capitalize() }.join(' ')
+                + (backendSlug.isEmpty() ? '' : ' ' + dashboardBackend.get().toLowerCase().capitalize())
+                + (profiled ? ' Profiled' : ''))
 
 def logDashboardLocation = { String taskName ->
     logger.lifecycle("")
@@ -51,7 +59,9 @@ tasks.register('dashboard', Test) {
             'dashboardSeasonal (default: false; tags the bundle so the frontend renders the ' +
             'Demonic Pacts League regions overlay), ' +
             'dashboardF2p (default: false; tags the bundle so the frontend tints members-only chunks), ' +
-            'dashboardThreads (parallel scenario workers, default: availableProcessors()-3).'
+            'dashboardThreads (parallel scenario workers, default: availableProcessors()-3), ' +
+            'dashboardBackend (default: LEGACY; EXACT runs the exact engine — ' +
+            'profiling stays legacy-only and exact runs record unprofiled).'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnit()
@@ -66,6 +76,7 @@ tasks.register('dashboard', Test) {
     systemProperty 'dashboard.outputRoot', dashboardOutputRoot.get().asFile.absolutePath
     systemProperty 'dashboard.bundleName', dashboardBundle.get()
     systemProperty 'dashboard.dataset', dashboardDataset.get()
+    systemProperty 'dashboard.backend', dashboardBackend.get()
     if (!dashboardProfile.get().isEmpty()) {
         systemProperty 'dashboard.profile', dashboardProfile.get()
     }
@@ -106,6 +117,7 @@ tasks.register('captureExpectedLengths', Test) {
     systemProperty 'dashboard.outputRoot', dashboardOutputRoot.get().asFile.absolutePath
     systemProperty 'dashboard.bundleName', dashboardBundle.get()
     systemProperty 'dashboard.dataset', dashboardDataset.get()
+    systemProperty 'dashboard.backend', dashboardBackend.get()
     if (!dashboardProfile.get().isEmpty()) {
         systemProperty 'dashboard.profile', dashboardProfile.get()
     }

@@ -36,11 +36,15 @@ import ch.qos.logback.classic.Logger;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 import shortestpath.WorldPointUtil;
+import shortestpath.pathfinder.ExactPathfinder;
+import shortestpath.pathfinder.ExactRoutingStaticProvider;
+import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.pathfinder.PathfinderResult;
 import shortestpath.pathfinder.PathfinderProfile;
 import shortestpath.pathfinder.PathStep;
 import shortestpath.pathfinder.ProfilingPathfinder;
 import shortestpath.pathfinder.Pathfinder;
+import shortestpath.pathfinder.TestPathfinderConfig;
 
 /**
  * Generic dashboard test harness.
@@ -77,6 +81,9 @@ import shortestpath.pathfinder.Pathfinder;
  *       {@code true}/{@code false} always wins</td></tr>
  *   <tr><td>{@code dashboard.heatmap}</td><td>{@code true} (profiling only)</td></tr>
  *   <tr><td>{@code dashboard.threads}</td><td>{@code availableProcessors() - 3}</td></tr>
+ *   <tr><td>{@code dashboard.backend}</td><td>{@code LEGACY} — {@code EXACT} runs
+ *       the exact engine instead; a per-row {@code pathfinderBackend} config
+ *       override still wins, and exact searches record unprofiled</td></tr>
  *   <tr><td>{@code reachability.maxTargets}</td><td>{@code 10000}</td></tr>
  * </table>
  */
@@ -109,6 +116,26 @@ public class DashboardTest {
     private final ProfilerReportWriter profilerReportWriter = new ProfilerReportWriter();
     private final PathfinderDashboardReportWriter reportWriter = new PathfinderDashboardReportWriter();
     private final DashboardBundlePublisher bundlePublisher = new DashboardBundlePublisher();
+    /**
+     * The exact backend's shared routing graph, built on first use by whichever
+     * worker hits an EXACT scenario. {@link ExactRoutingStaticProvider#get} is
+     * synchronized, so concurrent workers share one build.
+     */
+    private volatile ExactRoutingStaticProvider exactRoutingStatic;
+
+    private ExactRoutingStaticProvider exactRoutingStatic(TestPathfinderConfig config) {
+        ExactRoutingStaticProvider provider = exactRoutingStatic;
+        if (provider == null) {
+            synchronized (this) {
+                provider = exactRoutingStatic;
+                if (provider == null) {
+                    provider = new ExactRoutingStaticProvider(config::getMap);
+                    exactRoutingStatic = provider;
+                }
+            }
+        }
+        return provider;
+    }
 
     /**
      * Serializes the heartbeat increment together with its printf. The
@@ -338,7 +365,14 @@ public class DashboardTest {
 
                 PathfinderResult result;
                 PathfinderProfile profileData = null;
-                if (profile) {
+                if (applied.dashboardConfig.pathfinderBackend() == PathfinderBackend.EXACT) {
+                    // ProfilingPathfinder instruments the legacy engine only;
+                    // exact searches always record unprofiled.
+                    ExactPathfinder exact = new ExactPathfinder(applied.pathfinderConfig,
+                        exactRoutingStatic(applied.pathfinderConfig), start, Set.of(end), null);
+                    exact.run();
+                    result = exact.getResult();
+                } else if (profile) {
                     ProfilingPathfinder profiler = new ProfilingPathfinder(
                         applied.pathfinderConfig, start, Set.of(end), heatmap);
                     profiler.run();
