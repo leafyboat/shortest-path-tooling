@@ -173,6 +173,36 @@ def cacheDumperSpecs = [
             }
         },
     ],
+    // Generates world-map-layout.tsv for the plugin's WorldMapLayout: the
+    // areas each world map draws away from their real position, or shows
+    // above the ground floor, read from the cache's world map composite.
+    // The plugin's Extract Collision Map workflow runs this with the
+    // collision map and commits the result next to it.
+    //
+    // Usage:
+    //   python3 scripts/maintenance.py cache   # produces ./cache
+    //   ./gradlew worldMapLayoutDump -PworldMapLayoutCacheDir=$PWD/cache
+    //   cp build/world-map-layout/world-map-layout.tsv \
+    //     shortest-path/src/main/resources/world-map-layout.tsv
+    [
+        name: 'worldMapLayoutDump',
+        description: 'Generates world-map-layout.tsv (areas each world map draws away from their real position). ' +
+                'Required: -PworldMapLayoutCacheDir=<cache dir>. ' +
+                'Optional: -PworldMapLayoutOutput=<tsv path>.',
+        testClass: 'shortestpath/dump/WorldMapLayoutDumperTest.class',
+        cachePrefix: 'worldMapLayout',
+        outputProp: 'worldMapLayoutOutput',
+        outputDefault: 'world-map-layout/world-map-layout.tsv',
+        sysProps: ['world.map.layout.dump': 'true'],
+        sysPropKeys: [cacheDir: 'world.map.layout.cacheDir',
+                      output: 'world.map.layout.output'],
+        hint: { String out, String dflt ->
+            logger.lifecycle("")
+            logger.lifecycle("World map layout written to ${out}")
+            logger.lifecycle("Copy into the plugin with:")
+            logger.lifecycle("  cp ${out} shortest-path/src/main/resources/world-map-layout.tsv")
+        },
+    ],
     // One-off probe that prints league-related item IDs (Banker's
     // Briefcase, etc.) from the cache to stdout. Useful when refreshing
     // the hard-coded numeric IDs in

@@ -42,6 +42,7 @@ EXPECTED_TASKS = frozenset({
     "sailingAmenityVarbitDump",
     "leagueRegionDump",
     "f2pRegionDump",
+    "worldMapLayoutDump",
     "leagueIdProbe",
     "briefcaseEnumProbe",
     "leagueTeleportItemDump",
@@ -69,6 +70,9 @@ EXPECTED_SYSPROPS = {
                          "league.regions.xteaPath", "league.regions.output"},
     "f2pRegionDump": {"f2p.regions.dump", "f2p.regions.cacheDir",
                       "f2p.regions.xteaPath", "f2p.regions.output"},
+    "worldMapLayoutDump": {"world.map.layout.dump",
+                           "world.map.layout.cacheDir",
+                           "world.map.layout.output"},
     "leagueIdProbe": {"league.id.probe", "league.id.cacheDir",
                       "league.id.xteaPath"},
     "briefcaseEnumProbe": {"briefcase.enum.probe",
@@ -184,7 +188,7 @@ def _specs():
     return specs
 
 
-def test_all_18_task_names_in_spec():
+def test_all_19_task_names_in_spec():
     assert frozenset(_specs()) == EXPECTED_TASKS
 
 
